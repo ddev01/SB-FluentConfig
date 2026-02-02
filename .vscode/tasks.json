@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build sbui",
+            "type": "shell",
+            "command": "Stop-Process -Name 'Streamer.bot' -Force -ErrorAction SilentlyContinue; dotnet build '${workspaceFolder}/sbui/sbui.csproj' -c Debug -p:OutputPath='C:\\Users\\main\\Desktop\\Streamer.bot-x64-1.0.4\\dlls\\'; Start-Process 'C:\\Users\\main\\Desktop\\Streamer.bot-x64-1.0.4\\Streamer.bot.exe'",
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "powershell.exe",
+                        "args": ["-NoProfile", "-Command"]
+                    }
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
