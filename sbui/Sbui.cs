@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +13,8 @@ namespace Sbui
     {
         private FluentWindow _window;
         private static Action<string> _logCallback;
+        private static Action<double, double> _windowClosedCallback;
+        private static bool _isOpen;
         private static Thread _uiThread;
         private static System.Windows.Threading.Dispatcher _dispatcher;
         private static readonly object _initLock = new object();
@@ -21,6 +23,35 @@ namespace Sbui
         public static void SetLogCallback(Action<string> callback)
         {
             _logCallback = callback;
+        }
+
+        /// <summary>
+        /// Optional callback when window closes - receives (width, height) for persistence (e.g. via CPH.SetGlobalVar).
+        /// </summary>
+        public static void SetWindowClosedCallback(Action<double, double> callback)
+        {
+            _windowClosedCallback = callback;
+        }
+
+        /// <summary>
+        /// Returns true if the UI is already open. Call before creating a new Sbui to avoid duplicate windows.
+        /// </summary>
+        public static bool AlreadyOpened(string title = "Sbui", string version = "1.0")
+        {
+            if (!_isOpen)
+                return false;
+            LogStatic($"UI ({title} (v{version})) already open, skipping...");
+            return true;
+        }
+
+        public static bool IsOpen => _isOpen;
+
+        private static void LogStatic(string message)
+        {
+            if (_logCallback != null)
+                _logCallback(message);
+            else
+                Debug.WriteLine($"[Sbui] {message}");
         }
 
         private void Log(string message)
@@ -190,12 +221,18 @@ namespace Sbui
                 _window.Content = mainPanel;
                 Log("InitializeWindow: Window content set");
 
-                // Handle window closed - do NOT shutdown dispatcher so we can reopen later
+                // Handle window closed - save dimensions, set _isOpen = false (TawmaeUI pattern)
                 _window.Closed += (s, e) =>
                 {
-                    Log("Window closed event fired");
+                    if (_window.WindowState == WindowState.Normal && _windowClosedCallback != null)
+                    {
+                        _windowClosedCallback(_window.Width, _window.Height);
+                    }
+                    _isOpen = false;
+                    Log("Sbui UI has been closed.");
                 };
 
+                _isOpen = true;
                 Log($"InitializeWindow: Window.IsLoaded = {_window.IsLoaded}");
                 Log($"InitializeWindow: Window.Visibility = {_window.Visibility}");
                 Log($"InitializeWindow: Window.IsVisible = {_window.IsVisible}");

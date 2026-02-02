@@ -55,6 +55,13 @@ public class CPHInline
             // Set up logging callback to write to file
             Sbui.Sbui.SetLogCallback((msg) => WriteLog($"[Sbui] {msg}"));
             
+            // Skip if UI is already open (TawmaeUI pattern)
+            if (Sbui.Sbui.AlreadyOpened("Settings UI Test", "1.0"))
+            {
+                WriteLog("=== Action skipped - UI already open ===");
+                return true;
+            }
+            
             WriteLog("Creating Sbui instance...");
             
             // Create and show the settings UI
