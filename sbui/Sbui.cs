@@ -2,12 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Windows.Navigation;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Newtonsoft.Json.Linq;
 using Streamer.bot.Plugin.Interface;
 using Wpf.Ui.Controls;
@@ -20,15 +25,19 @@ namespace Sbui
         private FluentWindow _window;
         private readonly IInlineInvokeProxy _cph;
         private readonly string _extensionName;
+        private readonly string _displayVersion;
         private readonly string _settingsKey;
         private JObject _existingSettings;
         private readonly bool _withUi;
         private Dictionary<string, StackPanel> _tabContentPanels;
-        private ScrollViewer _scrollViewer;
-        private StackPanel _contentWrapper;
+        private Grid _mainGrid;
+        private StackPanel _tabContainer;
+        private System.Windows.Controls.ListBox _sidebar;
+        private ScrollViewer _contentScrollViewer;
+        private readonly Dictionary<string, double> _tabScrollOffsets = new Dictionary<string, double>();
         private readonly List<PendingItem> _pendingItems;
 
-        private enum PendingKind { Title, Description, ToggleSwitch, Textbox, Slider }
+        private enum PendingKind { Header, Title, Description, ToggleSwitch, Textbox, Slider }
         private class PendingItem
         {
             public PendingKind Kind;
@@ -92,17 +101,25 @@ namespace Sbui
         /// <summary>
         /// Parameterless constructor for backward compatibility. No CPH persistence.
         /// </summary>
-        public Sbui() : this(null, "", true)
+        public Sbui() : this(null, "", null, true)
         {
         }
 
         /// <summary>
         /// Constructor with CPH for loading/saving settings. Use extensionName for storage key Sbui_Settings_{extensionName}.
         /// </summary>
-        public Sbui(IInlineInvokeProxy cph, string extensionName, bool withUi = true)
+        public Sbui(IInlineInvokeProxy cph, string extensionName, bool withUi = true) : this(cph, extensionName, null, withUi)
+        {
+        }
+
+        /// <summary>
+        /// Constructor with CPH and optional display version for window title (e.g. "{extensionName} (v{displayVersion})").
+        /// </summary>
+        public Sbui(IInlineInvokeProxy cph, string extensionName, string displayVersion, bool withUi = true)
         {
             _cph = cph;
             _extensionName = extensionName ?? "Settings";
+            _displayVersion = string.IsNullOrEmpty(displayVersion) ? null : displayVersion;
             _settingsKey = cph != null ? "Sbui_Settings_" + extensionName : null;
             _withUi = withUi;
             _existingSettings = new JObject();
@@ -196,6 +213,27 @@ namespace Sbui
             }
         }
 
+        /// <summary>
+        /// Updates _existingSettings with current window width/height and persists to CPH when available.
+        /// </summary>
+        private void PersistWindowSize()
+        {
+            if (_window == null || _window.WindowState != WindowState.Normal) return;
+            if (_existingSettings == null) _existingSettings = new JObject();
+            _existingSettings["WindowWidth"] = _window.Width;
+            _existingSettings["WindowHeight"] = _window.Height;
+            if (_cph != null && !string.IsNullOrEmpty(_settingsKey))
+            {
+                var settings = BuildSettings();
+                if (settings != null)
+                {
+                    foreach (var kv in settings)
+                        _existingSettings[kv.Key] = kv.Value;
+                }
+                _cph.SetGlobalVar(_settingsKey, _existingSettings.ToString(), true);
+            }
+        }
+
         private void LoadSettings()
         {
             if (_cph == null || string.IsNullOrEmpty(_settingsKey))
@@ -227,11 +265,26 @@ namespace Sbui
                 // Create the FluentWindow - matching original TawmaeUI pattern
                 _window = new FluentWindow
                 {
-                    Title = _extensionName,
+                    Title = !string.IsNullOrEmpty(_displayVersion) ? $"{_extensionName} (v{_displayVersion})" : _extensionName,
                     Width = 600,
                     Height = 400,
                     WindowStartupLocation = WindowStartupLocation.CenterScreen
                 };
+                // Restore window size from saved settings
+                if (_existingSettings != null)
+                {
+                    var w = _existingSettings["WindowWidth"];
+                    var h = _existingSettings["WindowHeight"];
+                    if (w != null && h != null)
+                    {
+                        double wd, hd;
+                        if (double.TryParse(w.ToString(), out wd) && double.TryParse(h.ToString(), out hd) && wd > 0 && hd > 0)
+                        {
+                            _window.Width = wd;
+                            _window.Height = hd;
+                        }
+                    }
+                }
                 Log("InitializeWindow: FluentWindow created");
 
                 // Apply WPF-UI theme - matching original pattern
@@ -257,29 +310,113 @@ namespace Sbui
                 DockPanel.SetDock(footer, Dock.Bottom);
                 mainDock.Children.Add(footer);
 
-                // Content wrapper: same pattern as decompile (_tabContainer) - receives tab panels
-                _contentWrapper = new StackPanel
+                // Decompile-style layout: Row 0 = header (full width), Row 1 = sidebar | content
+                _mainGrid = new Grid
                 {
-                    Orientation = Orientation.Vertical,
-                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(20, 20, 20, 0),
+                    VerticalAlignment = VerticalAlignment.Stretch,
                     HorizontalAlignment = HorizontalAlignment.Stretch
                 };
+                _mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                _mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
-                // ScrollViewer: explicit Background so content area gets a proper layout slot
-                _scrollViewer = new ScrollViewer
+                // Row 1: two columns - fixed sidebar (ListBox) | content (ScrollViewer with tab panels)
+                var sidebarContentGrid = new Grid
                 {
-                    Background = new SolidColorBrush(Color.FromRgb(0x10, 0x13, 0x1C)),
-                    Margin = new Thickness(20),
-                    MinHeight = 120,
                     VerticalAlignment = VerticalAlignment.Stretch,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    CanContentScroll = false,
-                    Content = _contentWrapper
+                    HorizontalAlignment = HorizontalAlignment.Stretch
                 };
-                // Last child fills remaining space (after footer docks to bottom)
-                mainDock.Children.Add(_scrollViewer);
+                sidebarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = 160 });
+                sidebarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                _sidebar = new System.Windows.Controls.ListBox
+                {
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Foreground = new SolidColorBrush(Colors.White),
+                    FontSize = 14,
+                    Padding = new Thickness(4, 2, 8, 2),
+                    MinWidth = 140
+                };
+                // Rounded tabs with smooth active/hover colors
+                var listItemStyle = new Style(typeof(ListBoxItem));
+                listItemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 10, 12, 10)));
+                listItemStyle.Setters.Add(new Setter(Control.MarginProperty, new Thickness(4, 2, 4, 2)));
+                listItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Colors.White)));
+                listItemStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
+                listItemStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
+                listItemStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
+                listItemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
+                // Template: rounded Border so the whole item is rounded
+                var borderFactory = new FrameworkElementFactory(typeof(Border));
+                borderFactory.Name = "Bd";
+                borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+                borderFactory.SetBinding(Border.BackgroundProperty, new Binding("Background") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+                borderFactory.SetBinding(Border.BorderBrushProperty, new Binding("BorderBrush") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+                borderFactory.SetBinding(Border.BorderThicknessProperty, new Binding("BorderThickness") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+                borderFactory.SetBinding(Border.PaddingProperty, new Binding("Padding") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+                var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+                contentFactory.SetBinding(ContentPresenter.ContentProperty, new Binding("Content") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
+                contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Left);
+                contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+                borderFactory.AppendChild(contentFactory);
+                listItemStyle.Setters.Add(new Setter(Control.TemplateProperty, new ControlTemplate(typeof(ListBoxItem)) { VisualTree = borderFactory }));
+                // Hover: subtle muted gray
+                var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+                hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x26, 0x2d, 0x3d))));
+                listItemStyle.Triggers.Add(hoverTrigger);
+                // Selected: smooth gradient (soft indigo/slate) + subtle left accent bar
+                var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
+                var selectedGradient = new LinearGradientBrush(
+                    Color.FromRgb(0x2d, 0x35, 0x4a),
+                    Color.FromRgb(0x22, 0x28, 0x38),
+                    new System.Windows.Point(0, 0),
+                    new System.Windows.Point(1, 1));
+                selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, selectedGradient));
+                selectedTrigger.Setters.Add(new Setter(Control.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x63, 0x6b, 0x9a))));
+                selectedTrigger.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(3, 0, 0, 0)));
+                listItemStyle.Triggers.Add(selectedTrigger);
+                _sidebar.ItemContainerStyle = listItemStyle;
+                _sidebar.SelectionChanged += (s, e) =>
+                {
+                    if (e.RemovedItems.Count > 0 && e.RemovedItems[0] is ListBoxItem removed && removed.Tag is string prevTab && _tabContentPanels.TryGetValue(prevTab, out var prevPanel))
+                    {
+                        if (_contentScrollViewer != null)
+                            _tabScrollOffsets[prevTab] = _contentScrollViewer.VerticalOffset;
+                        prevPanel.Visibility = Visibility.Collapsed;
+                    }
+                    if (_sidebar.SelectedItem is ListBoxItem selected && selected.Tag is string tabName && _tabContentPanels.TryGetValue(tabName, out var panel))
+                    {
+                        panel.Visibility = Visibility.Visible;
+                        if (_contentScrollViewer != null && _tabScrollOffsets.TryGetValue(tabName, out var offset))
+                            _contentScrollViewer.ScrollToVerticalOffset(offset);
+                    }
+                };
+
+                _tabContainer = new StackPanel
+                {
+                    Orientation = Orientation.Vertical,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Top
+                };
+                _contentScrollViewer = new ScrollViewer
+                {
+                    Content = _tabContainer,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(0)
+                };
+
+                Grid.SetColumn(_sidebar, 0);
+                Grid.SetColumn(_contentScrollViewer, 1);
+                sidebarContentGrid.Children.Add(_sidebar);
+                sidebarContentGrid.Children.Add(_contentScrollViewer);
+
+                Grid.SetRow(sidebarContentGrid, 1);
+                _mainGrid.Children.Add(sidebarContentGrid);
+
+                mainDock.Children.Add(_mainGrid);
 
                 var saveButton = new Wpf.Ui.Controls.Button
                 {
@@ -289,14 +426,7 @@ namespace Sbui
                 };
                 saveButton.Click += (s, e) =>
                 {
-                    var settings = BuildSettings();
-                    if (settings != null)
-                    {
-                        foreach (var kv in settings)
-                            _existingSettings[kv.Key] = kv.Value;
-                        if (_cph != null && !string.IsNullOrEmpty(_settingsKey))
-                            _cph.SetGlobalVar(_settingsKey, _existingSettings.ToString(), true);
-                    }
+                    PersistWindowSize();
                 };
                 var closeButton = new Wpf.Ui.Controls.Button
                 {
@@ -317,9 +447,11 @@ namespace Sbui
                 // Handle window closed - save dimensions, set _isOpen = false (TawmaeUI pattern)
                 _window.Closed += (s, e) =>
                 {
-                    if (_window.WindowState == WindowState.Normal && _windowClosedCallback != null)
+                    if (_window.WindowState == WindowState.Normal)
                     {
-                        _windowClosedCallback(_window.Width, _window.Height);
+                        if (_windowClosedCallback != null)
+                            _windowClosedCallback(_window.Width, _window.Height);
+                        PersistWindowSize();
                     }
                     _isOpen = false;
                     Log("Sbui UI has been closed.");
@@ -340,7 +472,7 @@ namespace Sbui
 
         private void EnsureTabExists(string tabName)
         {
-            if (_tabContentPanels == null || _contentWrapper == null)
+            if (_tabContentPanels == null || _tabContainer == null || _sidebar == null)
                 return;
             if (_tabContentPanels.ContainsKey(tabName))
                 return;
@@ -350,22 +482,78 @@ namespace Sbui
                 Orientation = Orientation.Vertical,
                 Margin = new Thickness(20),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                VerticalAlignment = VerticalAlignment.Top
+                VerticalAlignment = VerticalAlignment.Top,
+                Visibility = Visibility.Collapsed
+            };
+
+            var listItem = new ListBoxItem
+            {
+                Content = tabName,
+                Tag = tabName,
+                Padding = new Thickness(12, 10, 12, 10)
             };
 
             _tabContentPanels[tabName] = panel;
-            _contentWrapper.Children.Add(panel);
+            _tabContainer.Children.Add(panel);
+            _sidebar.Items.Add(listItem);
+
+            if (_sidebar.SelectedItem == null)
+            {
+                _sidebar.SelectedItem = listItem;
+                panel.Visibility = Visibility.Visible;
+            }
         }
 
         private void BuildContentFromPending(IReadOnlyList<PendingItem> items)
         {
-            if (_contentWrapper == null || _tabContentPanels == null || items == null) return;
+            if (_mainGrid == null || _tabContentPanels == null || items == null) return;
+
+            // Header: only one; last AddHeader wins. Add to row 0 of _mainGrid (full width above sidebar|content).
+            string headerUrl = null;
+            foreach (var item in items)
+                if (item.Kind == PendingKind.Header && item.Args != null && item.Args.Length > 0 && item.Args[0] is string url && !string.IsNullOrEmpty(url))
+                    headerUrl = url;
+            if (!string.IsNullOrEmpty(headerUrl))
+            {
+                var headerPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 0, 12) };
+                try
+                {
+                    var bi = new BitmapImage();
+                    bi.BeginInit();
+                    bi.UriSource = new Uri(headerUrl, UriKind.Absolute);
+                    bi.CacheOption = BitmapCacheOption.OnLoad;
+                    bi.EndInit();
+                    var img = new System.Windows.Controls.Image
+                    {
+                        Source = bi,
+                        MaxHeight = 120,
+                        Stretch = Stretch.Uniform,
+                        HorizontalAlignment = HorizontalAlignment.Stretch
+                    };
+                    headerPanel.Children.Add(img);
+                }
+                catch
+                {
+                    var placeholder = new System.Windows.Controls.TextBlock
+                    {
+                        Text = "[Header image]",
+                        Foreground = new SolidColorBrush(Colors.Gray),
+                        FontSize = 12,
+                        Margin = new Thickness(0, 4, 0, 4)
+                    };
+                    headerPanel.Children.Add(placeholder);
+                }
+                Grid.SetRow(headerPanel, 0);
+                _mainGrid.Children.Insert(0, headerPanel);
+            }
 
             foreach (var item in items)
             {
                 var args = item.Args;
                 switch (item.Kind)
                 {
+                    case PendingKind.Header:
+                        break;
                     case PendingKind.Title:
                         AddTitleToPanel((string)args[0], (string)args[1]);
                         break;
@@ -383,7 +571,7 @@ namespace Sbui
                         break;
                 }
             }
-            _contentWrapper.UpdateLayout();
+            _mainGrid?.UpdateLayout();
         }
 
         private void AddTitleToPanel(string text, string tabName)
@@ -421,7 +609,7 @@ namespace Sbui
         private static IEnumerable<Inline> ParseRichText(string raw)
         {
             if (string.IsNullOrEmpty(raw)) { yield return new Run(""); yield break; }
-            var regex = new Regex(@"(\*\*(?<bold>.+?)\*\*)|_(?<italic>.+?)_|\{(?<col>#[0-9a-fA-F]{6,8})\|(?<colTxt>.+?)\}(?!\})|\{size:(?<size>\d+)\|(?<sizeTxt>.+?)\}(?!\})|\+\+(?<glow>.+?)\+\+", RegexOptions.Singleline);
+            var regex = new Regex(@"(\*\*(?<bold>.+?)\*\*)|_(?<italic>.+?)_|\{(?<col>#[0-9a-fA-F]{6,8})\|(?<colTxt>.+?)\}(?!\})|\{size:(?<size>\d+)\|(?<sizeTxt>.+?)\}(?!\})|\+\+(?<glow>.+?)\+\+|\[link:(?<linkText>.+?)\|(?<linkUrl>.+?)\]", RegexOptions.Singleline);
             var matches = regex.Matches(raw);
             int start = 0;
             foreach (Match m in matches)
@@ -456,6 +644,19 @@ namespace Sbui
                 {
                     var run = new Run(m.Groups["glow"].Value) { FontWeight = FontWeights.SemiBold };
                     yield return run;
+                }
+                else if (m.Groups["linkText"].Success && m.Groups["linkUrl"].Success)
+                {
+                    var linkText = m.Groups["linkText"].Value;
+                    var linkUrl = m.Groups["linkUrl"].Value;
+                    var hyperlink = new Hyperlink(new Run(linkText)) { NavigateUri = new Uri(linkUrl, UriKind.RelativeOrAbsolute) };
+                    hyperlink.RequestNavigate += (s, e) =>
+                    {
+                        e.Handled = true;
+                        try { Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true }); }
+                        catch { }
+                    };
+                    yield return hyperlink;
                 }
                 start = m.Index + m.Length;
             }
@@ -534,10 +735,10 @@ namespace Sbui
 
         private JObject BuildSettings()
         {
-            if (_scrollViewer?.Content is Panel panel)
+            if (_mainGrid != null)
             {
                 var settings = new JObject();
-                foreach (var child in Descendants(panel))
+                foreach (var child in Descendants(_mainGrid))
                 {
                     if (child is System.Windows.Controls.TextBox tb && tb.Tag != null)
                         settings[tb.Tag.ToString()] = tb.Text ?? "";
@@ -564,6 +765,14 @@ namespace Sbui
                 foreach (var d in Descendants(child))
                     yield return d;
             }
+        }
+
+        /// <summary>
+        /// Add a header image at the top of the UI. Only one header is shown; multiple calls result in the last URL being used.
+        /// </summary>
+        public void AddHeader(string imageUrl)
+        {
+            _pendingItems.Add(new PendingItem(PendingKind.Header, new object[] { imageUrl ?? "" }));
         }
 
         public void AddTitle(string text, string tabName)
@@ -597,6 +806,41 @@ namespace Sbui
             if (token == null) return default;
             try { return token.ToObject<T>(); }
             catch { return default; }
+        }
+
+        /// <summary>
+        /// Get a setting by extension name and key. If extensionName matches this instance, delegates to GetValue&lt;T&gt;(key); otherwise returns default.
+        /// </summary>
+        public T GetValue<T>(string extensionName, string key)
+        {
+            if (string.IsNullOrEmpty(extensionName) || string.IsNullOrEmpty(key)) return default;
+            if (!string.Equals(extensionName, _extensionName, StringComparison.OrdinalIgnoreCase))
+                return default;
+            return GetValue<T>(key);
+        }
+
+        /// <summary>
+        /// Returns the DLL version (e.g. from AssemblyVersion). Use for version checks with Streamer.bot extensions.
+        /// </summary>
+        public static string GetVersion()
+        {
+            try
+            {
+                return Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+            }
+            catch
+            {
+                return "1.0.0";
+            }
+        }
+
+        /// <summary>
+        /// Logs the current loaded settings (e.g. for debug). No-op when _existingSettings is null.
+        /// </summary>
+        public void LogExistingSettings()
+        {
+            if (_existingSettings == null) return;
+            Log(_existingSettings.ToString());
         }
 
         public void ShowUI()
@@ -648,7 +892,7 @@ namespace Sbui
                 BuildContentFromPending(itemsSnapshot ?? new List<PendingItem>());
                 _pendingItems.Clear();
                 
-                Log($"ShowUI: Content built, contentWrapper children count = {_contentWrapper?.Children.Count}");
+                Log($"ShowUI: Content built, mainGrid children = {_mainGrid?.Children.Count}");
                 Log($"ShowUI: Tab panels count = {_tabContentPanels?.Count}");
                 
                 // Ensure window shows normally (not minimized) and is activated
@@ -656,10 +900,10 @@ namespace Sbui
                 ((Window)_window).Show();
                 _window.Activate();
                 
-                if (_scrollViewer != null)
+                if (_mainGrid != null)
                 {
-                    _scrollViewer.UpdateLayout();
-                    Log($"ShowUI: ScrollViewer updated, Content = {_scrollViewer.Content != null}");
+                    _mainGrid.UpdateLayout();
+                    Log($"ShowUI: Content updated, Sidebar = {_sidebar != null}");
                 }
                 
                 Log("ShowUI: Show() called");

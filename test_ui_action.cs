@@ -62,14 +62,19 @@ public class CPHInline
                 return true;
             }
             
+            WriteLog($"Sbui.GetVersion() = {Sbui.Sbui.GetVersion()}");
             WriteLog("Creating Sbui instance...");
             
-            var ui = new Sbui.Sbui(CPH, "Settings UI Test", true);
+            var ui = new Sbui.Sbui(CPH, "Settings UI Test", "1.0", true);
+            ui.AddHeader("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYxAXPiJKEN56xb3g_LJzPaNVuOu2nW9a4VQ&s");
             ui.AddTitle("General Settings", "General");
             ui.AddDescription("You can enable additional requirements for this feature below. For example, you might want users to meet a specific condition or have a particular attribute.", "General");
             ui.AddToggleSwitch("Enable Requirement", "Turn this on to require a custom condition for use below.", "General", "custom_requirement_enabled", false);
             ui.AddTextbox("Requirement Name", "The name of your requirement (e.g. 'Level', 'AccessKey')", "General", "custom_requirement_name", "", false);
             ui.AddSlider("Required Value", "Specify the minimum value needed to meet the requirement.", "General", "custom_required_value", 1, 1000000, 250);
+            ui.AddTitle("Messages", "Messages");
+            ui.AddTextbox("Message", "The message to send when the requirement is met.", "Messages", "message", "", false);
+            ui.LogExistingSettings();
             WriteLog("Sbui instance created, calling ShowUI...");
             
             ui.ShowUI();
