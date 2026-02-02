@@ -36,6 +36,7 @@ namespace Sbui
         private ScrollViewer _contentScrollViewer;
         private readonly Dictionary<string, double> _tabScrollOffsets = new Dictionary<string, double>();
         private readonly List<PendingItem> _pendingItems;
+        private bool _dirty;
 
         private enum PendingKind { Header, Title, Description, ToggleSwitch, Textbox, Slider }
         private class PendingItem
@@ -234,6 +235,52 @@ namespace Sbui
             }
         }
 
+        /// <summary>
+        /// Saves current form values and window size to CPH; clears dirty flag.
+        /// </summary>
+        private void SaveValuesInternal()
+        {
+            PersistWindowSize();
+            _dirty = false;
+        }
+
+        /// <summary>
+        /// Repopulates all controls from _existingSettings (e.g. after Reset or reload).
+        /// </summary>
+        private void OverwriteUiWithSettings()
+        {
+            if (_mainGrid == null || _existingSettings == null) return;
+            foreach (var child in Descendants(_mainGrid))
+            {
+                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
+                {
+                    var val = _existingSettings[keyTb];
+                    tb.Text = val != null ? val.ToString() : "";
+                }
+                else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag is string keyPb)
+                {
+                    var val = _existingSettings[keyPb];
+                    pb.Password = val != null ? val.ToString() : "";
+                }
+                else if (child is ToggleSwitch ts && ts.Tag is string keyTs)
+                {
+                    var val = _existingSettings[keyTs];
+                    ts.IsChecked = val != null && (val.Type == JTokenType.Boolean ? val.Value<bool>() : val.ToString().Equals("true", StringComparison.OrdinalIgnoreCase));
+                }
+                else if (child is System.Windows.Controls.Slider sl && sl.Tag is string keySl)
+                {
+                    var val = _existingSettings[keySl];
+                    if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                        sl.Value = val.Value<double>();
+                }
+            }
+        }
+
+        private void MarkDirty()
+        {
+            _dirty = true;
+        }
+
         private void LoadSettings()
         {
             if (_cph == null || string.IsNullOrEmpty(_settingsKey))
@@ -418,41 +465,40 @@ namespace Sbui
 
                 mainDock.Children.Add(_mainGrid);
 
-                var saveButton = new Wpf.Ui.Controls.Button
+                var saveBtn = new Wpf.Ui.Controls.Button { Content = "Save", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
+                saveBtn.Click += (s, e) => SaveValuesInternal();
+                var saveExitBtn = new Wpf.Ui.Controls.Button { Content = "Save & Exit", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
+                saveExitBtn.Click += (s, e) => { SaveValuesInternal(); if (_window != null) ((Window)_window).Close(); };
+                var resetBtn = new Wpf.Ui.Controls.Button { Content = "Reset", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
+                resetBtn.Click += (s, e) =>
                 {
-                    Content = "Save",
-                    Margin = new Thickness(0, 0, 8, 0),
-                    Padding = new Thickness(16, 8, 16, 8)
+                    if (System.Windows.MessageBox.Show(_window, "Reset all values to last saved? Unsaved changes will be lost.", "Reset", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
+                        return;
+                    LoadSettings();
+                    OverwriteUiWithSettings();
+                    _dirty = false;
+                    if (_window != null) ((Window)_window).Close();
                 };
-                saveButton.Click += (s, e) =>
+                var exitBtn = new Wpf.Ui.Controls.Button { Content = "Exit", Padding = new Thickness(16, 8, 16, 8) };
+                exitBtn.Click += (s, e) =>
                 {
-                    PersistWindowSize();
+                    if (_dirty && System.Windows.MessageBox.Show(_window, "Discard unsaved changes?", "Exit", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
+                        return;
+                    if (_window != null) ((Window)_window).Close();
                 };
-                var closeButton = new Wpf.Ui.Controls.Button
-                {
-                    Content = "Close",
-                    Padding = new Thickness(16, 8, 16, 8)
-                };
-                closeButton.Click += (s, e) =>
-                {
-                    if (_window != null)
-                        ((Window)_window).Close();
-                };
-                footer.Children.Add(saveButton);
-                footer.Children.Add(closeButton);
+                footer.Children.Add(saveBtn);
+                footer.Children.Add(saveExitBtn);
+                footer.Children.Add(resetBtn);
+                footer.Children.Add(exitBtn);
 
                 _window.Content = mainDock;
                 Log("InitializeWindow: Window content set");
 
-                // Handle window closed - save dimensions, set _isOpen = false (TawmaeUI pattern)
+                // Handle window closed - do NOT auto-save; only notify and clear _isOpen
                 _window.Closed += (s, e) =>
                 {
-                    if (_window.WindowState == WindowState.Normal)
-                    {
-                        if (_windowClosedCallback != null)
-                            _windowClosedCallback(_window.Width, _window.Height);
-                        PersistWindowSize();
-                    }
+                    if (_window != null && _window.WindowState == WindowState.Normal && _windowClosedCallback != null)
+                        _windowClosedCallback(_window.Width, _window.Height);
                     _isOpen = false;
                     Log("Sbui UI has been closed.");
                 };
@@ -682,6 +728,8 @@ namespace Sbui
             stack.Children.Add(new System.Windows.Controls.TextBlock { Text = title, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(Colors.White) });
             var ts = new ToggleSwitch { Tag = saveKey };
             ts.IsChecked = _existingSettings[saveKey] != null ? _existingSettings[saveKey].ToObject<bool>() : defaultValue;
+            ts.Checked += (s, e) => MarkDirty();
+            ts.Unchecked += (s, e) => MarkDirty();
             stack.Children.Add(ts);
             if (!string.IsNullOrEmpty(description))
                 stack.Children.Add(new System.Windows.Controls.TextBlock { Text = description, FontSize = 12, Foreground = new SolidColorBrush(Colors.Gray), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 4) });
@@ -700,11 +748,13 @@ namespace Sbui
             if (isPassword)
             {
                 var pb = new System.Windows.Controls.PasswordBox { Tag = saveKey, Password = initial, MinWidth = 200, Height = 28, Margin = new Thickness(0, 4, 0, 0) };
+                pb.PasswordChanged += (s, e) => MarkDirty();
                 stack.Children.Add(pb);
             }
             else
             {
                 var tb = new System.Windows.Controls.TextBox { Tag = saveKey, Text = initial, MinWidth = 200, Height = 28, Padding = new Thickness(6, 4, 6, 4), Margin = new Thickness(0, 4, 0, 0) };
+                tb.TextChanged += (s, e) => MarkDirty();
                 stack.Children.Add(tb);
             }
             panel.Children.Add(stack);
@@ -727,8 +777,8 @@ namespace Sbui
             var slider = new System.Windows.Controls.Slider { Tag = saveKey, Minimum = min, Maximum = max, Value = val, TickFrequency = 1, IsSnapToTickEnabled = true, Height = 24, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(valueBox, 0); Grid.SetColumn(slider, 1);
             grid.Children.Add(valueBox); grid.Children.Add(slider);
-            slider.ValueChanged += (s, e) => { if (!valueBox.IsFocused) valueBox.Text = ((int)slider.Value).ToString(); };
-            valueBox.TextChanged += (s, e) => { if (int.TryParse(valueBox.Text, out var v)) slider.Value = Math.Max(min, Math.Min(max, v)); };
+            slider.ValueChanged += (s, e) => { MarkDirty(); if (!valueBox.IsFocused) valueBox.Text = ((int)slider.Value).ToString(); };
+            valueBox.TextChanged += (s, e) => { MarkDirty(); if (int.TryParse(valueBox.Text, out var v)) slider.Value = Math.Max(min, Math.Min(max, v)); };
             stack.Children.Add(grid);
             panel.Children.Add(stack);
         }
