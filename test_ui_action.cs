@@ -64,11 +64,14 @@ public class CPHInline
             
             WriteLog("Creating Sbui instance...");
             
-            // Create and show the settings UI
-            var ui = new Sbui.Sbui();
-            WriteLog("Sbui instance created successfully");
+            var ui = new Sbui.Sbui(CPH, "Settings UI Test", true);
+            ui.AddTitle("General Settings", "General");
+            ui.AddDescription("You can enable additional requirements for this feature below. For example, you might want users to meet a specific condition or have a particular attribute.", "General");
+            ui.AddToggleSwitch("Enable Requirement", "Turn this on to require a custom condition for use below.", "General", "custom_requirement_enabled", false);
+            ui.AddTextbox("Requirement Name", "The name of your requirement (e.g. 'Level', 'AccessKey')", "General", "custom_requirement_name", "", false);
+            ui.AddSlider("Required Value", "Specify the minimum value needed to meet the requirement.", "General", "custom_required_value", 1, 1000000, 250);
+            WriteLog("Sbui instance created, calling ShowUI...");
             
-            WriteLog("Calling ShowUI()...");
             ui.ShowUI();
             WriteLog("ShowUI() completed");
             
