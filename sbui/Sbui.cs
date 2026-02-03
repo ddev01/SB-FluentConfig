@@ -37,27 +37,14 @@ namespace Sbui
         private readonly SettingsManager _settingsManager;
         private TabManager _tabManager;
         private Grid _mainGrid;
-        private StackPanel _tabContainer;
         private System.Windows.Controls.ListBox _sidebar;
         private ScrollViewer _contentScrollViewer;
         private readonly List<PendingItem> _pendingItems;
         private bool _dirty;
         private readonly ControlRegistry _controlRegistry = new ControlRegistry();
+        private readonly SettingsSynchronizer _synchronizer = new SettingsSynchronizer();
         private Dictionary<string, StackPanel> _dynamicTextboxPanels = new Dictionary<string, StackPanel>();
 
-        private enum PendingKind
-        {
-            Header, Title, Description, ToggleSwitch, Textbox, Slider,
-            InlineSeparator, SliderWithToggleSwitch, RefreshableDropdown, Filepath, ClickableButton,
-            ResponseBox, DecimalStepper, CompetingToggleSwitches, DynamicTextboxesWithPreset, ColorPicker
-        }
-        private class PendingItem
-        {
-            public PendingKind Kind;
-            public object[] Args;
-            public string VisibilityKey;
-            public PendingItem(PendingKind kind, object[] args) { Kind = kind; Args = args; }
-        }
         private string _currentVisibilityKey;
         private StackPanel _visibilityOverridePanel;
 
@@ -101,6 +88,8 @@ namespace Sbui
         void IRenderContext.Log(string message) => LogInternal(message);
         void IRenderContext.UpdateDropdown(string key, string[] options, int selectedIndex) => UpdateDropdown(key, options, selectedIndex);
         IDictionary<string, StackPanel> IRenderContext.DynamicTextboxPanels => _dynamicTextboxPanels;
+        void IRenderContext.SetVisibilityOverridePanel(StackPanel panel) => _visibilityOverridePanel = panel;
+        void IRenderContext.ClearVisibilityOverridePanel() => _visibilityOverridePanel = null;
 
         /// <summary>
         /// Logs a message to the configured log callback or Debug output.
@@ -174,14 +163,17 @@ namespace Sbui
         }
 
         /// <summary>
-        /// Updates _existingSettings with current window width/height and persists via SettingsManager when available.
+        /// Saves current form values and window size to CPH; clears dirty flag.
         /// </summary>
-        private void PersistWindowSize()
+        private void SaveValuesInternal()
         {
-            if (_window == null || _window.WindowState != WindowState.Normal) return;
+            if (_window?.WindowState == WindowState.Normal)
+            {
+                if (_existingSettings == null) _existingSettings = new JObject();
+                _existingSettings["WindowWidth"] = _window.Width;
+                _existingSettings["WindowHeight"] = _window.Height;
+            }
             if (_existingSettings == null) _existingSettings = new JObject();
-            _existingSettings["WindowWidth"] = _window.Width;
-            _existingSettings["WindowHeight"] = _window.Height;
             var settings = BuildSettings();
             if (settings != null)
             {
@@ -189,14 +181,6 @@ namespace Sbui
                     _existingSettings[kv.Key] = kv.Value;
             }
             _settingsManager.Save(_existingSettings);
-        }
-
-        /// <summary>
-        /// Saves current form values and window size to CPH; clears dirty flag.
-        /// </summary>
-        private void SaveValuesInternal()
-        {
-            PersistWindowSize();
             _dirty = false;
         }
 
@@ -206,62 +190,7 @@ namespace Sbui
         private void OverwriteUiWithSettings()
         {
             if (_mainGrid == null || _existingSettings == null) return;
-            foreach (var child in Descendants(_mainGrid))
-            {
-                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
-                {
-                    var val = _existingSettings[keyTb];
-                    tb.Text = val != null ? val.ToString() : "";
-                }
-                else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag is string keyPb)
-                {
-                    var val = _existingSettings[keyPb];
-                    pb.Password = val != null ? val.ToString() : "";
-                }
-                else if (child is ToggleSwitch ts && ts.Tag is string keyTs)
-                {
-                    var val = _existingSettings[keyTs];
-                    ts.IsChecked = val != null && (val.Type == JTokenType.Boolean ? val.Value<bool>() : val.ToString().Equals("true", StringComparison.OrdinalIgnoreCase));
-                }
-                else if (child is System.Windows.Controls.Slider sl && sl.Tag is string keySl)
-                {
-                    var val = _existingSettings[keySl];
-                    if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                        sl.Value = val.Value<double>();
-                }
-                else if (child is System.Windows.Controls.ComboBox combo && combo.Tag is string keyCombo)
-                {
-                    var val = _existingSettings[keyCombo];
-                    if (val != null)
-                    {
-                        if (val.Type == JTokenType.Integer)
-                            combo.SelectedIndex = Math.Max(0, Math.Min(val.Value<int>(), combo.Items?.Count > 0 ? combo.Items.Count - 1 : 0));
-                        else
-                        {
-                            var str = val.ToString();
-                            if (combo.Items != null)
-                                for (int i = 0; i < combo.Items.Count; i++)
-                                    if (string.Equals(combo.Items[i]?.ToString(), str, StringComparison.OrdinalIgnoreCase))
-                                    { combo.SelectedIndex = i; break; }
-                        }
-                    }
-                }
-                else if (child is StackPanel sp && sp.Tag is string tag && tag.StartsWith("dynamic:"))
-                {
-                    var key = tag.Substring(8);
-                    var val = _existingSettings[key];
-                    if (val is JArray arr)
-                    {
-                        var listPanel = GetDynamicListPanel(sp);
-                        if (listPanel != null)
-                        {
-                            var boxes = listPanel.Children.OfType<System.Windows.Controls.TextBox>().ToList();
-                            for (int i = 0; i < boxes.Count && i < arr.Count; i++)
-                                boxes[i].Text = arr[i]?.ToString() ?? "";
-                        }
-                    }
-                }
-            }
+            _synchronizer.LoadSettingsIntoControls(_mainGrid, _existingSettings);
         }
 
         private void MarkDirty()
@@ -279,184 +208,20 @@ namespace Sbui
             try
             {
                 Log("InitializeWindow: Starting window creation");
-                Log($"InitializeWindow: Thread apartment state: {Thread.CurrentThread.GetApartmentState()}");
-
-                // Create the FluentWindow - matching original TawmaeUI pattern
-                _window = new FluentWindow
-                {
-                    Title = !string.IsNullOrEmpty(_displayVersion) ? $"{_extensionName} (v{_displayVersion})" : _extensionName,
-                    Width = 600,
-                    Height = 400,
-                    WindowStartupLocation = WindowStartupLocation.CenterScreen
-                };
-                // Restore window size from saved settings
-                if (_existingSettings != null)
-                {
-                    var w = _existingSettings["WindowWidth"];
-                    var h = _existingSettings["WindowHeight"];
-                    if (w != null && h != null)
-                    {
-                        double wd, hd;
-                        if (double.TryParse(w.ToString(), out wd) && double.TryParse(h.ToString(), out hd) && wd > 0 && hd > 0)
-                        {
-                            _window.Width = wd;
-                            _window.Height = hd;
-                        }
-                    }
-                }
-                Log("InitializeWindow: FluentWindow created");
-
-                // Apply WPF-UI theme - matching original pattern
+                var builder = new WindowBuilder(_extensionName, _displayVersion ?? "", _existingSettings);
+                _window = builder.Build(
+                    out _mainGrid,
+                    out _tabManager,
+                    out _sidebar,
+                    out _contentScrollViewer,
+                    onSave: SaveValuesInternal,
+                    onSaveAndExit: () => { SaveValuesInternal(); _window?.Close(); },
+                    onReset: HandleReset,
+                    onExit: HandleExit
+                );
                 ApplicationThemeManager.Apply((ApplicationTheme)1, (WindowBackdropType)2, true);
-                Log("InitializeWindow: Theme applied (first call)");
                 ApplicationThemeManager.Apply((FrameworkElement)_window);
-                Log("InitializeWindow: Theme applied (second call)");
-
-                // Main layout: DockPanel avoids Grid+ScrollViewer sizing bugs (content area fills, footer docks to bottom)
-                var mainDock = new DockPanel
-                {
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    LastChildFill = true
-                };
-
-                var footer = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Margin = new Thickness(20, 12, 20, 20),
-                    HorizontalAlignment = HorizontalAlignment.Left
-                };
-                DockPanel.SetDock(footer, Dock.Bottom);
-                mainDock.Children.Add(footer);
-
-                // Decompile-style layout: Row 0 = header (full width), Row 1 = sidebar | content
-                _mainGrid = new Grid
-                {
-                    Margin = new Thickness(20, 20, 20, 0),
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                    HorizontalAlignment = HorizontalAlignment.Stretch
-                };
-                _mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                _mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-
-                // Row 1: two columns - fixed sidebar (ListBox) | content (ScrollViewer with tab panels)
-                var sidebarContentGrid = new Grid
-                {
-                    VerticalAlignment = VerticalAlignment.Stretch,
-                    HorizontalAlignment = HorizontalAlignment.Stretch
-                };
-                sidebarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = 160 });
-                sidebarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-                _sidebar = new System.Windows.Controls.ListBox
-                {
-                    Background = Brushes.Transparent,
-                    BorderThickness = new Thickness(0),
-                    Foreground = new SolidColorBrush(Colors.White),
-                    FontSize = 14,
-                    Padding = new Thickness(4, 2, 8, 2),
-                    MinWidth = 140
-                };
-                // Rounded tabs with smooth active/hover colors
-                var listItemStyle = new Style(typeof(ListBoxItem));
-                listItemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 10, 12, 10)));
-                listItemStyle.Setters.Add(new Setter(Control.MarginProperty, new Thickness(4, 2, 4, 2)));
-                listItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Colors.White)));
-                listItemStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
-                listItemStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
-                listItemStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
-                listItemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-                // Template: rounded Border so the whole item is rounded
-                var borderFactory = new FrameworkElementFactory(typeof(Border));
-                borderFactory.Name = "Bd";
-                borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
-                borderFactory.SetBinding(Border.BackgroundProperty, new Binding("Background") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-                borderFactory.SetBinding(Border.BorderBrushProperty, new Binding("BorderBrush") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-                borderFactory.SetBinding(Border.BorderThicknessProperty, new Binding("BorderThickness") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-                borderFactory.SetBinding(Border.PaddingProperty, new Binding("Padding") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-                var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
-                contentFactory.SetBinding(ContentPresenter.ContentProperty, new Binding("Content") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-                contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Left);
-                contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-                borderFactory.AppendChild(contentFactory);
-                listItemStyle.Setters.Add(new Setter(Control.TemplateProperty, new ControlTemplate(typeof(ListBoxItem)) { VisualTree = borderFactory }));
-                // Hover: subtle muted gray
-                var hoverTrigger = new Trigger { Property = System.Windows.UIElement.IsMouseOverProperty, Value = true };
-                hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x26, 0x2d, 0x3d))));
-                listItemStyle.Triggers.Add(hoverTrigger);
-                // Selected: smooth gradient (soft indigo/slate) + subtle left accent bar
-                var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
-                var selectedGradient = new LinearGradientBrush(
-                    Color.FromRgb(0x2d, 0x35, 0x4a),
-                    Color.FromRgb(0x22, 0x28, 0x38),
-                    new System.Windows.Point(0, 0),
-                    new System.Windows.Point(1, 1));
-                selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, selectedGradient));
-                selectedTrigger.Setters.Add(new Setter(Control.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x63, 0x6b, 0x9a))));
-                selectedTrigger.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(3, 0, 0, 0)));
-                listItemStyle.Triggers.Add(selectedTrigger);
-                _sidebar.ItemContainerStyle = listItemStyle;
-
-                _tabContainer = new StackPanel
-                {
-                    Orientation = Orientation.Vertical,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    VerticalAlignment = VerticalAlignment.Top
-                };
-                _contentScrollViewer = new ScrollViewer
-                {
-                    Content = _tabContainer,
-                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                    Padding = new Thickness(0),
-                    Margin = new Thickness(0)
-                };
-
-                Grid.SetColumn(_sidebar, 0);
-                Grid.SetColumn(_contentScrollViewer, 1);
-                sidebarContentGrid.Children.Add(_sidebar);
-                sidebarContentGrid.Children.Add(_contentScrollViewer);
-
-                _tabManager = new TabManager(_tabContainer, _sidebar);
-                _tabManager.SetScrollViewer(_contentScrollViewer);
-
-                Grid.SetRow(sidebarContentGrid, 1);
-                _mainGrid.Children.Add(sidebarContentGrid);
-
-                mainDock.Children.Add(_mainGrid);
-
-                var saveBtn = new Wpf.Ui.Controls.Button { Content = "Save", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
-                saveBtn.Click += (s, e) => SaveValuesInternal();
-                var saveExitBtn = new Wpf.Ui.Controls.Button { Content = "Save & Exit", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
-                saveExitBtn.Click += (s, e) => { SaveValuesInternal(); if (_window != null) ((Window)_window).Close(); };
-                var resetBtn = new Wpf.Ui.Controls.Button { Content = "Reset", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
-                resetBtn.Click += (s, e) =>
-                {
-                    if (System.Windows.MessageBox.Show(_window, "Reset all values to last saved? Unsaved changes will be lost.", "Reset", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
-                        return;
-                    LoadSettings();
-                    OverwriteUiWithSettings();
-                    _dirty = false;
-                    if (_window != null) ((Window)_window).Close();
-                };
-                var exitBtn = new Wpf.Ui.Controls.Button { Content = "Exit", Padding = new Thickness(16, 8, 16, 8) };
-                exitBtn.Click += (s, e) =>
-                {
-                    if (_dirty && System.Windows.MessageBox.Show(_window, "Discard unsaved changes?", "Exit", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
-                        return;
-                    if (_window != null) ((Window)_window).Close();
-                };
-                footer.Children.Add(saveBtn);
-                footer.Children.Add(saveExitBtn);
-                footer.Children.Add(resetBtn);
-                footer.Children.Add(exitBtn);
-
-                _window.Content = mainDock;
-                Log("InitializeWindow: Window content set");
-
-                Log($"InitializeWindow: Window.IsLoaded = {_window.IsLoaded}");
-                Log($"InitializeWindow: Window.Visibility = {_window.Visibility}");
-                Log($"InitializeWindow: Window.IsVisible = {_window.IsVisible}");
+                Log("InitializeWindow: Window created");
                 return _window;
             }
             catch (Exception ex)
@@ -465,6 +230,23 @@ namespace Sbui
                 Log($"Stack trace: {ex.StackTrace}");
                 throw;
             }
+        }
+
+        private void HandleReset()
+        {
+            if (System.Windows.MessageBox.Show(_window, "Reset all values to last saved? Unsaved changes will be lost.", "Reset", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
+                return;
+            LoadSettings();
+            OverwriteUiWithSettings();
+            _dirty = false;
+            _window?.Close();
+        }
+
+        private void HandleExit()
+        {
+            if (_dirty && System.Windows.MessageBox.Show(_window, "Discard unsaved changes?", "Exit", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
+                return;
+            _window?.Close();
         }
 
         private void EnsureTabExists(string tabName)
@@ -478,123 +260,9 @@ namespace Sbui
             _controlRegistry.Clear();
             _dynamicTextboxPanels?.Clear();
 
-            string headerUrl = null;
-            foreach (var item in items)
-                if (item.Kind == PendingKind.Header && item.Args != null && item.Args.Length > 0 && item.Args[0] is string url && !string.IsNullOrEmpty(url))
-                    headerUrl = url;
-            if (!string.IsNullOrEmpty(headerUrl))
-            {
-                var headerPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 0, 12) };
-                try
-                {
-                    var bi = new BitmapImage();
-                    bi.BeginInit();
-                    bi.UriSource = new Uri(headerUrl, UriKind.Absolute);
-                    bi.CacheOption = BitmapCacheOption.OnLoad;
-                    bi.EndInit();
-                    var img = new System.Windows.Controls.Image { Source = bi, MaxHeight = 120, Stretch = Stretch.Uniform, HorizontalAlignment = HorizontalAlignment.Stretch };
-                    headerPanel.Children.Add(img);
-                }
-                catch
-                {
-                    headerPanel.Children.Add(new System.Windows.Controls.TextBlock { Text = "[Header image]", Foreground = new SolidColorBrush(Colors.Gray), FontSize = 12, Margin = new Thickness(0, 4, 0, 4) });
-                }
-                Grid.SetRow(headerPanel, 0);
-                _mainGrid.Children.Insert(0, headerPanel);
-            }
-
-            var groups = new List<(string visibilityKey, List<PendingItem> groupItems)>();
-            string currentKey = null;
-            List<PendingItem> currentGroup = null;
-            foreach (var item in items)
-            {
-                if (item.Kind == PendingKind.Header) continue;
-                var key = item.VisibilityKey ?? "";
-                var useKey = string.IsNullOrEmpty(key) ? null : key;
-                if (useKey != currentKey || currentGroup == null)
-                {
-                    if (currentGroup != null && currentGroup.Count > 0) groups.Add((currentKey, currentGroup));
-                    currentKey = useKey;
-                    currentGroup = new List<PendingItem>();
-                }
-                currentGroup.Add(item);
-            }
-            if (currentGroup != null && currentGroup.Count > 0) groups.Add((currentKey, currentGroup));
-
-            var ctx = (IRenderContext)this;
-            foreach (var (visibilityKey, groupItems) in groups)
-            {
-                if (!string.IsNullOrEmpty(visibilityKey))
-                {
-                    var container = new StackPanel { Orientation = Orientation.Vertical };
-                    _visibilityOverridePanel = container;
-                    foreach (var item in groupItems)
-                    {
-                        var el = PendingItemToElement(item);
-                        if (el != null) el.Render(ctx);
-                    }
-                    _visibilityOverridePanel = null;
-                    if (_controlRegistry.TryGetValue(visibilityKey, out var toggleControl) && toggleControl is ToggleSwitch toggle)
-                    {
-                        container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-                        toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
-                        toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
-                    }
-                    var tabName = GetTabNameFromItem(groupItems[0]);
-                    EnsureTabExists(tabName);
-                    if (_tabManager != null && _tabManager.GetPanel(tabName) is StackPanel tabPanel)
-                        tabPanel.Children.Add(container);
-                }
-                else
-                {
-                    foreach (var item in groupItems)
-                    {
-                        var el = PendingItemToElement(item);
-                        if (el != null) el.Render(ctx);
-                    }
-                }
-            }
+            var builder = new ContentBuilder(this);
+            builder.BuildFromPendingItems(items, _mainGrid, out _);
             _mainGrid?.UpdateLayout();
-        }
-
-        private static Elements.UIElement PendingItemToElement(PendingItem item)
-        {
-            if (item?.Args == null) return null;
-            var args = item.Args;
-            var vk = item.VisibilityKey;
-            switch (item.Kind)
-            {
-                case PendingKind.Header: return null;
-                case PendingKind.Title: return new TitleElement((string)args[0], (string)args[1], vk);
-                case PendingKind.Description: return new DescriptionElement((string)args[0], (string)args[1], vk);
-                case PendingKind.ToggleSwitch: return new ToggleSwitchElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (bool)args[4], vk);
-                case PendingKind.Textbox: return new TextboxElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string)args[4], (bool)args[5], vk);
-                case PendingKind.Slider: return new SliderElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (int)args[4], (int)args[5], (int)args[6], vk);
-                case PendingKind.InlineSeparator: return new InlineSeparatorElement((string)args[0], vk);
-                case PendingKind.SliderWithToggleSwitch: return new SliderWithToggleSwitchElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (int)args[4], (int)args[5], (int)args[6], (bool)args[7], vk);
-                case PendingKind.Filepath: return new FilepathElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string)args[4], vk);
-                case PendingKind.ClickableButton: return new ClickableButtonElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string)args[4], (Action)args[5], vk);
-                case PendingKind.RefreshableDropdown: return new RefreshableDropdownElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string[])args[4], (Func<string[]>)args[5], (int)args[6], vk);
-                case PendingKind.ResponseBox: return new ResponseBoxElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string)args[4], vk);
-                case PendingKind.DecimalStepper: return new DecimalStepperElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (double)args[4], (double)args[5], (double)args[6], (double)args[7], vk);
-                case PendingKind.CompetingToggleSwitches: return new CompetingToggleSwitchesElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string[])args[4], (int)args[5], vk);
-                case PendingKind.DynamicTextboxesWithPreset: return new DynamicTextboxesWithPresetElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string[])args[4], vk);
-                case PendingKind.ColorPicker: return new ColorPickerElement((string)args[0], (string)args[1], (string)args[2], (string)args[3], (string)args[4], vk);
-                default: return null;
-            }
-        }
-
-        private static string GetTabNameFromItem(PendingItem item)
-        {
-            if (item?.Args == null || item.Args.Length == 0) return "";
-            switch (item.Kind)
-            {
-                case PendingKind.Title:
-                case PendingKind.Description: return (item.Args.Length > 1 ? item.Args[1] : null) as string ?? "";
-                case PendingKind.InlineSeparator: return (item.Args[0] as string) ?? "";
-                case PendingKind.ClickableButton: return (item.Args.Length > 4 ? item.Args[4] : null) as string ?? "";
-                default: return (item.Args.Length > 2 ? item.Args[2] : null) as string ?? "";
-            }
         }
 
         /// <summary>
@@ -613,60 +281,9 @@ namespace Sbui
             });
         }
 
-        private static StackPanel GetDynamicListPanel(StackPanel outer)
-        {
-            foreach (var c in outer.Children)
-                if (c is StackPanel inner && inner.Children.OfType<System.Windows.Controls.TextBox>().Any())
-                    return inner;
-            return null;
-        }
-
         private JObject BuildSettings()
         {
-            if (_mainGrid != null)
-            {
-                var settings = new JObject();
-                foreach (var child in Descendants(_mainGrid))
-                {
-                    if (child is System.Windows.Controls.TextBox tb && tb.Tag != null)
-                        settings[tb.Tag.ToString()] = tb.Text ?? "";
-                    else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag != null)
-                        settings[pb.Tag.ToString()] = pb.Password ?? "";
-                    else if (child is ToggleSwitch ts && ts.Tag != null)
-                        settings[ts.Tag.ToString()] = ts.IsChecked == true;
-                    else if (child is System.Windows.Controls.Slider sl && sl.Tag != null)
-                        settings[sl.Tag.ToString()] = (long)sl.Value;
-                    else if (child is System.Windows.Controls.ComboBox cb && cb.Tag != null)
-                        settings[cb.Tag.ToString()] = cb.SelectedIndex >= 0 && cb.Items != null && cb.SelectedIndex < cb.Items.Count ? cb.SelectedIndex : 0;
-                    else if (child is StackPanel sp && sp.Tag is string tag && tag.StartsWith("dynamic:"))
-                    {
-                        var key = tag.Substring(8);
-                        var listPanel = GetDynamicListPanel(sp);
-                        if (listPanel != null)
-                        {
-                            var arr = new JArray();
-                            foreach (var c in listPanel.Children)
-                                if (c is System.Windows.Controls.TextBox t) arr.Add(t.Text ?? "");
-                            settings[key] = arr;
-                        }
-                    }
-                }
-                return settings;
-            }
-            return new JObject();
-        }
-
-        private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
-        {
-            if (root == null) yield break;
-            yield return root;
-            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
-            for (int i = 0; i < count; i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
-                foreach (var d in Descendants(child))
-                    yield return d;
-            }
+            return _mainGrid != null ? _synchronizer.ExtractSettingsFromControls(_mainGrid) : new JObject();
         }
 
         private void AddPending(PendingKind kind, object[] args, string showWhenEnabled = null)

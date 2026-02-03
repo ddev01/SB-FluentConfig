@@ -13,6 +13,10 @@ namespace Sbui.Elements
     {
         /// <summary>Gets the panel to add content to (tab panel or visibility override).</summary>
         StackPanel GetPanel(string tabName);
+        /// <summary>Sets the panel used for visibility-conditioned groups so GetPanel returns it until cleared.</summary>
+        void SetVisibilityOverridePanel(StackPanel panel);
+        /// <summary>Clears the visibility override panel.</summary>
+        void ClearVisibilityOverridePanel();
         JObject Settings { get; }
         ControlRegistry Registry { get; }
         void MarkDirty();
