@@ -87,12 +87,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\SettingsManager.cs" />
-    <Compile Include="Core\WindowLifecycleManager.cs" />
     <Compile Include="Core\ControlRegistry.cs" />
-    <Compile Include="Core\PendingItem.cs" />
-    <Compile Include="Core\PendingItemConverter.cs" />
     <Compile Include="Core\SettingsSynchronizer.cs" />
-    <Compile Include="Core\ContentBuilder.cs" />
     <Compile Include="Core\WindowBuilder.cs" />
     <Compile Include="Components\SbuiComponentFactory.cs" />
     <Compile Include="Components\TabManager.cs" />

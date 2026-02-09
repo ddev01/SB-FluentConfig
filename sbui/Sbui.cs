@@ -39,18 +39,24 @@ namespace Sbui
         private Grid _mainGrid;
         private System.Windows.Controls.ListBox _sidebar;
         private ScrollViewer _contentScrollViewer;
-        private readonly List<PendingItem> _pendingItems;
         private bool _dirty;
         private readonly ControlRegistry _controlRegistry = new ControlRegistry();
         private readonly SettingsSynchronizer _synchronizer = new SettingsSynchronizer();
         private Dictionary<string, StackPanel> _dynamicTextboxPanels = new Dictionary<string, StackPanel>();
 
-        private string _currentVisibilityKey;
+        private static bool _anyWindowOpen;
         private StackPanel _visibilityOverridePanel;
+
+        // Context stacks for nested content (WithRepeatableRows, WithVisibility)
+        private Stack<Panel> _panelContext = new Stack<Panel>();
+        private Stack<string> _saveKeyContext = new Stack<string>();
+
+        private static Action<string> _logCallback;
+        private static Action<double, double> _windowClosedCallback;
 
         public static void SetLogCallback(Action<string> callback)
         {
-            WindowLifecycleManager.SetLogCallback(callback);
+            _logCallback = callback;
         }
 
         /// <summary>
@@ -58,7 +64,7 @@ namespace Sbui
         /// </summary>
         public static void SetWindowClosedCallback(Action<double, double> callback)
         {
-            WindowLifecycleManager.SetWindowClosedCallback(callback);
+            _windowClosedCallback = callback;
         }
 
         /// <summary>
@@ -66,22 +72,32 @@ namespace Sbui
         /// </summary>
         public static bool AlreadyOpened(string title = "Sbui", string version = "1.0")
         {
-            return WindowLifecycleManager.AlreadyOpened(title, version);
+            if (!_anyWindowOpen) return false;
+            LogInternal($"UI ({title} (v{version})) already open, skipping...");
+            return true;
         }
 
-        public static bool IsOpen => WindowLifecycleManager.IsOpen;
+        public static bool IsOpen => _anyWindowOpen;
 
-        private void LogInternal(string message)
+        private static void LogInternal(string message)
         {
-            WindowLifecycleManager.Log(message);
+            if (_logCallback != null)
+                _logCallback(message);
+            else
+                System.Diagnostics.Debug.WriteLine($"[Sbui] {message}");
         }
 
         StackPanel IRenderContext.GetPanel(string tabName)
         {
-            EnsureTabExists(tabName);
-            return _visibilityOverridePanel ?? _tabManager?.GetPanel(tabName);
+            var panel = GetTargetPanel(tabName);
+            return panel as StackPanel ?? _tabManager?.GetPanel(tabName);
         }
         JObject IRenderContext.Settings => _existingSettings;
+        JToken IRenderContext.GetSetting(string path)
+        {
+            if (_existingSettings == null || string.IsNullOrEmpty(path)) return null;
+            return _existingSettings.SelectToken(path) ?? _existingSettings[path];
+        }
         ControlRegistry IRenderContext.Registry => _controlRegistry;
         void IRenderContext.MarkDirty() => MarkDirty();
         FluentWindow IRenderContext.Window => _window;
@@ -134,32 +150,49 @@ namespace Sbui
             _withUi = withUi;
             _settingsManager = new SettingsManager(cph, _settingsKey);
             _existingSettings = _settingsManager.Load();
-            _pendingItems = new List<PendingItem>();
 
-            try
+            if (!_withUi) return;
+
+            InitializeUI();
+        }
+
+        private void InitializeUI()
+        {
+            if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
             {
-                Log("Sbui constructor called");
-                Log($"Application.Current is null: {Application.Current == null}");
-                Log($"Current thread apartment state: {Thread.CurrentThread.GetApartmentState()}");
-
-                if (!_withUi)
-                {
-                    Log("Constructor completed (no UI)");
-                    return;
-                }
-
-                if (!WindowLifecycleManager.InitializeWindow(CreateAndConfigureWindow, 5000))
-                    Log("WARNING: Window creation timed out");
-
-                _window = WindowLifecycleManager.Window;
-                Log("Constructor completed");
+                throw new InvalidOperationException(
+                    "Sbui requires the extension thread to be STA. " +
+                    "Current apartment state: " + Thread.CurrentThread.GetApartmentState());
             }
-            catch (Exception ex)
+
+            if (Application.Current == null)
             {
-                Log($"ERROR in constructor: {ex.Message}");
-                Log($"Stack trace: {ex.StackTrace}");
-                throw;
+                new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             }
+
+            var builder = new WindowBuilder(_extensionName, _displayVersion ?? "", _existingSettings);
+            _window = builder.Build(
+                out _mainGrid,
+                out _tabManager,
+                out _sidebar,
+                out _contentScrollViewer,
+                onSave: SaveValuesInternal,
+                onSaveAndExit: () => { SaveValuesInternal(); _window?.Close(); },
+                onReset: HandleReset,
+                onExit: HandleExit
+            );
+            ApplicationThemeManager.Apply((ApplicationTheme)1, (WindowBackdropType)2, true);
+            ApplicationThemeManager.Apply((FrameworkElement)_window);
+
+            _window.Closed += (s, e) =>
+            {
+                if (_window?.WindowState == WindowState.Normal && _windowClosedCallback != null)
+                    _windowClosedCallback(_window.Width, _window.Height);
+                _anyWindowOpen = false;
+                LogInternal("Sbui UI has been closed.");
+            };
+
+            _anyWindowOpen = true;
         }
 
         /// <summary>
@@ -178,7 +211,7 @@ namespace Sbui
             if (settings != null)
             {
                 foreach (var kv in settings)
-                    _existingSettings[kv.Key] = kv.Value;
+                    SetNestedValue(_existingSettings, kv.Key, kv.Value);
             }
             _settingsManager.Save(_existingSettings);
             _dirty = false;
@@ -203,35 +236,6 @@ namespace Sbui
             _existingSettings = _settingsManager.Load();
         }
 
-        private FluentWindow CreateAndConfigureWindow()
-        {
-            try
-            {
-                Log("InitializeWindow: Starting window creation");
-                var builder = new WindowBuilder(_extensionName, _displayVersion ?? "", _existingSettings);
-                _window = builder.Build(
-                    out _mainGrid,
-                    out _tabManager,
-                    out _sidebar,
-                    out _contentScrollViewer,
-                    onSave: SaveValuesInternal,
-                    onSaveAndExit: () => { SaveValuesInternal(); _window?.Close(); },
-                    onReset: HandleReset,
-                    onExit: HandleExit
-                );
-                ApplicationThemeManager.Apply((ApplicationTheme)1, (WindowBackdropType)2, true);
-                ApplicationThemeManager.Apply((FrameworkElement)_window);
-                Log("InitializeWindow: Window created");
-                return _window;
-            }
-            catch (Exception ex)
-            {
-                Log($"ERROR in CreateAndConfigureWindow: {ex.Message}");
-                Log($"Stack trace: {ex.StackTrace}");
-                throw;
-            }
-        }
-
         private void HandleReset()
         {
             if (System.Windows.MessageBox.Show(_window, "Reset all values to last saved? Unsaved changes will be lost.", "Reset", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question) != System.Windows.MessageBoxResult.Yes)
@@ -254,54 +258,167 @@ namespace Sbui
             _tabManager?.EnsureTab(tabName);
         }
 
-        private void BuildContentFromPending(IReadOnlyList<PendingItem> items)
+        /// <summary>
+        /// Gets the target panel for the next Add* call.
+        /// Returns the top of the context stack if it exists,
+        /// otherwise returns the current tab's panel.
+        /// </summary>
+        private Panel GetTargetPanel(string tabName)
         {
-            if (_mainGrid == null || _tabManager == null || items == null) return;
-            _controlRegistry.Clear();
-            _dynamicTextboxPanels?.Clear();
-
-            var builder = new ContentBuilder(this);
-            builder.BuildFromPendingItems(items, _mainGrid, out _);
-            _mainGrid?.UpdateLayout();
+            if (_panelContext.Count > 0)
+                return _panelContext.Peek();
+            EnsureTabExists(tabName);
+            return _visibilityOverridePanel ?? (Panel)_tabManager?.GetPanel(tabName);
         }
 
         /// <summary>
-        /// Updates a dropdown (e.g. from AddRefreshableDropdown) with new options and selected index. Must be called on UI thread or via Dispatcher.
+        /// Gets the full saveKey including any context prefix.
+        /// </summary>
+        private string GetFullSaveKey(string saveKey)
+        {
+            return _saveKeyContext.Count > 0
+                ? $"{_saveKeyContext.Peek()}.{saveKey}"
+                : saveKey;
+        }
+
+        /// <summary>
+        /// Updates a dropdown (e.g. from AddRefreshableDropdown) with new options and selected index.
         /// </summary>
         public void UpdateDropdown(string key, string[] options, int selectedIndex)
         {
             if (_window == null) return;
-            _window.Dispatcher.Invoke(() =>
-            {
-                var cb = _controlRegistry.Get<System.Windows.Controls.ComboBox>(key);
-                if (cb == null) return;
-                options = options ?? Array.Empty<string>();
-                cb.ItemsSource = options;
-                cb.SelectedIndex = Math.Max(0, Math.Min(selectedIndex, options.Length > 0 ? options.Length - 1 : 0));
-            });
+            var cb = _controlRegistry.Get<System.Windows.Controls.ComboBox>(key);
+            if (cb == null) return;
+            options = options ?? Array.Empty<string>();
+            cb.ItemsSource = options;
+            cb.SelectedIndex = Math.Max(0, Math.Min(selectedIndex, options.Length > 0 ? options.Length - 1 : 0));
         }
 
         private JObject BuildSettings()
         {
-            return _mainGrid != null ? _synchronizer.ExtractSettingsFromControls(_mainGrid) : new JObject();
+            return _mainGrid != null ? _synchronizer.ExtractSettingsFromControls(_mainGrid) : null;
         }
 
-        private void AddPending(PendingKind kind, object[] args, string showWhenEnabled = null)
+        private static void SetNestedValue(JObject root, string path, JToken value)
         {
-            var item = new PendingItem(kind, args) { VisibilityKey = showWhenEnabled ?? _currentVisibilityKey };
-            _pendingItems.Add(item);
+            if (root == null || string.IsNullOrEmpty(path)) return;
+            if (!path.Contains("[") && !path.Contains("."))
+            {
+                root[path] = value;
+                return;
+            }
+            var parts = ParseNestedPath(path);
+            if (parts.Length == 0) return;
+            JToken current = root;
+            for (int i = 0; i < parts.Length - 1; i++)
+            {
+                var part = parts[i];
+                var nextIsIndex = i + 1 < parts.Length && int.TryParse(parts[i + 1], out _);
+                if (int.TryParse(part, out int index))
+                {
+                    if (!(current is JArray arr)) return;
+                    while (arr.Count <= index) arr.Add(new JObject());
+                    current = arr[index];
+                }
+                else if (current is JObject obj)
+                {
+                    if (obj[part] == null)
+                        obj[part] = nextIsIndex ? (JToken)new JArray() : new JObject();
+                    current = obj[part];
+                }
+                else return;
+            }
+            var last = parts[parts.Length - 1];
+            if (int.TryParse(last, out int lastIdx))
+            {
+                if (!(current is JArray arr)) return;
+                while (arr.Count <= lastIdx) arr.Add(null);
+                arr[lastIdx] = value;
+            }
+            else if (current is JObject obj)
+            {
+                obj[last] = value;
+            }
+        }
+
+        private static string[] ParseNestedPath(string path)
+        {
+            var parts = new List<string>();
+            var current = "";
+            bool inBracket = false;
+            foreach (var ch in path)
+            {
+                if (ch == '[')
+                {
+                    if (!string.IsNullOrEmpty(current)) { parts.Add(current); current = ""; }
+                    inBracket = true;
+                }
+                else if (ch == ']')
+                {
+                    if (!string.IsNullOrEmpty(current)) { parts.Add(current); current = ""; }
+                    inBracket = false;
+                }
+                else if (ch == '.' && !inBracket)
+                {
+                    if (!string.IsNullOrEmpty(current)) { parts.Add(current); current = ""; }
+                }
+                else
+                    current += ch;
+            }
+            if (!string.IsNullOrEmpty(current)) parts.Add(current);
+            return parts.ToArray();
+        }
+
+        /// <summary>
+        /// Wraps addContent in a visibility container when showWhenEnabled is set. Toggle must exist.
+        /// </summary>
+        private void AddWithOptionalVisibility(string showWhenEnabled, string tabName, Action addContent)
+        {
+            if (string.IsNullOrEmpty(showWhenEnabled))
+            {
+                addContent();
+                return;
+            }
+            var toggle = _controlRegistry.Get<ToggleSwitch>(showWhenEnabled);
+            if (toggle == null)
+                throw new InvalidOperationException($"Toggle '{showWhenEnabled}' must be added before showWhenEnabled reference");
+            var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
+            container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+            var panel = (Panel)GetTargetPanel(tabName);
+            _panelContext.Push(container);
+            addContent();
+            _panelContext.Pop();
+
+            toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
+            toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
+
+            if (panel != null)
+                panel.Children.Add(container);
         }
 
         /// <summary>
         /// All AddXXX calls inside the action are visible only when the toggle with saveKey is on. Toggle must be added before this block.
         /// </summary>
-        public void WithVisibility(string toggleSaveKey, Action content)
+        public void WithVisibility(string toggleSaveKey, string tabName, Action content)
         {
             if (content == null) return;
-            var prev = _currentVisibilityKey;
-            _currentVisibilityKey = toggleSaveKey ?? "";
-            try { content(); }
-            finally { _currentVisibilityKey = prev; }
+            var toggle = _controlRegistry.Get<ToggleSwitch>(toggleSaveKey);
+            if (toggle == null)
+                throw new InvalidOperationException($"Toggle '{toggleSaveKey}' must be added before WithVisibility block");
+            var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
+            container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+            var currentPanel = GetTargetPanel(tabName);
+            _panelContext.Push(container);
+            content();
+            _panelContext.Pop();
+
+            toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
+            toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
+
+            if (currentPanel != null)
+                currentPanel.Children.Add(container);
         }
 
         /// <summary>
@@ -309,92 +426,326 @@ namespace Sbui
         /// </summary>
         public void AddHeader(string imageUrl)
         {
-            _pendingItems.Add(new PendingItem(PendingKind.Header, new object[] { imageUrl ?? "" }));
+            if (_mainGrid == null || string.IsNullOrEmpty(imageUrl)) return;
+            _mainGrid.RowDefinitions.Insert(0, new RowDefinition { Height = GridLength.Auto });
+            foreach (System.Windows.UIElement child in _mainGrid.Children)
+            {
+                var row = Grid.GetRow(child as FrameworkElement);
+                if (row >= 0) Grid.SetRow(child as FrameworkElement, row + 1);
+            }
+            try
+            {
+                var bi = new System.Windows.Media.Imaging.BitmapImage();
+                bi.BeginInit();
+                bi.UriSource = new Uri(imageUrl, UriKind.Absolute);
+                bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bi.EndInit();
+                var img = new System.Windows.Controls.Image
+                {
+                    Source = bi,
+                    MaxHeight = 120,
+                    Stretch = System.Windows.Media.Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Stretch
+                };
+                var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+                headerPanel.Children.Add(img);
+                Grid.SetRow(headerPanel, 0);
+                _mainGrid.Children.Insert(0, headerPanel);
+            }
+            catch
+            {
+                var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+                headerPanel.Children.Add(new System.Windows.Controls.TextBlock
+                {
+                    Text = "[Header image]",
+                    Foreground = new SolidColorBrush(Colors.Gray),
+                    FontSize = 12,
+                    Margin = new Thickness(0, 4, 0, 4)
+                });
+                Grid.SetRow(headerPanel, 0);
+                _mainGrid.Children.Insert(0, headerPanel);
+            }
         }
 
         public void AddTitle(string text, string tabName, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.Title, new object[] { text, tabName }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var el = new TitleElement(text, tabName);
+                el.Render(this);
+            });
         }
 
         public void AddDescription(string text, string tabName, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.Description, new object[] { text, tabName }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var el = new DescriptionElement(text, tabName);
+                el.Render(this);
+            });
         }
 
         public void AddToggleSwitch(string title, string description, string tabName, string saveKey, bool defaultValue = false, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.ToggleSwitch, new object[] { title, description ?? "", tabName, saveKey, defaultValue }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new ToggleSwitchElement(title, description ?? "", tabName, fullKey, defaultValue);
+                el.Render(this);
+            });
         }
 
         public void AddTextbox(string title, string description, string tabName, string saveKey, string defaultText, bool isPassword = false, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.Textbox, new object[] { title, description ?? "", tabName, saveKey, defaultText ?? "", isPassword }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new TextboxElement(title, description ?? "", tabName, fullKey, defaultText ?? "", isPassword);
+                el.Render(this);
+            });
         }
 
         public void AddSlider(string title, string description, string tabName, string saveKey, int min, int max, int defaultValue, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.Slider, new object[] { title, description ?? "", tabName, saveKey, min, max, defaultValue }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new SliderElement(title, description ?? "", tabName, fullKey, min, max, defaultValue);
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a horizontal separator line in the given tab.</summary>
         public void AddInlineSeparator(string tabName, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.InlineSeparator, new object[] { tabName ?? "" }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var el = new InlineSeparatorElement(tabName ?? "");
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a toggle switch and slider; when toggle is off the slider is disabled. Persists as saveKey (slider value) and saveKey + "_enabled" (toggle).</summary>
         public void AddSliderWithToggleSwitch(string title, string description, string tabName, string saveKey, int min, int max, int defaultValue, bool toggleDefault, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.SliderWithToggleSwitch, new object[] { title, description ?? "", tabName, saveKey, min, max, defaultValue, toggleDefault }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new SliderWithToggleSwitchElement(title, description ?? "", tabName, fullKey, min, max, defaultValue, toggleDefault);
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a file path textbox with Browse button (OpenFileDialog).</summary>
         public void AddFilepath(string title, string description, string tabName, string saveKey, string defaultPath, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.Filepath, new object[] { title, description ?? "", tabName, saveKey, defaultPath ?? "" }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new FilepathElement(title, description ?? "", tabName, fullKey, defaultPath ?? "");
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a clickable button with colored background; click invokes the callback.</summary>
         public void AddClickableButton(string title, string description, string confirmText, string color, string tabName, Action callback, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.ClickableButton, new object[] { title, description ?? "", confirmText ?? "OK", color ?? "", tabName ?? "", callback }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var el = new ClickableButtonElement(title, description ?? "", confirmText ?? "OK", color ?? "", tabName ?? "", callback);
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a dropdown with Refresh button; refresh callback returns new options and UpdateDropdown is called.</summary>
         public void AddRefreshableDropdown(string title, string description, string tabName, string saveKey, string[] options, Func<string[]> refreshCallback, int defaultIndex, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.RefreshableDropdown, new object[] { title, description ?? "", tabName, saveKey, options ?? Array.Empty<string>(), refreshCallback, defaultIndex }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new RefreshableDropdownElement(title, description ?? "", tabName, fullKey, options ?? Array.Empty<string>(), refreshCallback, defaultIndex);
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a multiline textbox for chat response templates.</summary>
         public void AddResponseBox(string title, string description, string tabName, string saveKey, string defaultText, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.ResponseBox, new object[] { title, description ?? "", tabName, saveKey, defaultText ?? "" }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new ResponseBoxElement(title, description ?? "", tabName, fullKey, defaultText ?? "");
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a decimal value input with up/down stepper.</summary>
         public void AddDecimalStepper(string title, string description, string tabName, string saveKey, double min, double max, double step, double defaultValue, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.DecimalStepper, new object[] { title, description ?? "", tabName, saveKey, min, max, step, defaultValue }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new DecimalStepperElement(title, description ?? "", tabName, fullKey, min, max, step, defaultValue);
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds multiple toggle switches where only one can be active (radio group). saveKey persists selected index.</summary>
         public void AddCompetingToggleSwitches(string title, string description, string tabName, string saveKey, string[] options, int defaultIndex, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.CompetingToggleSwitches, new object[] { title, description ?? "", tabName, saveKey, options ?? Array.Empty<string>(), defaultIndex }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new CompetingToggleSwitchesElement(title, description ?? "", tabName, fullKey, options ?? Array.Empty<string>(), defaultIndex);
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a list of textboxes with Add/Remove buttons; persists as JSON array.</summary>
         public void AddDynamicTextboxesWithPreset(string title, string description, string tabName, string saveKey, string[] presetValues, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.DynamicTextboxesWithPreset, new object[] { title, description ?? "", tabName, saveKey, presetValues ?? Array.Empty<string>() }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new DynamicTextboxesWithPresetElement(title, description ?? "", tabName, fullKey, presetValues ?? Array.Empty<string>());
+                el.Render(this);
+            });
         }
 
         /// <summary>Adds a color picker (hex textbox with color preview).</summary>
         public void AddColorPicker(string title, string description, string tabName, string saveKey, string defaultColor, string showWhenEnabled = null)
         {
-            AddPending(PendingKind.ColorPicker, new object[] { title, description ?? "", tabName, saveKey, defaultColor ?? "#000000" }, showWhenEnabled);
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new ColorPickerElement(title, description ?? "", tabName, fullKey, defaultColor ?? "#000000");
+                el.Render(this);
+            });
+        }
+
+        /// <summary>
+        /// Adds repeatable rows with Add/Remove. buildRow adds controls to each row; saveKey persists as JSON array.
+        /// </summary>
+        public void WithRepeatableRows(string saveKey, string tabName, Action buildRow)
+        {
+            if (buildRow == null) return;
+            var panel = GetTargetPanel(tabName);
+            if (panel == null) return;
+
+            var container = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
+            var rowsData = LoadRowsData(saveKey);
+
+            for (int i = 0; i < rowsData.Count; i++)
+            {
+                var (outerRow, contentPanel) = CreateRowPanel(i, saveKey, container);
+                _panelContext.Push(contentPanel);
+                _saveKeyContext.Push($"{saveKey}[{i}]");
+                buildRow();
+                _saveKeyContext.Pop();
+                _panelContext.Pop();
+                container.Children.Add(outerRow);
+            }
+
+            var addBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "+ Add Row",
+                Margin = new Thickness(0, 5, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(15, 5, 15, 5)
+            };
+            addBtn.Click += (s, e) => AddRow(container, saveKey, buildRow);
+            container.Children.Add(addBtn);
+
+            panel.Children.Add(container);
+        }
+
+        private void AddRow(Panel container, string saveKey, Action buildRow)
+        {
+            int newIndex = Math.Max(0, container.Children.Count - 1);
+            var (outerRow, contentPanel) = CreateRowPanel(newIndex, saveKey, container);
+            _panelContext.Push(contentPanel);
+            _saveKeyContext.Push($"{saveKey}[{newIndex}]");
+            buildRow();
+            _saveKeyContext.Pop();
+            _panelContext.Pop();
+            container.Children.Insert(container.Children.Count - 1, outerRow);
+        }
+
+        private (DockPanel outerRow, StackPanel contentPanel) CreateRowPanel(int rowIndex, string saveKey, Panel container)
+        {
+            var outerRow = new DockPanel
+            {
+                Margin = new Thickness(0, 5, 0, 5),
+                Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255))
+            };
+            outerRow.Tag = new RowTag { RowIndex = rowIndex, SaveKey = saveKey };
+
+            var deleteBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "×",
+                Width = 30,
+                Height = 30,
+                FontSize = 20,
+                Margin = new Thickness(5, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Top
+            };
+
+            var contentPanel = new StackPanel { Margin = new Thickness(10) };
+            deleteBtn.Click += (s, e) =>
+            {
+                container.Children.Remove(outerRow);
+                RenumberRows(container, saveKey);
+                DeleteRowData(saveKey, rowIndex);
+                MarkDirty();
+            };
+            DockPanel.SetDock(deleteBtn, Dock.Right);
+            outerRow.Children.Add(deleteBtn);
+            outerRow.Children.Add(contentPanel);
+
+            return (outerRow, contentPanel);
+        }
+
+        private void RenumberRows(Panel container, string saveKey)
+        {
+            int index = 0;
+            foreach (var child in container.Children)
+            {
+                if (child is DockPanel dock && dock.Tag is RowTag tag)
+                {
+                    tag.RowIndex = index++;
+                }
+            }
+        }
+
+        private void DeleteRowData(string saveKey, int rowIndex)
+        {
+            var arr = LoadRowsData(saveKey);
+            if (rowIndex >= 0 && rowIndex < arr.Count)
+            {
+                arr.RemoveAt(rowIndex);
+                if (_existingSettings == null) _existingSettings = new JObject();
+                _existingSettings[saveKey] = arr;
+                MarkDirty();
+            }
+        }
+
+        private JArray LoadRowsData(string saveKey)
+        {
+            if (_existingSettings == null) return new JArray();
+            var token = _existingSettings[saveKey];
+            if (token is JArray arr) return arr;
+            if (token != null)
+            {
+                try { return JArray.Parse(token.ToString()); }
+                catch { }
+            }
+            return new JArray();
+        }
+
+        private class RowTag
+        {
+            public int RowIndex;
+            public string SaveKey;
         }
 
         public T GetValue<T>(string key)
@@ -406,14 +757,12 @@ namespace Sbui
         }
 
         /// <summary>
-        /// Returns the current value of a control by saveKey (used in button callbacks). Must be called from UI thread or will marshal via Dispatcher.
+        /// Returns the current value of a control by saveKey (used in button callbacks).
         /// </summary>
         public T GetPendingValue<T>(string key)
         {
             if (_window == null) return default;
-            T result = default;
-            _window.Dispatcher.Invoke(() => result = _controlRegistry.GetValue<T>(key));
-            return result;
+            return _controlRegistry.GetValue<T>(key);
         }
 
         /// <summary>
@@ -435,33 +784,28 @@ namespace Sbui
         }
 
         /// <summary>
-        /// Shows a progress window for long-running work. Returns an object with Report(int) and Close(); thread-safe (marshal to UI thread).
+        /// Shows a progress window for long-running work. Returns an object with Report(int) and Close().
         /// </summary>
         public IProgressReporter ShowProgressWindow(string title, string message, string progressLabel, int total)
         {
             if (_window == null) return null;
-            IProgressReporter reporter = null;
-            _window.Dispatcher.Invoke(() =>
+            var progressWindow = new Window
             {
-                var progressWindow = new Window
-                {
-                    Title = title ?? "Progress",
-                    Width = 400,
-                    Height = 140,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                    Owner = _window
-                };
-                var stack = new StackPanel { Margin = new Thickness(20) };
-                stack.Children.Add(new System.Windows.Controls.TextBlock { Text = message ?? "", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
-                var labelBlock = new System.Windows.Controls.TextBlock { Text = progressLabel ?? "Progress", Margin = new Thickness(0, 0, 0, 4) };
-                stack.Children.Add(labelBlock);
-                var progressBar = new System.Windows.Controls.ProgressBar { Minimum = 0, Maximum = Math.Max(1, total), Value = 0, Height = 24 };
-                stack.Children.Add(progressBar);
-                progressWindow.Content = stack;
-                progressWindow.Show();
-                reporter = new ProgressReporterImpl(progressWindow, progressBar, total);
-            });
-            return reporter;
+                Title = title ?? "Progress",
+                Width = 400,
+                Height = 140,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = _window
+            };
+            var stack = new StackPanel { Margin = new Thickness(20) };
+            stack.Children.Add(new System.Windows.Controls.TextBlock { Text = message ?? "", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+            var labelBlock = new System.Windows.Controls.TextBlock { Text = progressLabel ?? "Progress", Margin = new Thickness(0, 0, 0, 4) };
+            stack.Children.Add(labelBlock);
+            var progressBar = new System.Windows.Controls.ProgressBar { Minimum = 0, Maximum = Math.Max(1, total), Value = 0, Height = 24 };
+            stack.Children.Add(progressBar);
+            progressWindow.Content = stack;
+            progressWindow.Show();
+            return new ProgressReporterImpl(progressWindow, progressBar, total);
         }
 
         /// <summary>
@@ -501,86 +845,13 @@ namespace Sbui
 
         public void ShowUI()
         {
-            var snapshot = _pendingItems.ToList();
-            ShowUIInternal(snapshot);
-        }
-
-        /// <summary>Fallback when fluent API isn't called. Pass config directly. Order: titles, descriptions, toggleSwitches, textboxes, sliders.</summary>
-        public void ShowUI(
-            IReadOnlyList<(string text, string tabName)> titles = null,
-            IReadOnlyList<(string text, string tabName)> descriptions = null,
-            IReadOnlyList<(string title, string description, string tabName, string saveKey, bool defaultValue)> toggleSwitches = null,
-            IReadOnlyList<(string title, string description, string tabName, string saveKey, string defaultText, bool isPassword)> textboxes = null,
-            IReadOnlyList<(string title, string description, string tabName, string saveKey, int min, int max, int defaultValue)> sliders = null)
-        {
-            var items = new List<PendingItem>();
-            if (titles != null) foreach (var t in titles) items.Add(new PendingItem(PendingKind.Title, new object[] { t.text, t.tabName }));
-            if (descriptions != null) foreach (var t in descriptions) items.Add(new PendingItem(PendingKind.Description, new object[] { t.text, t.tabName }));
-            if (toggleSwitches != null) foreach (var t in toggleSwitches) items.Add(new PendingItem(PendingKind.ToggleSwitch, new object[] { t.title, t.description ?? "", t.tabName, t.saveKey, t.defaultValue }));
-            if (textboxes != null) foreach (var t in textboxes) items.Add(new PendingItem(PendingKind.Textbox, new object[] { t.title, t.description ?? "", t.tabName, t.saveKey, t.defaultText ?? "", t.isPassword }));
-            if (sliders != null) foreach (var t in sliders) items.Add(new PendingItem(PendingKind.Slider, new object[] { t.title, t.description ?? "", t.tabName, t.saveKey, t.min, t.max, t.defaultValue }));
-            if (items.Count == 0) items = _pendingItems.ToList();
-            ShowUIInternal(items);
-        }
-
-        private void ShowUIInternal(IReadOnlyList<PendingItem> itemsSnapshot)
-        {
-    try
-    {
-        Log($"ShowUI: Called | items={itemsSnapshot?.Count ?? 0}");
-
-        if (_window == null)
-        {
-            Log("ShowUI: ERROR - _window is null!");
-            return;
-        }
-
-        // Show window on the UI thread
-        _window.Dispatcher.Invoke(() =>
-        {
-            try
+            if (_window == null)
             {
-                Log($"ShowUI: Window is not null, Title = {_window.Title}");
-                Log($"ShowUI: Window.Visibility before = {_window.Visibility}");
-                Log($"ShowUI: Window.IsLoaded = {_window.IsLoaded}");
-
-                // Build from snapshot BEFORE showing window
-                BuildContentFromPending(itemsSnapshot ?? new List<PendingItem>());
-                _pendingItems.Clear();
-                
-                Log($"ShowUI: Content built, mainGrid children = {_mainGrid?.Children.Count}");
-                Log($"ShowUI: Tab panels count = {_tabManager?.TabContentPanels?.Count}");
-                
-                // Ensure window shows normally (not minimized) and is activated
-                _window.WindowState = WindowState.Normal;
-                ((Window)_window).Show();
-                _window.Activate();
-                
-                if (_mainGrid != null)
-                {
-                    _mainGrid.UpdateLayout();
-                    Log($"ShowUI: Content updated, Sidebar = {_sidebar != null}");
-                }
-                
-                Log("ShowUI: Show() called");
-
-                Log($"ShowUI: Window.Visibility after = {_window.Visibility}");
-                Log($"ShowUI: Window.IsVisible = {_window.IsVisible}");
-                Log($"ShowUI: Window.IsLoaded = {_window.IsLoaded}");
+                Log("ShowUI called but window is null. Was constructor called with withUi=false?");
+                return;
             }
-            catch (Exception ex)
-            {
-                Log($"ERROR in ShowUI (on UI thread): {ex.Message}");
-                Log($"Stack: {ex.StackTrace}");
-            }
-        });
-    }
-    catch (Exception ex)
-    {
-        Log($"ERROR in ShowUI: {ex.Message}");
-        Log($"Stack trace: {ex.StackTrace}");
-        throw;
-    }
-}
+            _window.Show();
+            _window.Activate();
+        }
     }
 }

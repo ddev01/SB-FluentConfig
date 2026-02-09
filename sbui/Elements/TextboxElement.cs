@@ -30,7 +30,7 @@ namespace Sbui.Elements
             stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
             if (!string.IsNullOrEmpty(Description))
                 stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
-            var initial = context.Settings?[SaveKey]?.ToString() ?? DefaultText ?? "";
+            var initial = context.GetSetting(SaveKey)?.ToString() ?? DefaultText ?? "";
             if (IsPassword)
             {
                 var pb = SbuiComponentFactory.CreatePasswordBox(SaveKey, initial);

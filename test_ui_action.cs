@@ -149,7 +149,7 @@ public class CPHInline
 
             // WithVisibility (section): toggle controls visibility of multiple controls in a block
             ui.AddToggleSwitch("Show extra options", "When on, the extra options block below is visible.", "Advanced", "show_extra_options", false);
-            ui.WithVisibility("show_extra_options", () =>
+            ui.WithVisibility("show_extra_options", "Advanced", () =>
             {
                 ui.AddTextbox("Extra option A", "Only visible when 'Show extra options' is on.", "Advanced", "extra_option_a", "", false);
                 ui.AddSlider("Extra option B", "Only visible when 'Show extra options' is on.", "Advanced", "extra_option_b", 0, 50, 25);

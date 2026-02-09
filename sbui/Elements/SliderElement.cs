@@ -30,7 +30,7 @@ namespace Sbui.Elements
         {
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
-            var val = context.Settings?[SaveKey] != null ? context.Settings[SaveKey].ToObject<int>() : DefaultValue;
+            var val = context.GetSetting(SaveKey) != null ? context.GetSetting(SaveKey).ToObject<int>() : DefaultValue;
             val = Math.Max(Min, Math.Min(Max, val));
             var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
             stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));

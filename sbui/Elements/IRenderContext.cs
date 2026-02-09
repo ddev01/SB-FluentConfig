@@ -18,6 +18,8 @@ namespace Sbui.Elements
         /// <summary>Clears the visibility override panel.</summary>
         void ClearVisibilityOverridePanel();
         JObject Settings { get; }
+        /// <summary>Gets a setting by path (supports nested keys like "voice_aliases[0].name").</summary>
+        JToken GetSetting(string path);
         ControlRegistry Registry { get; }
         void MarkDirty();
         FluentWindow Window { get; }

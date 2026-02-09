@@ -34,8 +34,9 @@ namespace Sbui.Elements
         {
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
-            var val = context.Settings?[SaveKey] != null && (context.Settings[SaveKey].Type == Newtonsoft.Json.Linq.JTokenType.Float || context.Settings[SaveKey].Type == Newtonsoft.Json.Linq.JTokenType.Integer)
-                ? context.Settings[SaveKey].ToObject<double>() : DefaultValue;
+            var token = context.GetSetting(SaveKey);
+            var val = token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Float || token.Type == Newtonsoft.Json.Linq.JTokenType.Integer)
+                ? token.ToObject<double>() : DefaultValue;
             val = Math.Max(Min, Math.Min(Max, val));
             var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
             stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));

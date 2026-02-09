@@ -28,7 +28,7 @@ namespace Sbui.Elements
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
             JArray existing = null;
-            if (context.Settings?[SaveKey] != null && context.Settings[SaveKey] is JArray arr)
+            if (context.GetSetting(SaveKey) is JArray arr)
                 existing = arr;
             var count = existing?.Count ?? (PresetValues?.Length ?? 1);
             if (count < 1) count = 1;

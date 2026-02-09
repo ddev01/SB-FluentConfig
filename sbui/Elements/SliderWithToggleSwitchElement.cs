@@ -34,8 +34,8 @@ namespace Sbui.Elements
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
             string enabledKey = SaveKey + "_enabled";
-            bool enabled = context.Settings?[enabledKey] != null ? context.Settings[enabledKey].ToObject<bool>() : ToggleDefault;
-            int val = context.Settings?[SaveKey] != null ? context.Settings[SaveKey].ToObject<int>() : DefaultValue;
+            bool enabled = context.GetSetting(enabledKey) != null ? context.GetSetting(enabledKey).ToObject<bool>() : ToggleDefault;
+            int val = context.GetSetting(SaveKey) != null ? context.GetSetting(SaveKey).ToObject<int>() : DefaultValue;
             val = Math.Max(Min, Math.Min(Max, val));
             var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
             stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
