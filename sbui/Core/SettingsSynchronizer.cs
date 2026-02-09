@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 using Newtonsoft.Json.Linq;
-using Sbui.Helpers;
+using VisualTreeHelper = Sbui.Helpers.VisualTreeHelper;
 using Wpf.Ui.Controls;
 
 namespace Sbui.Core
@@ -14,6 +16,17 @@ namespace Sbui.Core
     /// </summary>
     public class SettingsSynchronizer
     {
+        private static JToken GetValue(JObject settings, string key)
+        {
+            if (settings == null || string.IsNullOrEmpty(key)) return null;
+            if (key.Contains("[") || key.Contains("."))
+            {
+                var token = settings.SelectToken(key);
+                return token ?? settings[key];
+            }
+            return settings[key];
+        }
+
         public void LoadSettingsIntoControls(DependencyObject root, JObject settings)
         {
             if (root == null || settings == null) return;
@@ -22,34 +35,57 @@ namespace Sbui.Core
             {
                 if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
                 {
-                    var val = settings[keyTb];
-                    tb.Text = val != null ? val.ToString() : "";
+                    if (keyTb.StartsWith("integer:"))
+                    {
+                        var key = keyTb.Substring(8);
+                        var val = GetValue(settings, key);
+                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                            tb.Text = val.Value<int>().ToString();
+                    }
+                    else
+                    {
+                        var val = GetValue(settings, keyTb);
+                        tb.Text = val != null ? val.ToString() : "";
+                    }
                 }
                 else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag is string keyPb)
                 {
-                    var val = settings[keyPb];
+                    var val = GetValue(settings, keyPb);
                     pb.Password = val != null ? val.ToString() : "";
                 }
                 else if (child is ToggleSwitch ts && ts.Tag is string keyTs)
                 {
-                    var val = settings[keyTs];
+                    var val = GetValue(settings, keyTs);
                     ts.IsChecked = GetBoolValue(val);
                 }
                 else if (child is System.Windows.Controls.Slider sl && sl.Tag is string keySl)
                 {
-                    var val = settings[keySl];
+                    var val = GetValue(settings, keySl);
                     if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                         sl.Value = GetDoubleValue(val);
                 }
                 else if (child is System.Windows.Controls.ComboBox combo && combo.Tag is string keyCombo)
                 {
-                    var val = settings[keyCombo];
+                    var val = GetValue(settings, keyCombo);
                     SetComboBoxValue(combo, val);
                 }
-                else if (child is StackPanel sp && sp.Tag is string tag && tag.StartsWith("dynamic:"))
+                else if (child is StackPanel sp && sp.Tag is string tag)
                 {
-                    var key = tag.Substring(8);
-                    LoadDynamicTextboxes(sp, settings[key]);
+                    if (tag.StartsWith("dynamic:"))
+                    {
+                        var key = tag.Substring(8);
+                        LoadDynamicTextboxes(sp, GetValue(settings, key));
+                    }
+                    else if (tag.StartsWith("pill:"))
+                    {
+                        var key = tag.Substring(5);
+                        LoadPills(sp, GetValue(settings, key));
+                    }
+                    else if (tag.StartsWith("duration:"))
+                    {
+                        var key = tag.Substring(9);
+                        LoadDuration(sp, GetValue(settings, key));
+                    }
                 }
             }
         }
@@ -61,8 +97,16 @@ namespace Sbui.Core
             var settings = new JObject();
             foreach (var child in VisualTreeHelper.Descendants(root))
             {
-                if (child is System.Windows.Controls.TextBox tb && tb.Tag != null)
-                    settings[tb.Tag.ToString()] = tb.Text ?? "";
+                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
+                {
+                    if (keyTb.StartsWith("integer:"))
+                    {
+                        var key = keyTb.Substring(8);
+                        settings[key] = int.TryParse(tb.Text, out var v) ? v : 0;
+                    }
+                    else
+                        settings[keyTb] = tb.Text ?? "";
+                }
                 else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag != null)
                     settings[pb.Tag.ToString()] = pb.Password ?? "";
                 else if (child is ToggleSwitch ts && ts.Tag != null)
@@ -71,12 +115,29 @@ namespace Sbui.Core
                     settings[sl.Tag.ToString()] = (long)sl.Value;
                 else if (child is System.Windows.Controls.ComboBox cb && cb.Tag != null)
                     settings[cb.Tag.ToString()] = cb.SelectedIndex >= 0 && cb.Items != null && cb.SelectedIndex < cb.Items.Count ? cb.SelectedIndex : 0;
-                else if (child is StackPanel sp && sp.Tag is string tag && tag.StartsWith("dynamic:"))
+                else if (child is StackPanel sp && sp.Tag is string tag)
                 {
-                    var key = tag.Substring(8);
-                    var arr = ExtractDynamicTextboxes(sp);
-                    if (arr != null)
-                        settings[key] = arr;
+                    if (tag.StartsWith("dynamic:"))
+                    {
+                        var key = tag.Substring(8);
+                        var arr = ExtractDynamicTextboxes(sp);
+                        if (arr != null)
+                            settings[key] = arr;
+                    }
+                    else if (tag.StartsWith("pill:"))
+                    {
+                        var key = tag.Substring(5);
+                        var arr = ExtractPills(sp);
+                        if (arr != null)
+                            settings[key] = arr;
+                    }
+                    else if (tag.StartsWith("duration:"))
+                    {
+                        var key = tag.Substring(9);
+                        var val = ExtractDuration(sp);
+                        if (val != null)
+                            settings[key] = val;
+                    }
                 }
             }
             return settings;
@@ -153,6 +214,148 @@ namespace Sbui.Core
                 if (c is System.Windows.Controls.TextBox t)
                     arr.Add(t.Text ?? "");
             return arr;
+        }
+
+        private static WrapPanel GetPillsPanel(StackPanel outer)
+        {
+            foreach (var c in outer.Children)
+                if (c is WrapPanel wp)
+                    return wp;
+            return null;
+        }
+
+        private static void LoadPills(StackPanel sp, JToken token)
+        {
+            var arr = token as JArray;
+            if (arr == null) return;
+            var pillsPanel = GetPillsPanel(sp);
+            if (pillsPanel == null) return;
+            pillsPanel.Children.Clear();
+            foreach (var item in arr)
+            {
+                var text = item?.ToString() ?? "";
+                var pillBorder = CreatePillBorder(text);
+                pillsPanel.Children.Add(pillBorder);
+            }
+        }
+
+        private static JArray ExtractPills(StackPanel sp)
+        {
+            var pillsPanel = GetPillsPanel(sp);
+            if (pillsPanel == null) return null;
+            var arr = new JArray();
+            foreach (var c in pillsPanel.Children)
+                if (c is Border b && b.Tag is string tag)
+                    arr.Add(tag);
+            return arr;
+        }
+
+        private static Border CreatePillBorder(string text)
+        {
+            var pillBorder = new Border
+            {
+                Tag = text,
+                Background = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(8, 4, 4, 4),
+                Margin = new Thickness(0, 0, 6, 6),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var pillRow = new StackPanel { Orientation = Orientation.Horizontal };
+            pillRow.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = text,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 6, 0)
+            });
+            var removeBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "×",
+                Width = 22,
+                Height = 22,
+                FontSize = 14,
+                Padding = new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            removeBtn.Click += (s, e) =>
+            {
+                if (pillBorder.Parent is Panel parent)
+                    parent.Children.Remove(pillBorder);
+            };
+            pillRow.Children.Add(removeBtn);
+            pillBorder.Child = pillRow;
+            return pillBorder;
+        }
+
+        private static readonly string[] DurationUnits = { "s", "m", "h", "d", "w", "permanent" };
+
+        private static void LoadDuration(Panel panel, JToken token)
+        {
+            var val = token?.ToString() ?? "permanent";
+            var (num, unitIndex) = ParseDuration(val);
+            var tb = panel.Descendants().OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            var combo = panel.Descendants().OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
+            if (tb != null) tb.Text = num.ToString();
+            if (combo != null)
+            {
+                var idx = Math.Max(0, Math.Min(unitIndex, combo.Items?.Count - 1 ?? 0));
+                combo.SelectedIndex = idx;
+                var isPerm = idx >= 0 && idx < (combo.Items?.Count ?? 0) && combo.Items[idx]?.ToString() == "permanent";
+                tb.IsEnabled = !isPerm;
+            }
+        }
+
+        private static string ExtractDuration(Panel panel)
+        {
+            var tb = panel.Descendants().OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            var combo = panel.Descendants().OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
+            if (tb == null || combo == null) return null;
+            var idx = combo.SelectedIndex;
+            if (idx < 0 || combo.Items == null || idx >= combo.Items.Count) return "permanent";
+            var unit = combo.Items[idx]?.ToString() ?? "permanent";
+            if (unit == "permanent") return "permanent";
+            var num = int.TryParse(tb.Text, out var n) ? n : 0;
+            return $"{num}{unit}";
+        }
+
+        private static (int num, int unitIndex) ParseDuration(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return (0, 5);
+            value = value.Trim().ToLowerInvariant();
+            if (value == "permanent") return (0, 5);
+            var unitChars = "smhdw";
+            for (int i = value.Length - 1; i >= 0; i--)
+            {
+                var c = value[i];
+                if (char.IsDigit(c) || c == ' ') continue;
+                if (unitChars.IndexOf(c) >= 0)
+                {
+                    var numStr = value.Substring(0, i).Trim();
+                    int.TryParse(numStr, out var num);
+                    int unitIndex;
+                    switch (c) { case 's': unitIndex = 0; break; case 'm': unitIndex = 1; break; case 'h': unitIndex = 2; break; case 'd': unitIndex = 3; break; case 'w': unitIndex = 4; break; default: unitIndex = 5; break; }
+                    return (num, unitIndex);
+                }
+                break;
+            }
+            int.TryParse(value, out var n);
+            return (n, 1);
+        }
+    }
+
+    internal static class VisualTreeExtensions
+    {
+        public static IEnumerable<DependencyObject> Descendants(this DependencyObject root)
+        {
+            if (root == null) yield break;
+            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < count; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+                yield return child;
+                foreach (var d in Descendants(child))
+                    yield return d;
+            }
         }
     }
 }

@@ -107,6 +107,9 @@
     <Compile Include="Elements\RefreshableDropdownElement.cs" />
     <Compile Include="Elements\ResponseBoxElement.cs" />
     <Compile Include="Elements\DecimalStepperElement.cs" />
+    <Compile Include="Elements\IntegerInputElement.cs" />
+    <Compile Include="Elements\DurationInputElement.cs" />
+    <Compile Include="Elements\PillInputElement.cs" />
     <Compile Include="Elements\CompetingToggleSwitchesElement.cs" />
     <Compile Include="Elements\DynamicTextboxesWithPresetElement.cs" />
     <Compile Include="Elements\ColorPickerElement.cs" />

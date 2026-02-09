@@ -108,6 +108,15 @@ namespace Sbui
         void IRenderContext.ClearVisibilityOverridePanel() => _visibilityOverridePanel = null;
 
         /// <summary>
+        /// Gets the panel for a tab. Use when adding content to a specific tab (e.g. for pill callback sections).
+        /// </summary>
+        public StackPanel GetPanel(string tabName)
+        {
+            EnsureTabExists(tabName);
+            return _tabManager?.GetPanel(tabName);
+        }
+
+        /// <summary>
         /// Logs a message to the configured log callback or Debug output.
         /// </summary>
         public void Log(string message)
@@ -259,6 +268,17 @@ namespace Sbui
         }
 
         /// <summary>
+        /// Temporarily pushes a panel so all Add* calls add to it. Use for dynamic content (e.g. when adding new alias sections from pill callback).
+        /// </summary>
+        public void WithPanel(Panel panel, Action content)
+        {
+            if (panel == null || content == null) return;
+            _panelContext.Push(panel);
+            try { content(); }
+            finally { _panelContext.Pop(); }
+        }
+
+        /// <summary>
         /// Gets the target panel for the next Add* call.
         /// Returns the top of the context stack if it exists,
         /// otherwise returns the current tab's panel.
@@ -398,24 +418,25 @@ namespace Sbui
         }
 
         /// <summary>
-        /// All AddXXX calls inside the action are visible only when the toggle with saveKey is on. Toggle must be added before this block.
+        /// All AddXXX calls inside the action are visible only when the toggle with saveKey is on (or off when inverted). Toggle must be added before this block.
         /// </summary>
-        public void WithVisibility(string toggleSaveKey, string tabName, Action content)
+        /// <param name="inverted">When true, content is visible when toggle is OFF instead of ON.</param>
+        public void WithVisibility(string toggleSaveKey, string tabName, Action content, bool inverted = false)
         {
             if (content == null) return;
             var toggle = _controlRegistry.Get<ToggleSwitch>(toggleSaveKey);
             if (toggle == null)
                 throw new InvalidOperationException($"Toggle '{toggleSaveKey}' must be added before WithVisibility block");
             var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
-            container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            container.Visibility = (toggle.IsChecked == true) != inverted ? Visibility.Visible : Visibility.Collapsed;
 
             var currentPanel = GetTargetPanel(tabName);
             _panelContext.Push(container);
             content();
             _panelContext.Pop();
 
-            toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
-            toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
+            toggle.Checked += (s, e) => container.Visibility = inverted ? Visibility.Collapsed : Visibility.Visible;
+            toggle.Unchecked += (s, e) => container.Visibility = inverted ? Visibility.Visible : Visibility.Collapsed;
 
             if (currentPanel != null)
                 currentPanel.Children.Add(container);
@@ -590,6 +611,42 @@ namespace Sbui
             });
         }
 
+        /// <summary>Adds an integer value input with up/down stepper.</summary>
+        public void AddIntegerInput(string title, string description, string tabName, string saveKey, int defaultValue, int min = 0, int max = int.MaxValue, string showWhenEnabled = null)
+        {
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new IntegerInputElement(title, description ?? "", tabName, fullKey, defaultValue, min, max);
+                el.Render(this);
+            });
+        }
+
+        /// <summary>Adds a duration input (number + unit: s, m, h, d, w, permanent). When permanent is selected, number input is disabled.</summary>
+        public void AddDurationInput(string title, string description, string tabName, string saveKey, bool permanentOption = true, string defaultValue = "permanent", string showWhenEnabled = null)
+        {
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new DurationInputElement(title, description ?? "", tabName, fullKey, permanentOption, defaultValue ?? "permanent");
+                el.Render(this);
+            });
+        }
+
+        /// <summary>Adds a pill-style input: text field + Add button, pills with X to remove. Persists as JArray of strings.</summary>
+        /// <param name="withSectionsPanel">When provided, receives (sectionsPanel, tabPanel). Add sectionsPanel to tabPanel and use WithPanel to run the foreach that builds alias sections.</param>
+        /// <param name="onPillAdded">When provided, called when a pill is added with (alias, sectionsPanel). Use WithPanel to add the new alias section immediately.</param>
+        /// <param name="onPillRemoved">When provided, called when a pill is removed with (alias, sectionsPanel). Remove the alias section from sectionsPanel.</param>
+        public void AddPillInput(string title, string description, string tabName, string saveKey, Action<StackPanel, Panel> withSectionsPanel = null, Action<string, StackPanel> onPillAdded = null, Action<string, StackPanel> onPillRemoved = null, string showWhenEnabled = null)
+        {
+            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
+            {
+                var fullKey = GetFullSaveKey(saveKey);
+                var el = new PillInputElement(title, description ?? "", tabName, fullKey, withSectionsPanel, onPillAdded, onPillRemoved);
+                el.Render(this);
+            });
+        }
+
         /// <summary>Adds multiple toggle switches where only one can be active (radio group). saveKey persists selected index.</summary>
         public void AddCompetingToggleSwitches(string title, string description, string tabName, string saveKey, string[] options, int defaultIndex, string showWhenEnabled = null)
         {
@@ -682,13 +739,22 @@ namespace Sbui
 
             var deleteBtn = new Wpf.Ui.Controls.Button
             {
-                Content = "×",
+                Content = new System.Windows.Controls.TextBlock
+                {
+                    Text = "×",
+                    FontSize = 18,
+                    Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
                 Width = 30,
                 Height = 30,
-                FontSize = 20,
                 Margin = new Thickness(5, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Top
+                VerticalAlignment = VerticalAlignment.Top,
+                MinWidth = 30,
+                MinHeight = 30
             };
+            System.Windows.Controls.Panel.SetZIndex(deleteBtn, 10);
 
             var contentPanel = new StackPanel { Margin = new Thickness(10) };
             deleteBtn.Click += (s, e) =>
@@ -754,6 +820,21 @@ namespace Sbui
             if (token == null) return default;
             try { return token.ToObject<T>(); }
             catch { return default; }
+        }
+
+        /// <summary>
+        /// Removes the given top-level keys from the current settings (e.g. when an alias is deleted).
+        /// Call MarkDirty so the next Save will persist the change.
+        /// </summary>
+        public void RemoveSettingsKeys(params string[] keys)
+        {
+            if (_existingSettings == null || keys == null) return;
+            foreach (var key in keys)
+            {
+                if (!string.IsNullOrEmpty(key))
+                    _existingSettings.Remove(key);
+            }
+            MarkDirty();
         }
 
         /// <summary>

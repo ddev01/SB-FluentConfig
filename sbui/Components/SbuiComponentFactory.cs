@@ -94,9 +94,31 @@ namespace Sbui.Components
                 ItemsSource = options,
                 SelectedIndex = selectedIndex,
                 MinWidth = 200,
+                MinHeight = 30,
                 Height = 30,
-                Padding = new Thickness(6, 2, 6, 2),
+                Padding = new Thickness(6, 4, 6, 4),
                 Margin = new Thickness(0, 4, 8, 0),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+        }
+
+        /// <summary>
+        /// Creates a ComboBox without Tag, for use inside composite controls (e.g. DurationInput). Same styling as CreateComboBox.
+        /// </summary>
+        public static System.Windows.Controls.ComboBox CreateComboBoxForEmbedded(string[] options, int selectedIndex)
+        {
+            options = options ?? Array.Empty<string>();
+            selectedIndex = Math.Max(0, Math.Min(selectedIndex, options.Length > 0 ? options.Length - 1 : 0));
+            return new System.Windows.Controls.ComboBox
+            {
+                ItemsSource = options,
+                SelectedIndex = selectedIndex,
+                MinWidth = 90,
+                MinHeight = 30,
+                Height = 30,
+                Padding = new Thickness(6, 4, 6, 4),
+                Margin = new Thickness(0, 4, 0, 0),
                 VerticalContentAlignment = VerticalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
