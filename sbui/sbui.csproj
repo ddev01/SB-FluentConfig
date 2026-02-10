@@ -118,6 +118,30 @@
     <Compile Include="Helpers\VisualTreeHelper.cs" />
     <Compile Include="Interfaces\IProgressReporter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Builders\IFlushableControlBuilder.cs" />
+    <Compile Include="Builders\IAddStrategy.cs" />
+    <Compile Include="Builders\ButtonBuilder.cs" />
+    <Compile Include="Builders\ColorPickerBuilder.cs" />
+    <Compile Include="Builders\CompetingTogglesBuilder.cs" />
+    <Compile Include="Builders\DecimalStepperBuilder.cs" />
+    <Compile Include="Builders\DurationInputBuilder.cs" />
+    <Compile Include="Builders\DynamicTextboxesBuilder.cs" />
+    <Compile Include="Builders\FilepathBuilder.cs" />
+    <Compile Include="Builders\IntegerInputBuilder.cs" />
+    <Compile Include="Builders\PanelBuilder.cs" />
+    <Compile Include="Builders\PanelFluentWrapper.cs" />
+    <Compile Include="Builders\PillInputBuilder.cs" />
+    <Compile Include="Builders\RefreshableDropdownBuilder.cs" />
+    <Compile Include="Builders\ResponseBoxBuilder.cs" />
+    <Compile Include="Builders\SectionBuilder.cs" />
+    <Compile Include="Builders\SectionFluentWrapper.cs" />
+    <Compile Include="Builders\SliderBuilder.cs" />
+    <Compile Include="Builders\SliderWithToggleBuilder.cs" />
+    <Compile Include="Builders\TextboxBuilder.cs" />
+    <Compile Include="Builders\ToggleBuilder.cs" />
+    <Compile Include="CallbackContext.cs" />
+    <Compile Include="SbuiUi.cs" />
+    <Compile Include="UiContext.cs" />
     <Compile Include="Sbui.cs" />
   </ItemGroup>
   <ItemGroup>

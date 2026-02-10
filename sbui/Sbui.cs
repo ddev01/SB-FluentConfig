@@ -292,9 +292,9 @@ namespace Sbui
         }
 
         /// <summary>
-        /// Gets the full saveKey including any context prefix.
+        /// Gets the full saveKey including any context prefix (e.g. repeatable row).
         /// </summary>
-        private string GetFullSaveKey(string saveKey)
+        internal string GetFullSaveKey(string saveKey)
         {
             return _saveKeyContext.Count > 0
                 ? $"{_saveKeyContext.Peek()}.{saveKey}"
@@ -443,6 +443,100 @@ namespace Sbui
         }
 
         /// <summary>
+        /// Single code path: add an element to the given tab (or current panel when inside WithPanel). Used by fluent builders.
+        /// </summary>
+        internal void AddElement(string tabName, Elements.UIElement element, string showWhenKey = null)
+        {
+            if (element == null) return;
+            element.TabName = tabName ?? "";
+            if (!string.IsNullOrEmpty(showWhenKey))
+            {
+                AddWithOptionalVisibility(showWhenKey, tabName, () => element.Render(this));
+                return;
+            }
+            EnsureTabExists(tabName);
+            element.Render(this);
+        }
+
+        /// <summary>
+        /// Visibility block that builds content with a PanelBuilder (fluent DSL). Toggle must exist.
+        /// </summary>
+        public void WithVisibility(string toggleSaveKey, string tabName, bool inverted, Action<PanelBuilder> build)
+        {
+            if (build == null) return;
+            var toggle = _controlRegistry.Get<ToggleSwitch>(toggleSaveKey);
+            if (toggle == null)
+                throw new InvalidOperationException($"Toggle '{toggleSaveKey}' must be added before WithVisibility block");
+            var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
+            container.Visibility = (toggle.IsChecked == true) != inverted ? Visibility.Visible : Visibility.Collapsed;
+
+            var currentPanel = GetTargetPanel(tabName);
+            _panelContext.Push(container);
+            var pb = new PanelBuilder(this, container, tabName);
+            build(pb);
+            pb.FlushPending();
+            _panelContext.Pop();
+
+            toggle.Checked += (s, e) => container.Visibility = inverted ? Visibility.Collapsed : Visibility.Visible;
+            toggle.Unchecked += (s, e) => container.Visibility = inverted ? Visibility.Visible : Visibility.Collapsed;
+
+            if (currentPanel != null)
+                currentPanel.Children.Add(container);
+        }
+
+        /// <summary>
+        /// Repeatable rows: buildRow receives a PanelBuilder for each row's content (fluent DSL).
+        /// </summary>
+        public void WithRepeatableRows(string saveKey, string tabName, Action<PanelBuilder> buildRow)
+        {
+            if (buildRow == null) return;
+            var panel = GetTargetPanel(tabName);
+            if (panel == null) return;
+
+            var container = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
+            var rowsData = LoadRowsData(saveKey);
+
+            for (int i = 0; i < rowsData.Count; i++)
+            {
+                var (outerRow, contentPanel) = CreateRowPanel(i, saveKey, container);
+                _panelContext.Push(contentPanel);
+                _saveKeyContext.Push($"{saveKey}[{i}]");
+                var rowPb = new PanelBuilder(this, contentPanel, tabName);
+                buildRow(rowPb);
+                rowPb.FlushPending();
+                _saveKeyContext.Pop();
+                _panelContext.Pop();
+                container.Children.Add(outerRow);
+            }
+
+            var addBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "+ Add Row",
+                Margin = new Thickness(0, 5, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(15, 5, 15, 5)
+            };
+            addBtn.Click += (s, e) => AddRowWithBuilder(container, saveKey, tabName, buildRow);
+            container.Children.Add(addBtn);
+
+            panel.Children.Add(container);
+        }
+
+        private void AddRowWithBuilder(Panel container, string saveKey, string tabName, Action<PanelBuilder> buildRow)
+        {
+            int newIndex = Math.Max(0, container.Children.Count - 1);
+            var (outerRow, contentPanel) = CreateRowPanel(newIndex, saveKey, container);
+            _panelContext.Push(contentPanel);
+            _saveKeyContext.Push($"{saveKey}[{newIndex}]");
+            var rowPb = new PanelBuilder(this, contentPanel, tabName);
+            buildRow(rowPb);
+            rowPb.FlushPending();
+            _saveKeyContext.Pop();
+            _panelContext.Pop();
+            container.Children.Insert(container.Children.Count - 1, outerRow);
+        }
+
+        /// <summary>
         /// Add a header image at the top of the UI. Only one header is shown; multiple calls result in the last URL being used.
         /// </summary>
         public void AddHeader(string imageUrl)
@@ -486,246 +580,6 @@ namespace Sbui
                 Grid.SetRow(headerPanel, 0);
                 _mainGrid.Children.Insert(0, headerPanel);
             }
-        }
-
-        public void AddTitle(string text, string tabName, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var el = new TitleElement(text, tabName);
-                el.Render(this);
-            });
-        }
-
-        public void AddDescription(string text, string tabName, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var el = new DescriptionElement(text, tabName);
-                el.Render(this);
-            });
-        }
-
-        public void AddToggleSwitch(string title, string description, string tabName, string saveKey, bool defaultValue = false, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new ToggleSwitchElement(title, description ?? "", tabName, fullKey, defaultValue);
-                el.Render(this);
-            });
-        }
-
-        public void AddTextbox(string title, string description, string tabName, string saveKey, string defaultText, bool isPassword = false, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new TextboxElement(title, description ?? "", tabName, fullKey, defaultText ?? "", isPassword);
-                el.Render(this);
-            });
-        }
-
-        public void AddSlider(string title, string description, string tabName, string saveKey, int min, int max, int defaultValue, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new SliderElement(title, description ?? "", tabName, fullKey, min, max, defaultValue);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a horizontal separator line in the given tab.</summary>
-        public void AddInlineSeparator(string tabName, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var el = new InlineSeparatorElement(tabName ?? "");
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a toggle switch and slider; when toggle is off the slider is disabled. Persists as saveKey (slider value) and saveKey + "_enabled" (toggle).</summary>
-        public void AddSliderWithToggleSwitch(string title, string description, string tabName, string saveKey, int min, int max, int defaultValue, bool toggleDefault, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new SliderWithToggleSwitchElement(title, description ?? "", tabName, fullKey, min, max, defaultValue, toggleDefault);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a file path textbox with Browse button (OpenFileDialog).</summary>
-        public void AddFilepath(string title, string description, string tabName, string saveKey, string defaultPath, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new FilepathElement(title, description ?? "", tabName, fullKey, defaultPath ?? "");
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a clickable button with colored background; click invokes the callback.</summary>
-        public void AddClickableButton(string title, string description, string confirmText, string color, string tabName, Action callback, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var el = new ClickableButtonElement(title, description ?? "", confirmText ?? "OK", color ?? "", tabName ?? "", callback);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a dropdown with Refresh button; refresh callback returns new options and UpdateDropdown is called.</summary>
-        public void AddRefreshableDropdown(string title, string description, string tabName, string saveKey, string[] options, Func<string[]> refreshCallback, int defaultIndex, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new RefreshableDropdownElement(title, description ?? "", tabName, fullKey, options ?? Array.Empty<string>(), refreshCallback, defaultIndex);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a multiline textbox for chat response templates.</summary>
-        public void AddResponseBox(string title, string description, string tabName, string saveKey, string defaultText, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new ResponseBoxElement(title, description ?? "", tabName, fullKey, defaultText ?? "");
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a decimal value input with up/down stepper.</summary>
-        public void AddDecimalStepper(string title, string description, string tabName, string saveKey, double min, double max, double step, double defaultValue, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new DecimalStepperElement(title, description ?? "", tabName, fullKey, min, max, step, defaultValue);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds an integer value input with up/down stepper.</summary>
-        public void AddIntegerInput(string title, string description, string tabName, string saveKey, int defaultValue, int min = 0, int max = int.MaxValue, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new IntegerInputElement(title, description ?? "", tabName, fullKey, defaultValue, min, max);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a duration input (number + unit: s, m, h, d, w, permanent). When permanent is selected, number input is disabled.</summary>
-        public void AddDurationInput(string title, string description, string tabName, string saveKey, bool permanentOption = true, string defaultValue = "permanent", string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new DurationInputElement(title, description ?? "", tabName, fullKey, permanentOption, defaultValue ?? "permanent");
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a pill-style input: text field + Add button, pills with X to remove. Persists as JArray of strings.</summary>
-        /// <param name="withSectionsPanel">When provided, receives (sectionsPanel, tabPanel). Add sectionsPanel to tabPanel and use WithPanel to run the foreach that builds alias sections.</param>
-        /// <param name="onPillAdded">When provided, called when a pill is added with (alias, sectionsPanel). Use WithPanel to add the new alias section immediately.</param>
-        /// <param name="onPillRemoved">When provided, called when a pill is removed with (alias, sectionsPanel). Remove the alias section from sectionsPanel.</param>
-        public void AddPillInput(string title, string description, string tabName, string saveKey, Action<StackPanel, Panel> withSectionsPanel = null, Action<string, StackPanel> onPillAdded = null, Action<string, StackPanel> onPillRemoved = null, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new PillInputElement(title, description ?? "", tabName, fullKey, withSectionsPanel, onPillAdded, onPillRemoved);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds multiple toggle switches where only one can be active (radio group). saveKey persists selected index.</summary>
-        public void AddCompetingToggleSwitches(string title, string description, string tabName, string saveKey, string[] options, int defaultIndex, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new CompetingToggleSwitchesElement(title, description ?? "", tabName, fullKey, options ?? Array.Empty<string>(), defaultIndex);
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a list of textboxes with Add/Remove buttons; persists as JSON array.</summary>
-        public void AddDynamicTextboxesWithPreset(string title, string description, string tabName, string saveKey, string[] presetValues, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new DynamicTextboxesWithPresetElement(title, description ?? "", tabName, fullKey, presetValues ?? Array.Empty<string>());
-                el.Render(this);
-            });
-        }
-
-        /// <summary>Adds a color picker (hex textbox with color preview).</summary>
-        public void AddColorPicker(string title, string description, string tabName, string saveKey, string defaultColor, string showWhenEnabled = null)
-        {
-            AddWithOptionalVisibility(showWhenEnabled, tabName, () =>
-            {
-                var fullKey = GetFullSaveKey(saveKey);
-                var el = new ColorPickerElement(title, description ?? "", tabName, fullKey, defaultColor ?? "#000000");
-                el.Render(this);
-            });
-        }
-
-        /// <summary>
-        /// Adds repeatable rows with Add/Remove. buildRow adds controls to each row; saveKey persists as JSON array.
-        /// </summary>
-        public void WithRepeatableRows(string saveKey, string tabName, Action buildRow)
-        {
-            if (buildRow == null) return;
-            var panel = GetTargetPanel(tabName);
-            if (panel == null) return;
-
-            var container = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
-            var rowsData = LoadRowsData(saveKey);
-
-            for (int i = 0; i < rowsData.Count; i++)
-            {
-                var (outerRow, contentPanel) = CreateRowPanel(i, saveKey, container);
-                _panelContext.Push(contentPanel);
-                _saveKeyContext.Push($"{saveKey}[{i}]");
-                buildRow();
-                _saveKeyContext.Pop();
-                _panelContext.Pop();
-                container.Children.Add(outerRow);
-            }
-
-            var addBtn = new Wpf.Ui.Controls.Button
-            {
-                Content = "+ Add Row",
-                Margin = new Thickness(0, 5, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Padding = new Thickness(15, 5, 15, 5)
-            };
-            addBtn.Click += (s, e) => AddRow(container, saveKey, buildRow);
-            container.Children.Add(addBtn);
-
-            panel.Children.Add(container);
-        }
-
-        private void AddRow(Panel container, string saveKey, Action buildRow)
-        {
-            int newIndex = Math.Max(0, container.Children.Count - 1);
-            var (outerRow, contentPanel) = CreateRowPanel(newIndex, saveKey, container);
-            _panelContext.Push(contentPanel);
-            _saveKeyContext.Push($"{saveKey}[{newIndex}]");
-            buildRow();
-            _saveKeyContext.Pop();
-            _panelContext.Pop();
-            container.Children.Insert(container.Children.Count - 1, outerRow);
         }
 
         private (DockPanel outerRow, StackPanel contentPanel) CreateRowPanel(int rowIndex, string saveKey, Panel container)
