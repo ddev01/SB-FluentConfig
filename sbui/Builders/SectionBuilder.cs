@@ -8,6 +8,7 @@ namespace Sbui
     /// </summary>
     public class SectionBuilder
     {
+        private readonly ControlBuilderCore _core;
         private readonly IAddStrategy _strategy;
         private readonly Sbui _ui;
         private readonly string _tabName;
@@ -18,6 +19,7 @@ namespace Sbui
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
             _tabName = tabName ?? "";
             _strategy = new AddToTabStrategy(ui, _tabName);
+            _core = new ControlBuilderCore(_strategy, _tabName, ui);
         }
 
         /// <summary>Flush any pending control (auto-add). Called automatically when starting the next control or when the section ends.</summary>
@@ -56,21 +58,21 @@ namespace Sbui
             return this;
         }
 
-        public SectionFluentWrapper Toggle(string label, string key) { FlushPending(); var b = new ToggleBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper Textbox(string label, string key) { FlushPending(); var b = new TextboxBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper Slider(string label, string key) { FlushPending(); var b = new SliderBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper Button(string label) { FlushPending(); var b = new ButtonBuilder(_strategy, _ui, _tabName, label); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper IntegerInput(string label, string key) { FlushPending(); var b = new IntegerInputBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper DurationInput(string label, string key) { FlushPending(); var b = new DurationInputBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper Filepath(string label, string key) { FlushPending(); var b = new FilepathBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper ResponseBox(string label, string key) { FlushPending(); var b = new ResponseBoxBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper DecimalStepper(string label, string key) { FlushPending(); var b = new DecimalStepperBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper ColorPicker(string label, string key) { FlushPending(); var b = new ColorPickerBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper SliderWithToggle(string label, string key) { FlushPending(); var b = new SliderWithToggleBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper RefreshableDropdown(string label, string key) { FlushPending(); var b = new RefreshableDropdownBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper CompetingToggles(string label, string key) { FlushPending(); var b = new CompetingTogglesBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper DynamicTextboxes(string label, string key) { FlushPending(); var b = new DynamicTextboxesBuilder(_strategy, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
-        public SectionFluentWrapper PillInput(string label, string key) { FlushPending(); var b = new PillInputBuilder(_strategy, _ui, _tabName, label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper Toggle(string label, string key) { FlushPending(); var b = _core.CreateToggle(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper Textbox(string label, string key) { FlushPending(); var b = _core.CreateTextbox(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper Slider(string label, string key) { FlushPending(); var b = _core.CreateSlider(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper Button(string label) { FlushPending(); var b = _core.CreateButton(label); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper IntegerInput(string label, string key) { FlushPending(); var b = _core.CreateIntegerInput(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper DurationInput(string label, string key) { FlushPending(); var b = _core.CreateDurationInput(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper Filepath(string label, string key) { FlushPending(); var b = _core.CreateFilepath(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper ResponseBox(string label, string key) { FlushPending(); var b = _core.CreateResponseBox(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper DecimalStepper(string label, string key) { FlushPending(); var b = _core.CreateDecimalStepper(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper ColorPicker(string label, string key) { FlushPending(); var b = _core.CreateColorPicker(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper SliderWithToggle(string label, string key) { FlushPending(); var b = _core.CreateSliderWithToggle(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper RefreshableDropdown(string label, string key) { FlushPending(); var b = _core.CreateRefreshableDropdown(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper CompetingToggles(string label, string key) { FlushPending(); var b = _core.CreateCompetingToggles(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper DynamicTextboxes(string label, string key) { FlushPending(); var b = _core.CreateDynamicTextboxes(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
+        public SectionFluentWrapper PillInput(string label, string key) { FlushPending(); var b = _core.CreatePillInput(label, key); _pending = b; return new SectionFluentWrapper(this, b); }
 
         /// <summary>Content is visible when the toggle is on (or off when inverted). Build receives a PanelBuilder for the inner content.</summary>
         public SectionBuilder WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build)

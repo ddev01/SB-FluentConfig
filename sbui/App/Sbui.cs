@@ -22,6 +22,7 @@ using Sbui.Core;
 using Sbui.Components;
 using Sbui.Elements;
 using Sbui.Helpers;
+using SettingsPathHelper = Sbui.Core.SettingsPathHelper;
 
 namespace Sbui
 {
@@ -190,7 +191,7 @@ namespace Sbui
                 onReset: HandleReset,
                 onExit: HandleExit
             );
-            ApplicationThemeManager.Apply((ApplicationTheme)1, (WindowBackdropType)2, true);
+            ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
             ApplicationThemeManager.Apply((FrameworkElement)_window);
 
             _window.Closed += (s, e) =>
@@ -220,7 +221,7 @@ namespace Sbui
             if (settings != null)
             {
                 foreach (var kv in settings)
-                    SetNestedValue(_existingSettings, kv.Key, kv.Value);
+                    SettingsPathHelper.SetNestedValue(_existingSettings, kv.Key, kv.Value);
             }
             _settingsManager.Save(_existingSettings);
             _dirty = false;
@@ -317,76 +318,6 @@ namespace Sbui
         private JObject BuildSettings()
         {
             return _mainGrid != null ? _synchronizer.ExtractSettingsFromControls(_mainGrid) : null;
-        }
-
-        private static void SetNestedValue(JObject root, string path, JToken value)
-        {
-            if (root == null || string.IsNullOrEmpty(path)) return;
-            if (!path.Contains("[") && !path.Contains("."))
-            {
-                root[path] = value;
-                return;
-            }
-            var parts = ParseNestedPath(path);
-            if (parts.Length == 0) return;
-            JToken current = root;
-            for (int i = 0; i < parts.Length - 1; i++)
-            {
-                var part = parts[i];
-                var nextIsIndex = i + 1 < parts.Length && int.TryParse(parts[i + 1], out _);
-                if (int.TryParse(part, out int index))
-                {
-                    if (!(current is JArray arr)) return;
-                    while (arr.Count <= index) arr.Add(new JObject());
-                    current = arr[index];
-                }
-                else if (current is JObject obj)
-                {
-                    if (obj[part] == null)
-                        obj[part] = nextIsIndex ? (JToken)new JArray() : new JObject();
-                    current = obj[part];
-                }
-                else return;
-            }
-            var last = parts[parts.Length - 1];
-            if (int.TryParse(last, out int lastIdx))
-            {
-                if (!(current is JArray arr)) return;
-                while (arr.Count <= lastIdx) arr.Add(null);
-                arr[lastIdx] = value;
-            }
-            else if (current is JObject obj)
-            {
-                obj[last] = value;
-            }
-        }
-
-        private static string[] ParseNestedPath(string path)
-        {
-            var parts = new List<string>();
-            var current = "";
-            bool inBracket = false;
-            foreach (var ch in path)
-            {
-                if (ch == '[')
-                {
-                    if (!string.IsNullOrEmpty(current)) { parts.Add(current); current = ""; }
-                    inBracket = true;
-                }
-                else if (ch == ']')
-                {
-                    if (!string.IsNullOrEmpty(current)) { parts.Add(current); current = ""; }
-                    inBracket = false;
-                }
-                else if (ch == '.' && !inBracket)
-                {
-                    if (!string.IsNullOrEmpty(current)) { parts.Add(current); current = ""; }
-                }
-                else
-                    current += ch;
-            }
-            if (!string.IsNullOrEmpty(current)) parts.Add(current);
-            return parts.ToArray();
         }
 
         /// <summary>
@@ -542,12 +473,7 @@ namespace Sbui
         public void AddHeader(string imageUrl)
         {
             if (_mainGrid == null || string.IsNullOrEmpty(imageUrl)) return;
-            _mainGrid.RowDefinitions.Insert(0, new RowDefinition { Height = GridLength.Auto });
-            foreach (System.Windows.UIElement child in _mainGrid.Children)
-            {
-                var row = Grid.GetRow(child as FrameworkElement);
-                if (row >= 0) Grid.SetRow(child as FrameworkElement, row + 1);
-            }
+            var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             try
             {
                 var bi = new System.Windows.Media.Imaging.BitmapImage();
@@ -555,21 +481,17 @@ namespace Sbui
                 bi.UriSource = new Uri(imageUrl, UriKind.Absolute);
                 bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
                 bi.EndInit();
-                var img = new System.Windows.Controls.Image
+                headerPanel.Children.Add(new System.Windows.Controls.Image
                 {
                     Source = bi,
                     MaxHeight = 120,
                     Stretch = System.Windows.Media.Stretch.Uniform,
                     HorizontalAlignment = HorizontalAlignment.Stretch
-                };
-                var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
-                headerPanel.Children.Add(img);
-                Grid.SetRow(headerPanel, 0);
-                _mainGrid.Children.Insert(0, headerPanel);
+                });
             }
-            catch
+            catch (Exception ex)
             {
-                var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+                LogInternal($"AddHeader image load failed: {ex.Message}");
                 headerPanel.Children.Add(new System.Windows.Controls.TextBlock
                 {
                     Text = "[Header image]",
@@ -577,8 +499,15 @@ namespace Sbui
                     FontSize = 12,
                     Margin = new Thickness(0, 4, 0, 4)
                 });
-                Grid.SetRow(headerPanel, 0);
-                _mainGrid.Children.Insert(0, headerPanel);
+            }
+            _mainGrid.RowDefinitions.Insert(0, new RowDefinition { Height = GridLength.Auto });
+            Grid.SetRow(headerPanel, 0);
+            _mainGrid.Children.Insert(0, headerPanel);
+            for (int i = 1; i < _mainGrid.Children.Count; i++)
+            {
+                var child = _mainGrid.Children[i] as FrameworkElement;
+                if (child != null && Grid.GetRow(child) >= 0)
+                    Grid.SetRow(child, Grid.GetRow(child) + 1);
             }
         }
 
@@ -657,7 +586,7 @@ namespace Sbui
             if (token != null)
             {
                 try { return JArray.Parse(token.ToString()); }
-                catch { }
+                catch (Exception ex) { LogInternal($"LoadRowsData parse error: {ex.Message}"); }
             }
             return new JArray();
         }
@@ -673,7 +602,7 @@ namespace Sbui
             var token = _existingSettings?[key];
             if (token == null) return default;
             try { return token.ToObject<T>(); }
-            catch { return default; }
+            catch (Exception ex) { LogInternal($"GetValue<{typeof(T).Name}> error for key '{key}': {ex.Message}"); return default; }
         }
 
         /// <summary>
@@ -724,23 +653,7 @@ namespace Sbui
         public IProgressReporter ShowProgressWindow(string title, string message, string progressLabel, int total)
         {
             if (_window == null) return null;
-            var progressWindow = new Window
-            {
-                Title = title ?? "Progress",
-                Width = 400,
-                Height = 140,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                Owner = _window
-            };
-            var stack = new StackPanel { Margin = new Thickness(20) };
-            stack.Children.Add(new System.Windows.Controls.TextBlock { Text = message ?? "", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
-            var labelBlock = new System.Windows.Controls.TextBlock { Text = progressLabel ?? "Progress", Margin = new Thickness(0, 0, 0, 4) };
-            stack.Children.Add(labelBlock);
-            var progressBar = new System.Windows.Controls.ProgressBar { Minimum = 0, Maximum = Math.Max(1, total), Value = 0, Height = 24 };
-            stack.Children.Add(progressBar);
-            progressWindow.Content = stack;
-            progressWindow.Show();
-            return new ProgressReporterImpl(progressWindow, progressBar, total);
+            return ProgressWindowHelper.Show((Window)_window, title, message, progressLabel, total);
         }
 
         /// <summary>

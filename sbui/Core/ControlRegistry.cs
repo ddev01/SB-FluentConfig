@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using Sbui.Helpers;
 using Wpf.Ui.Controls;
 
 namespace Sbui.Core
@@ -56,13 +57,7 @@ namespace Sbui.Core
             try
             {
                 if (control is System.Windows.Controls.TextBox tb)
-                {
-                    if (typeof(T) == typeof(double) && double.TryParse(tb.Text, out var dVal))
-                        return (T)(object)dVal;
-                    if (typeof(T) == typeof(int) && int.TryParse(tb.Text, out var iVal))
-                        return (T)(object)iVal;
-                    return (T)(object)(tb.Text ?? "");
-                }
+                    return (T)(object)GetValueFromTextBox(tb, typeof(T));
                 if (control is System.Windows.Controls.PasswordBox pb)
                     return (T)(object)(pb.Password ?? "");
                 if (control is ToggleSwitch ts)
@@ -70,57 +65,77 @@ namespace Sbui.Core
                 if (control is System.Windows.Controls.Slider sl)
                     return (T)Convert.ChangeType(sl.Value, typeof(T));
                 if (control is System.Windows.Controls.ComboBox cb)
-                {
-                    if (typeof(T) == typeof(int))
-                        return (T)(object)cb.SelectedIndex;
-                    return (T)(object)(cb.SelectedItem?.ToString() ?? "");
-                }
+                    return (T)(object)GetValueFromComboBox(cb, typeof(T));
                 if (control is StackPanel stack && stack.Tag is string tag)
                 {
-                    if (tag.StartsWith("dynamic:") && typeof(T) == typeof(string[]))
-                    {
-                        var listPanel = GetDynamicListPanel(stack);
-                        if (listPanel != null)
-                        {
-                            var list = new List<string>();
-                            foreach (var c in listPanel.Children)
-                                if (c is System.Windows.Controls.TextBox tx)
-                                    list.Add(tx.Text ?? "");
-                            return (T)(object)list.ToArray();
-                        }
-                    }
-                    if (tag.StartsWith("pill:") && typeof(T) == typeof(string[]))
-                    {
-                        var pillsPanel = GetPillsPanel(stack);
-                        if (pillsPanel != null)
-                        {
-                            var list = new List<string>();
-                            foreach (var c in pillsPanel.Children)
-                                if (c is System.Windows.Controls.Border b && b.Tag is string t)
-                                    list.Add(t);
-                            return (T)(object)list.ToArray();
-                        }
-                    }
-                    if (tag.StartsWith("duration:") && typeof(T) == typeof(string))
-                    {
-                        var numBox = stack.Descendants().OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
-                        var combo = stack.Descendants().OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
-                        if (numBox != null && combo != null)
-                        {
-                            var idx = combo.SelectedIndex;
-                            if (idx >= 0 && combo.Items != null && idx < combo.Items.Count)
-                            {
-                                var unit = combo.Items[idx]?.ToString() ?? "permanent";
-                                if (unit == "permanent") return (T)(object)"permanent";
-                                var num = int.TryParse(numBox.Text, out var n) ? n : 0;
-                                return (T)(object)$"{num}{unit}";
-                            }
-                        }
-                    }
+                    var stackVal = GetValueFromTaggedStackPanel(stack, tag, typeof(T));
+                    if (stackVal != null)
+                        return (T)stackVal;
                 }
             }
             catch (Exception) { }
             return default;
+        }
+
+        private static object GetValueFromTextBox(System.Windows.Controls.TextBox tb, Type targetType)
+        {
+            if (targetType == typeof(double) && double.TryParse(tb.Text, out var dVal))
+                return dVal;
+            if (targetType == typeof(int) && int.TryParse(tb.Text, out var iVal))
+                return iVal;
+            return tb.Text ?? "";
+        }
+
+        private static object GetValueFromComboBox(System.Windows.Controls.ComboBox cb, Type targetType)
+        {
+            if (targetType == typeof(int))
+                return cb.SelectedIndex;
+            return cb.SelectedItem?.ToString() ?? "";
+        }
+
+        private static object GetValueFromTaggedStackPanel(StackPanel stack, string tag, Type targetType)
+        {
+            if (tag.StartsWith(SbuiTags.DynamicPrefix) && targetType == typeof(string[]))
+            {
+                var listPanel = GetDynamicListPanel(stack);
+                if (listPanel != null)
+                {
+                    var list = new List<string>();
+                    foreach (var c in listPanel.Children)
+                        if (c is System.Windows.Controls.TextBox tx)
+                            list.Add(tx.Text ?? "");
+                    return list.ToArray();
+                }
+            }
+            if (tag.StartsWith(SbuiTags.PillPrefix) && targetType == typeof(string[]))
+            {
+                var pillsPanel = GetPillsPanel(stack);
+                if (pillsPanel != null)
+                {
+                    var list = new List<string>();
+                    foreach (var c in pillsPanel.Children)
+                        if (c is System.Windows.Controls.Border b && b.Tag is string t)
+                            list.Add(t);
+                    return list.ToArray();
+                }
+            }
+            if (tag.StartsWith(SbuiTags.DurationPrefix) && targetType == typeof(string))
+            {
+                var numBox = VisualTreeHelper.DescendantsOnly(stack).OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+                var combo = VisualTreeHelper.DescendantsOnly(stack).OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
+                if (numBox != null && combo != null)
+                {
+                    var idx = combo.SelectedIndex;
+                    if (idx >= 0 && combo.Items != null && idx < combo.Items.Count)
+                    {
+                        var unit = combo.Items[idx]?.ToString() ?? "permanent";
+                        if (unit == "permanent") return "permanent";
+                        var num = int.TryParse(numBox.Text, out var n) ? n : 0;
+                        return $"{num}{unit}";
+                    }
+                }
+            }
+            return null;
         }
 
         private static StackPanel GetDynamicListPanel(StackPanel outer)

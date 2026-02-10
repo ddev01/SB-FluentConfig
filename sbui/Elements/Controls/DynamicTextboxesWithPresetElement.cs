@@ -1,6 +1,7 @@
 using System.Windows.Controls;
 using Newtonsoft.Json.Linq;
 using Sbui.Components;
+using Sbui.Helpers;
 using Wpf.Ui.Controls;
 using Button = Wpf.Ui.Controls.Button;
 
@@ -36,7 +37,7 @@ namespace Sbui.Elements
             {
                 Orientation = Orientation.Vertical,
                 Margin = new System.Windows.Thickness(0, 8, 0, 0),
-                Tag = "dynamic:" + SaveKey
+                Tag = SbuiTags.DynamicPrefix + SaveKey
             };
             if (context.DynamicTextboxPanels != null)
                 context.DynamicTextboxPanels[SaveKey] = stack;

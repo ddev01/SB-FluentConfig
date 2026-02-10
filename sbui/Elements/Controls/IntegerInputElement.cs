@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using Sbui.Components;
+using Sbui.Helpers;
 using Wpf.Ui.Controls;
 using Button = Wpf.Ui.Controls.Button;
 
@@ -36,7 +37,8 @@ namespace Sbui.Elements
             int val = DefaultValue;
             if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Integer || token.Type == Newtonsoft.Json.Linq.JTokenType.Float))
             {
-                try { val = token.ToObject<int>(); } catch { }
+                try { val = token.ToObject<int>(); }
+                catch (Exception) { /* use DefaultValue */ }
             }
             val = Math.Max(Min, Math.Min(Max, val));
 
@@ -47,7 +49,7 @@ namespace Sbui.Elements
 
             var tb = new System.Windows.Controls.TextBox
             {
-                Tag = "integer:" + SaveKey,
+                Tag = SbuiTags.IntegerPrefix + SaveKey,
                 Text = val.ToString(),
                 Width = 80,
                 Margin = new Thickness(0, 4, 8, 0),

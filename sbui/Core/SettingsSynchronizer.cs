@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using Newtonsoft.Json.Linq;
+using Sbui.Helpers;
 using VisualTreeHelper = Sbui.Helpers.VisualTreeHelper;
 using Wpf.Ui.Controls;
 
@@ -35,9 +36,9 @@ namespace Sbui.Core
             {
                 if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
                 {
-                    if (keyTb.StartsWith("integer:"))
+                    if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
                     {
-                        var key = keyTb.Substring(8);
+                        var key = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
                         var val = GetValue(settings, key);
                         if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                             tb.Text = val.Value<int>().ToString();
@@ -71,19 +72,19 @@ namespace Sbui.Core
                 }
                 else if (child is StackPanel sp && sp.Tag is string tag)
                 {
-                    if (tag.StartsWith("dynamic:"))
+                    if (tag.StartsWith(SbuiTags.DynamicPrefix))
                     {
-                        var key = tag.Substring(8);
+                        var key = tag.Substring(SbuiTags.DynamicPrefix.Length);
                         LoadDynamicTextboxes(sp, GetValue(settings, key));
                     }
-                    else if (tag.StartsWith("pill:"))
+                    else if (tag.StartsWith(SbuiTags.PillPrefix))
                     {
-                        var key = tag.Substring(5);
+                        var key = tag.Substring(SbuiTags.PillPrefix.Length);
                         LoadPills(sp, GetValue(settings, key));
                     }
-                    else if (tag.StartsWith("duration:"))
+                    else if (tag.StartsWith(SbuiTags.DurationPrefix))
                     {
-                        var key = tag.Substring(9);
+                        var key = tag.Substring(SbuiTags.DurationPrefix.Length);
                         LoadDuration(sp, GetValue(settings, key));
                     }
                 }
@@ -99,9 +100,9 @@ namespace Sbui.Core
             {
                 if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
                 {
-                    if (keyTb.StartsWith("integer:"))
+                    if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
                     {
-                        var key = keyTb.Substring(8);
+                        var key = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
                         settings[key] = int.TryParse(tb.Text, out var v) ? v : 0;
                     }
                     else
@@ -117,23 +118,23 @@ namespace Sbui.Core
                     settings[cb.Tag.ToString()] = cb.SelectedIndex >= 0 && cb.Items != null && cb.SelectedIndex < cb.Items.Count ? cb.SelectedIndex : 0;
                 else if (child is StackPanel sp && sp.Tag is string tag)
                 {
-                    if (tag.StartsWith("dynamic:"))
+                    if (tag.StartsWith(SbuiTags.DynamicPrefix))
                     {
-                        var key = tag.Substring(8);
+                        var key = tag.Substring(SbuiTags.DynamicPrefix.Length);
                         var arr = ExtractDynamicTextboxes(sp);
                         if (arr != null)
                             settings[key] = arr;
                     }
-                    else if (tag.StartsWith("pill:"))
+                    else if (tag.StartsWith(SbuiTags.PillPrefix))
                     {
-                        var key = tag.Substring(5);
+                        var key = tag.Substring(SbuiTags.PillPrefix.Length);
                         var arr = ExtractPills(sp);
                         if (arr != null)
                             settings[key] = arr;
                     }
-                    else if (tag.StartsWith("duration:"))
+                    else if (tag.StartsWith(SbuiTags.DurationPrefix))
                     {
-                        var key = tag.Substring(9);
+                        var key = tag.Substring(SbuiTags.DurationPrefix.Length);
                         var val = ExtractDuration(sp);
                         if (val != null)
                             settings[key] = val;
@@ -293,8 +294,8 @@ namespace Sbui.Core
         {
             var val = token?.ToString() ?? "permanent";
             var (num, unitIndex) = ParseDuration(val);
-            var tb = panel.Descendants().OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
-            var combo = panel.Descendants().OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
+            var tb = VisualTreeHelper.DescendantsOnly(panel).OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            var combo = VisualTreeHelper.DescendantsOnly(panel).OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
             if (tb != null) tb.Text = num.ToString();
             if (combo != null)
             {
@@ -307,8 +308,8 @@ namespace Sbui.Core
 
         private static string ExtractDuration(Panel panel)
         {
-            var tb = panel.Descendants().OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
-            var combo = panel.Descendants().OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
+            var tb = VisualTreeHelper.DescendantsOnly(panel).OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            var combo = VisualTreeHelper.DescendantsOnly(panel).OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
             if (tb == null || combo == null) return null;
             var idx = combo.SelectedIndex;
             if (idx < 0 || combo.Items == null || idx >= combo.Items.Count) return "permanent";
@@ -340,22 +341,6 @@ namespace Sbui.Core
             }
             int.TryParse(value, out var n);
             return (n, 1);
-        }
-    }
-
-    internal static class VisualTreeExtensions
-    {
-        public static IEnumerable<DependencyObject> Descendants(this DependencyObject root)
-        {
-            if (root == null) yield break;
-            int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
-            for (int i = 0; i < count; i++)
-            {
-                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
-                yield return child;
-                foreach (var d in Descendants(child))
-                    yield return d;
-            }
         }
     }
 }

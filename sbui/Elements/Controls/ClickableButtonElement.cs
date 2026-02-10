@@ -43,7 +43,7 @@ namespace Sbui.Elements
                     if (brush != null) btn.Background = brush;
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex) { context.Log($"Button color parse error: {ex.Message}"); }
             var window = context.Window;
             var callback = Callback;
             btn.Click += (s, e) =>

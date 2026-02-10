@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Sbui.Components;
+using Sbui.Helpers;
 
 namespace Sbui.Elements
 {
@@ -44,7 +45,7 @@ namespace Sbui.Elements
             {
                 Orientation = Orientation.Vertical,
                 Margin = new Thickness(0, 8, 0, 0),
-                Tag = "duration:" + SaveKey
+                Tag = SbuiTags.DurationPrefix + SaveKey
             };
             outer.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
             if (!string.IsNullOrEmpty(Description))
