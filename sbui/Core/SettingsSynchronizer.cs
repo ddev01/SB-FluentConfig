@@ -29,6 +29,8 @@ namespace Sbui.Core
             return settings[key];
         }
 
+        // ── Update single control ──────────────────────────────────────────
+
         /// <summary>
         /// Updates a single control by key with the given value. Use for programmatic updates (e.g. SetValue).
         /// For pair combos, pass the full settings so the other key can be resolved.
@@ -40,34 +42,10 @@ namespace Sbui.Core
             {
                 if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
                 {
-                    if (keyTb == key || (keyTb.StartsWith(SbuiTags.IntegerPrefix) && keyTb.Substring(SbuiTags.IntegerPrefix.Length) == key))
+                    var realKey = SbuiTags.StripPrefix(keyTb);
+                    if (realKey == key)
                     {
-                        if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
-                            tb.Text = value.Value<int>().ToString();
-                        else
-                            tb.Text = value?.ToString() ?? "";
-                        return;
-                    }
-                    if (keyTb.StartsWith(SbuiTags.DoublePrefix) && keyTb.Substring(SbuiTags.DoublePrefix.Length) == key)
-                    {
-                        if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
-                            tb.Text = InputValidation.FormatDouble(value.Value<double>());
-                        else
-                            tb.Text = value?.ToString() ?? "";
-                        return;
-                    }
-                    if (keyTb.StartsWith(SbuiTags.FloatPrefix) && keyTb.Substring(SbuiTags.FloatPrefix.Length) == key)
-                    {
-                        if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
-                            tb.Text = InputValidation.FormatFloat(value.Value<float>());
-                        else
-                            tb.Text = value?.ToString() ?? "";
-                        return;
-                    }
-                    if (keyTb.StartsWith(SbuiTags.ColorPrefix) && keyTb.Substring(SbuiTags.ColorPrefix.Length) == key)
-                    {
-                        var val = value?.ToString() ?? "";
-                        tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
+                        UpdateTextBox(tb, keyTb, value);
                         return;
                     }
                 }
@@ -109,8 +87,41 @@ namespace Sbui.Core
             }
         }
 
+        private static void UpdateTextBox(System.Windows.Controls.TextBox tb, string tag, JToken value)
+        {
+            if (tag.StartsWith(SbuiTags.DoublePrefix))
+            {
+                if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
+                    tb.Text = InputValidation.FormatDouble(value.Value<double>());
+                else
+                    tb.Text = value?.ToString() ?? "";
+            }
+            else if (tag.StartsWith(SbuiTags.FloatPrefix))
+            {
+                if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
+                    tb.Text = InputValidation.FormatFloat(value.Value<float>());
+                else
+                    tb.Text = value?.ToString() ?? "";
+            }
+            else if (tag.StartsWith(SbuiTags.ColorPrefix))
+            {
+                var val = value?.ToString() ?? "";
+                tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
+            }
+            else
+            {
+                // Plain text or integer-prefixed
+                if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
+                    tb.Text = value.Value<int>().ToString();
+                else
+                    tb.Text = value?.ToString() ?? "";
+            }
+        }
+
+        // ── Load settings into controls ────────────────────────────────────
+
         /// <summary>
-        /// Registry-based load: iterates registered controls instead of walking the visual tree. Faster when many controls.
+        /// Registry-based load: iterates registered controls instead of walking the visual tree.
         /// </summary>
         public void LoadSettingsIntoControls(ControlRegistry registry, JObject settings)
         {
@@ -118,221 +129,88 @@ namespace Sbui.Core
 
             foreach (var kv in registry.GetAllRegistered())
             {
-                var key = kv.Key;
+                var registryKey = kv.Key;
                 var control = kv.Value;
 
-                if (control is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
+                if (control is System.Windows.Controls.TextBox tb && tb.Tag is string tbTag)
                 {
-                    if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
-                        if (k != key) continue;
-                        var val = GetValue(settings, key);
-                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                            tb.Text = val.Value<int>().ToString();
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.DoublePrefix.Length);
-                        if (k != key) continue;
-                        var val = GetValue(settings, key);
-                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                            tb.Text = InputValidation.FormatDouble(val.Value<double>());
-                        else
-                            tb.Text = val != null ? val.ToString() : "";
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.FloatPrefix.Length);
-                        if (k != key) continue;
-                        var val = GetValue(settings, key);
-                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                            tb.Text = InputValidation.FormatFloat(val.Value<float>());
-                        else
-                            tb.Text = val != null ? val.ToString() : "";
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.ColorPrefix.Length);
-                        if (k != key) continue;
-                        var val = GetValue(settings, key)?.ToString() ?? "";
-                        tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
-                    }
-                    else
-                    {
-                        if (keyTb != key) continue;
-                        var val = GetValue(settings, key);
-                        tb.Text = val != null ? val.ToString() : "";
-                    }
+                    var realKey = SbuiTags.StripPrefix(tbTag);
+                    if (realKey != registryKey) continue;
+                    LoadTextBox(tb, tbTag, realKey, settings);
                 }
                 else if (control is System.Windows.Controls.PasswordBox pb)
                 {
-                    if (pb.Tag is string keyPb && keyPb != key) continue;
-                    var val = GetValue(settings, key);
-                    pb.Password = val != null ? val.ToString() : "";
+                    if (pb.Tag is string pbTag && pbTag != registryKey) continue;
+                    pb.Password = GetValue(settings, registryKey)?.ToString() ?? "";
                 }
-                else if (control is ToggleSwitch ts && ts.Tag is string keyTs && keyTs == key)
+                else if (control is ToggleSwitch ts && ts.Tag is string tsTag && tsTag == registryKey)
                 {
-                    var val = GetValue(settings, key);
-                    ts.IsChecked = GetBoolValue(val);
+                    ts.IsChecked = GetBoolValue(GetValue(settings, registryKey));
                 }
-                else if (control is System.Windows.Controls.Slider sl && sl.Tag is string keySl && keySl == key)
+                else if (control is System.Windows.Controls.Slider sl && sl.Tag is string slTag && slTag == registryKey)
                 {
-                    var val = GetValue(settings, key);
+                    var val = GetValue(settings, registryKey);
                     if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                         sl.Value = GetDoubleValue(val);
                 }
-                else if (control is System.Windows.Controls.ComboBox combo && combo.Tag is string keyCombo)
+                else if (control is System.Windows.Controls.ComboBox combo && combo.Tag is string comboTag)
                 {
-                    if (keyCombo.StartsWith(SbuiTags.PairPrefix))
-                    {
-                        var parts = keyCombo.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
-                        if (parts.Length == 2 && (parts[0] == key || parts[1] == key))
-                            SetComboBoxPairValue(combo, GetValue(settings, parts[0]), GetValue(settings, parts[1]));
-                    }
-                    else if (keyCombo == key)
-                    {
-                        var val = GetValue(settings, key);
-                        SetComboBoxValue(combo, val);
-                    }
+                    LoadComboBox(combo, comboTag, registryKey, settings);
                 }
-                else if (control is StackPanel sp && sp.Tag is string tag)
+                else if (control is StackPanel sp && sp.Tag is string spTag)
                 {
-                    if (tag.StartsWith(SbuiTags.DynamicPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.DynamicPrefix.Length);
-                        if (k != key) continue;
-                        LoadDynamicTextboxes(sp, GetValue(settings, key));
-                    }
-                    else if (tag.StartsWith(SbuiTags.PillPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.PillPrefix.Length);
-                        if (k != key) continue;
-                        LoadPills(sp, GetValue(settings, key));
-                    }
-                    else if (tag.StartsWith(SbuiTags.DurationPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.DurationPrefix.Length);
-                        if (k != key) continue;
-                        ControlExtractionHelper.LoadDuration(sp, GetValue(settings, key)?.ToString() ?? "permanent");
-                    }
-                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.CompetingPrefix.Length);
-                        if (k != key) continue;
-                        LoadCompetingIndices(sp, GetValue(settings, key));
-                    }
+                    var realKey = SbuiTags.StripPrefix(spTag);
+                    if (realKey != registryKey) continue;
+                    LoadStackPanel(sp, spTag, realKey, settings);
                 }
             }
         }
 
+        /// <summary>
+        /// Visual-tree-based load: walks all descendants of root.
+        /// </summary>
         public void LoadSettingsIntoControls(DependencyObject root, JObject settings)
         {
             if (root == null || settings == null) return;
 
             foreach (var child in VisualTreeHelper.Descendants(root))
             {
-                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
+                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string tbTag)
                 {
-                    if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
-                        var val = GetValue(settings, key);
-                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                            tb.Text = val.Value<int>().ToString();
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.DoublePrefix.Length);
-                        var val = GetValue(settings, key);
-                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                            tb.Text = InputValidation.FormatDouble(val.Value<double>());
-                        else
-                            tb.Text = val != null ? val.ToString() : "";
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.FloatPrefix.Length);
-                        var val = GetValue(settings, key);
-                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
-                            tb.Text = InputValidation.FormatFloat(val.Value<float>());
-                        else
-                            tb.Text = val != null ? val.ToString() : "";
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.ColorPrefix.Length);
-                        var val = GetValue(settings, key)?.ToString() ?? "";
-                        tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.CompetingPrefix))
-                    {
-                        ; // Handled by parent StackPanel with CompetingPrefix
-                    }
-                    else
-                    {
-                        var val = GetValue(settings, keyTb);
-                        tb.Text = val != null ? val.ToString() : "";
-                    }
+                    if (tbTag.StartsWith(SbuiTags.CompetingPrefix)) continue; // handled by parent StackPanel
+                    var key = SbuiTags.StripPrefix(tbTag);
+                    if (key != null) LoadTextBox(tb, tbTag, key, settings);
                 }
-                else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag is string keyPb)
+                else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag is string pbTag)
                 {
-                    var val = GetValue(settings, keyPb);
-                    pb.Password = val != null ? val.ToString() : "";
+                    pb.Password = GetValue(settings, pbTag)?.ToString() ?? "";
                 }
-                else if (child is ToggleSwitch ts && ts.Tag is string keyTs)
+                else if (child is ToggleSwitch ts && ts.Tag is string tsTag)
                 {
-                    var val = GetValue(settings, keyTs);
-                    ts.IsChecked = GetBoolValue(val);
+                    ts.IsChecked = GetBoolValue(GetValue(settings, tsTag));
                 }
-                else if (child is System.Windows.Controls.Slider sl && sl.Tag is string keySl)
+                else if (child is System.Windows.Controls.Slider sl && sl.Tag is string slTag)
                 {
-                    var val = GetValue(settings, keySl);
+                    var val = GetValue(settings, slTag);
                     if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                         sl.Value = GetDoubleValue(val);
                 }
-                else if (child is System.Windows.Controls.ComboBox combo && combo.Tag is string keyCombo)
+                else if (child is System.Windows.Controls.ComboBox combo && combo.Tag is string comboTag)
                 {
-                    if (keyCombo.StartsWith(SbuiTags.PairPrefix))
-                    {
-                        var parts = keyCombo.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
-                        if (parts.Length == 2)
-                            SetComboBoxPairValue(combo, GetValue(settings, parts[0]), GetValue(settings, parts[1]));
-                    }
-                    else
-                    {
-                        var val = GetValue(settings, keyCombo);
-                        SetComboBoxValue(combo, val);
-                    }
+                    LoadComboBox(combo, comboTag, comboTag, settings);
                 }
-                else if (child is StackPanel sp && sp.Tag is string tag)
+                else if (child is StackPanel sp && sp.Tag is string spTag)
                 {
-                    if (tag.StartsWith(SbuiTags.DynamicPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.DynamicPrefix.Length);
-                        LoadDynamicTextboxes(sp, GetValue(settings, key));
-                    }
-                    else if (tag.StartsWith(SbuiTags.PillPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.PillPrefix.Length);
-                        LoadPills(sp, GetValue(settings, key));
-                    }
-                    else if (tag.StartsWith(SbuiTags.DurationPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.DurationPrefix.Length);
-                        ControlExtractionHelper.LoadDuration(sp, GetValue(settings, key)?.ToString() ?? "permanent");
-                    }
-                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.CompetingPrefix.Length);
-                        LoadCompetingIndices(sp, GetValue(settings, key));
-                    }
+                    var key = SbuiTags.StripPrefix(spTag);
+                    if (key != null) LoadStackPanel(sp, spTag, key, settings);
                 }
             }
         }
 
+        // ── Extract settings from controls ─────────────────────────────────
+
         /// <summary>
-        /// Registry-based extract: iterates registered controls instead of walking the visual tree. Faster when many controls.
+        /// Registry-based extract: iterates registered controls instead of walking the visual tree.
         /// </summary>
         public JObject ExtractSettingsFromControls(ControlRegistry registry)
         {
@@ -343,210 +221,220 @@ namespace Sbui.Core
 
             foreach (var kv in registry.GetAllRegistered())
             {
-                var key = kv.Key;
+                var registryKey = kv.Key;
                 var control = kv.Value;
 
-                if (control is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
+                if (control is System.Windows.Controls.TextBox tb && tb.Tag is string tbTag)
                 {
-                    if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
-                        if (k != key) continue;
-                        settings[key] = InputValidation.TryParseInt(tb.Text, out var v, int.MinValue, int.MaxValue) ? v : 0;
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.DoublePrefix.Length);
-                        if (k != key) continue;
-                        settings[key] = InputValidation.TryParseDouble(tb.Text, out var v, double.MinValue, double.MaxValue) ? v : 0.0;
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.FloatPrefix.Length);
-                        if (k != key) continue;
-                        settings[key] = InputValidation.TryParseFloat(tb.Text, out var v, float.MinValue, float.MaxValue) ? v : 0f;
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
-                    {
-                        var k = keyTb.Substring(SbuiTags.ColorPrefix.Length);
-                        if (k != key) continue;
-                        settings[key] = InputValidation.IsValidHexColor(tb.Text ?? "") ? (tb.Text ?? "#000000") : "#000000";
-                    }
-                    else
-                    {
-                        if (keyTb != key) continue;
-                        settings[key] = tb.Text ?? "";
-                    }
+                    var realKey = SbuiTags.StripPrefix(tbTag);
+                    if (realKey != registryKey) continue;
+                    ExtractTextBox(tb, tbTag, realKey, settings);
                 }
-                else if (control is System.Windows.Controls.PasswordBox pb && pb.Tag is string keyPb && keyPb == key)
+                else if (control is System.Windows.Controls.PasswordBox pb && pb.Tag is string pbTag && pbTag == registryKey)
                 {
-                    settings[key] = pb.Password ?? "";
+                    settings[registryKey] = pb.Password ?? "";
                 }
-                else if (control is ToggleSwitch ts && ts.Tag is string keyTs && keyTs == key)
+                else if (control is ToggleSwitch ts && ts.Tag is string tsTag && tsTag == registryKey)
                 {
-                    settings[key] = ts.IsChecked == true;
+                    settings[registryKey] = ts.IsChecked == true;
                 }
-                else if (control is System.Windows.Controls.Slider sl && sl.Tag is string keySl && keySl == key)
+                else if (control is System.Windows.Controls.Slider sl && sl.Tag is string slTag && slTag == registryKey)
                 {
-                    settings[key] = (long)sl.Value;
+                    settings[registryKey] = (long)sl.Value;
                 }
                 else if (control is System.Windows.Controls.ComboBox cb && cb.Tag is string cbTag)
                 {
-                    if (cbTag.StartsWith(SbuiTags.PairPrefix))
-                    {
-                        if (processedPairCombos.Contains(cb)) continue;
-                        processedPairCombos.Add(cb);
-                        var parts = cbTag.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
-                        if (parts.Length == 2 && cb.SelectedItem is DropdownItem item)
-                        {
-                            settings[parts[0]] = item.Display ?? "";
-                            settings[parts[1]] = item.Value ?? "";
-                        }
-                    }
-                    else if (cbTag == key)
-                    {
-                        settings[key] = cb.SelectedIndex >= 0 && cb.Items != null && cb.SelectedIndex < cb.Items.Count ? cb.SelectedIndex : 0;
-                    }
+                    ExtractComboBox(cb, cbTag, registryKey, settings, processedPairCombos);
                 }
-                else if (control is StackPanel sp && sp.Tag is string tag)
+                else if (control is StackPanel sp && sp.Tag is string spTag)
                 {
-                    if (tag.StartsWith(SbuiTags.DynamicPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.DynamicPrefix.Length);
-                        if (k != key) continue;
-                        var arr = ExtractDynamicTextboxes(sp);
-                        if (arr != null)
-                            settings[key] = arr;
-                    }
-                    else if (tag.StartsWith(SbuiTags.PillPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.PillPrefix.Length);
-                        if (k != key) continue;
-                        var arr = ExtractPills(sp);
-                        if (arr != null)
-                            settings[key] = arr;
-                    }
-                    else if (tag.StartsWith(SbuiTags.DurationPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.DurationPrefix.Length);
-                        if (k != key) continue;
-                        var val = ControlExtractionHelper.ExtractDuration(sp);
-                        if (val != null)
-                            settings[key] = val;
-                    }
-                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
-                    {
-                        var k = tag.Substring(SbuiTags.CompetingPrefix.Length);
-                        if (k != key) continue;
-                        var arr = ExtractCompetingIndices(sp);
-                        if (arr != null)
-                            settings[key] = arr;
-                    }
+                    var realKey = SbuiTags.StripPrefix(spTag);
+                    if (realKey != registryKey) continue;
+                    ExtractStackPanel(sp, spTag, realKey, settings);
                 }
             }
             return settings;
         }
 
+        /// <summary>
+        /// Visual-tree-based extract: walks all descendants of root.
+        /// </summary>
         public JObject ExtractSettingsFromControls(DependencyObject root)
         {
             if (root == null) return new JObject();
 
             var settings = new JObject();
+            var processedPairCombos = new HashSet<System.Windows.Controls.ComboBox>();
+
             foreach (var child in VisualTreeHelper.Descendants(root))
             {
-                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string keyTb)
+                if (child is System.Windows.Controls.TextBox tb && tb.Tag is string tbTag)
                 {
-                    if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
+                    // CompetingPrefix TextBoxes store a JSON array directly
+                    if (tbTag.StartsWith(SbuiTags.CompetingPrefix))
                     {
-                        var key = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
-                        settings[key] = InputValidation.TryParseInt(tb.Text, out var v, int.MinValue, int.MaxValue) ? v : 0;
+                        ExtractCompetingTextBox(tb, tbTag.Substring(SbuiTags.CompetingPrefix.Length), settings);
+                        continue;
                     }
-                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.DoublePrefix.Length);
-                        settings[key] = InputValidation.TryParseDouble(tb.Text, out var v, double.MinValue, double.MaxValue) ? v : 0.0;
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.FloatPrefix.Length);
-                        settings[key] = InputValidation.TryParseFloat(tb.Text, out var v, float.MinValue, float.MaxValue) ? v : 0f;
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.ColorPrefix.Length);
-                        settings[key] = InputValidation.IsValidHexColor(tb.Text ?? "") ? (tb.Text ?? "#000000") : "#000000";
-                    }
-                    else if (keyTb.StartsWith(SbuiTags.CompetingPrefix))
-                    {
-                        var key = keyTb.Substring(SbuiTags.CompetingPrefix.Length);
-                        try
-                        {
-                            var parsed = JToken.Parse(tb.Text ?? "[]");
-                            settings[key] = parsed is JArray a ? a : new JArray();
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"[Sbui] SettingsSynchronizer: failed to parse competing prefix for key '{key}': {ex.Message}");
-                            settings[key] = new JArray();
-                        }
-                    }
-                    else
-                        settings[keyTb] = tb.Text ?? "";
+                    var key = SbuiTags.StripPrefix(tbTag);
+                    if (key != null) ExtractTextBox(tb, tbTag, key, settings);
                 }
                 else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag != null)
+                {
                     settings[pb.Tag.ToString()] = pb.Password ?? "";
+                }
                 else if (child is ToggleSwitch ts && ts.Tag != null)
+                {
                     settings[ts.Tag.ToString()] = ts.IsChecked == true;
+                }
                 else if (child is System.Windows.Controls.Slider sl && sl.Tag != null)
+                {
                     settings[sl.Tag.ToString()] = (long)sl.Value;
+                }
                 else if (child is System.Windows.Controls.ComboBox cb && cb.Tag is string cbTag)
                 {
-                    if (cbTag.StartsWith(SbuiTags.PairPrefix))
-                    {
-                        var parts = cbTag.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
-                        if (parts.Length == 2 && cb.SelectedItem is DropdownItem item)
-                        {
-                            settings[parts[0]] = item.Display ?? "";
-                            settings[parts[1]] = item.Value ?? "";
-                        }
-                    }
-                    else
-                        settings[cbTag] = cb.SelectedIndex >= 0 && cb.Items != null && cb.SelectedIndex < cb.Items.Count ? cb.SelectedIndex : 0;
+                    ExtractComboBox(cb, cbTag, cbTag, settings, processedPairCombos);
                 }
-                else if (child is StackPanel sp && sp.Tag is string tag)
+                else if (child is StackPanel sp && sp.Tag is string spTag)
                 {
-                    if (tag.StartsWith(SbuiTags.DynamicPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.DynamicPrefix.Length);
-                        var arr = ExtractDynamicTextboxes(sp);
-                        if (arr != null)
-                            settings[key] = arr;
-                    }
-                    else if (tag.StartsWith(SbuiTags.PillPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.PillPrefix.Length);
-                        var arr = ExtractPills(sp);
-                        if (arr != null)
-                            settings[key] = arr;
-                    }
-                    else if (tag.StartsWith(SbuiTags.DurationPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.DurationPrefix.Length);
-                        var val = ControlExtractionHelper.ExtractDuration(sp);
-                        if (val != null)
-                            settings[key] = val;
-                    }
-                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
-                    {
-                        var key = tag.Substring(SbuiTags.CompetingPrefix.Length);
-                        var arr = ExtractCompetingIndices(sp);
-                        if (arr != null)
-                            settings[key] = arr;
-                    }
+                    var key = SbuiTags.StripPrefix(spTag);
+                    if (key != null) ExtractStackPanel(sp, spTag, key, settings);
                 }
             }
             return settings;
         }
+
+        // ── Shared dispatch: load ──────────────────────────────────────────
+
+        private void LoadTextBox(System.Windows.Controls.TextBox tb, string tag, string key, JObject settings)
+        {
+            var val = GetValue(settings, key);
+            if (tag.StartsWith(SbuiTags.IntegerPrefix))
+            {
+                if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                    tb.Text = val.Value<int>().ToString();
+            }
+            else if (tag.StartsWith(SbuiTags.DoublePrefix))
+            {
+                if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                    tb.Text = InputValidation.FormatDouble(val.Value<double>());
+                else
+                    tb.Text = val != null ? val.ToString() : "";
+            }
+            else if (tag.StartsWith(SbuiTags.FloatPrefix))
+            {
+                if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                    tb.Text = InputValidation.FormatFloat(val.Value<float>());
+                else
+                    tb.Text = val != null ? val.ToString() : "";
+            }
+            else if (tag.StartsWith(SbuiTags.ColorPrefix))
+            {
+                var v = val?.ToString() ?? "";
+                tb.Text = InputValidation.IsValidHexColor(v) ? v : "#000000";
+            }
+            else
+            {
+                tb.Text = val != null ? val.ToString() : "";
+            }
+        }
+
+        private void LoadComboBox(System.Windows.Controls.ComboBox combo, string tag, string key, JObject settings)
+        {
+            if (tag.StartsWith(SbuiTags.PairPrefix))
+            {
+                var parts = tag.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
+                if (parts.Length == 2)
+                    SetComboBoxPairValue(combo, GetValue(settings, parts[0]), GetValue(settings, parts[1]));
+            }
+            else if (tag == key)
+            {
+                SetComboBoxValue(combo, GetValue(settings, key));
+            }
+        }
+
+        private void LoadStackPanel(StackPanel sp, string tag, string key, JObject settings)
+        {
+            if (tag.StartsWith(SbuiTags.DynamicPrefix))
+                LoadDynamicTextboxes(sp, GetValue(settings, key));
+            else if (tag.StartsWith(SbuiTags.PillPrefix))
+                LoadPills(sp, GetValue(settings, key));
+            else if (tag.StartsWith(SbuiTags.DurationPrefix))
+                ControlExtractionHelper.LoadDuration(sp, GetValue(settings, key)?.ToString() ?? "permanent");
+            else if (tag.StartsWith(SbuiTags.CompetingPrefix))
+                LoadCompetingIndices(sp, GetValue(settings, key));
+        }
+
+        // ── Shared dispatch: extract ───────────────────────────────────────
+
+        private static void ExtractTextBox(System.Windows.Controls.TextBox tb, string tag, string key, JObject settings)
+        {
+            if (tag.StartsWith(SbuiTags.IntegerPrefix))
+                settings[key] = InputValidation.TryParseInt(tb.Text, out var iv, int.MinValue, int.MaxValue) ? iv : 0;
+            else if (tag.StartsWith(SbuiTags.DoublePrefix))
+                settings[key] = InputValidation.TryParseDouble(tb.Text, out var dv, double.MinValue, double.MaxValue) ? dv : 0.0;
+            else if (tag.StartsWith(SbuiTags.FloatPrefix))
+                settings[key] = InputValidation.TryParseFloat(tb.Text, out var fv, float.MinValue, float.MaxValue) ? fv : 0f;
+            else if (tag.StartsWith(SbuiTags.ColorPrefix))
+                settings[key] = InputValidation.IsValidHexColor(tb.Text ?? "") ? (tb.Text ?? "#000000") : "#000000";
+            else
+                settings[key] = tb.Text ?? "";
+        }
+
+        private static void ExtractComboBox(System.Windows.Controls.ComboBox cb, string tag, string key, JObject settings,
+            HashSet<System.Windows.Controls.ComboBox> processedPairCombos)
+        {
+            if (tag.StartsWith(SbuiTags.PairPrefix))
+            {
+                if (processedPairCombos.Contains(cb)) return;
+                processedPairCombos.Add(cb);
+                var parts = tag.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
+                if (parts.Length == 2 && cb.SelectedItem is DropdownItem item)
+                {
+                    settings[parts[0]] = item.Display ?? "";
+                    settings[parts[1]] = item.Value ?? "";
+                }
+            }
+            else
+            {
+                settings[key] = cb.SelectedIndex >= 0 && cb.Items != null && cb.SelectedIndex < cb.Items.Count ? cb.SelectedIndex : 0;
+            }
+        }
+
+        private static void ExtractStackPanel(StackPanel sp, string tag, string key, JObject settings)
+        {
+            JToken value = null;
+            if (tag.StartsWith(SbuiTags.DynamicPrefix))
+                value = ExtractDynamicTextboxes(sp);
+            else if (tag.StartsWith(SbuiTags.PillPrefix))
+                value = ExtractPills(sp);
+            else if (tag.StartsWith(SbuiTags.DurationPrefix))
+                value = ControlExtractionHelper.ExtractDuration(sp);
+            else if (tag.StartsWith(SbuiTags.CompetingPrefix))
+                value = ExtractCompetingIndices(sp);
+
+            if (value != null)
+                settings[key] = value;
+        }
+
+        /// <summary>
+        /// Tree-walk only: CompetingPrefix TextBoxes store a JSON array directly in their Text.
+        /// </summary>
+        private static void ExtractCompetingTextBox(System.Windows.Controls.TextBox tb, string key, JObject settings)
+        {
+            try
+            {
+                var parsed = JToken.Parse(tb.Text ?? "[]");
+                settings[key] = parsed is JArray a ? a : new JArray();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sbui] SettingsSynchronizer: failed to parse competing prefix for key '{key}': {ex.Message}");
+                settings[key] = new JArray();
+            }
+        }
+
+        // ── Value helpers ──────────────────────────────────────────────────
 
         private static bool GetBoolValue(JToken token)
         {
@@ -609,6 +497,8 @@ namespace Sbui.Core
                 }
             }
         }
+
+        // ── Dynamic / Pill / Competing helpers ─────────────────────────────
 
         private static void LoadDynamicTextboxes(StackPanel sp, JToken token)
         {
@@ -730,6 +620,5 @@ namespace Sbui.Core
                 }
             }
         }
-
     }
 }
