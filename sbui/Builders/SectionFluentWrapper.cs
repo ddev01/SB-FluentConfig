@@ -24,12 +24,9 @@ namespace Sbui
         public SectionFluentWrapper IntegerInput(string label, string key) => Control(s => s.IntegerInput(label, key));
         public SectionFluentWrapper DurationInput(string label, string key) => Control(s => s.DurationInput(label, key));
         public SectionFluentWrapper Filepath(string label, string key) => Control(s => s.Filepath(label, key));
-        public SectionFluentWrapper ResponseBox(string label, string key) => Control(s => s.ResponseBox(label, key));
         public SectionFluentWrapper DecimalStepper(string label, string key) => Control(s => s.DecimalStepper(label, key));
         public SectionFluentWrapper ColorPicker(string label, string key) => Control(s => s.ColorPicker(label, key));
-        public SectionFluentWrapper SliderWithToggle(string label, string key) => Control(s => s.SliderWithToggle(label, key));
         public SectionFluentWrapper Dropdown(string label, string key) => Control(s => s.Dropdown(label, key));
-        public SectionFluentWrapper CompetingToggles(string label, string key) => Control(s => s.CompetingToggles(label, key));
         public SectionFluentWrapper DynamicTextboxes(string label, string key) => Control(s => s.DynamicTextboxes(label, key));
         public SectionFluentWrapper PillInput(string label, string key) => Control(s => s.PillInput(label, key));
         public SectionFluentWrapper WithVisibility(string toggleKey, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(toggleKey, build); return Next(); }

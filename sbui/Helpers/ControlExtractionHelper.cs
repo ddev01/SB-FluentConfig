@@ -17,8 +17,18 @@ namespace Sbui.Helpers
         {
             if (outer == null) return null;
             foreach (var c in outer.Children)
-                if (c is StackPanel inner && inner.Children.OfType<System.Windows.Controls.TextBox>().Any())
-                    return inner;
+            {
+                if (c is StackPanel inner)
+                {
+                    foreach (var ch in inner.Children)
+                    {
+                        if (ch is System.Windows.Controls.TextBox)
+                            return inner;
+                        if (ch is Grid g && g.Children.OfType<System.Windows.Controls.TextBox>().Any())
+                            return inner;
+                    }
+                }
+            }
             return null;
         }
 

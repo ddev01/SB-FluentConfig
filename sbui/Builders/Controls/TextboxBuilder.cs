@@ -13,6 +13,7 @@ namespace Sbui
         private string _hint;
         private string _defaultValue;
         private bool _isPassword;
+        private bool _isMultiline;
         private string _showWhenKey;
         private bool _required;
 
@@ -27,6 +28,7 @@ namespace Sbui
         public TextboxBuilder Required() { _required = true; return this; }
 
         public override void Hint(string text) { _hint = text; }
+        public override void Multiline() { _isMultiline = true; }
         public override void Default(string value) { _defaultValue = value; }
         public override void Password() { _isPassword = true; }
         public override void ShowWhen(string key) { _showWhenKey = key; }
@@ -34,7 +36,7 @@ namespace Sbui
         public void Add()
         {
             var fullKey = _strategy.GetFullSaveKey(Key);
-            var el = new TextboxElement(Label, _hint ?? "", _tabName, fullKey, _defaultValue ?? "", _isPassword);
+            var el = new TextboxElement(Label, _hint ?? "", _tabName, fullKey, _defaultValue ?? "", _isPassword, _isMultiline);
             _strategy.Add(el, _showWhenKey);
         }
     }

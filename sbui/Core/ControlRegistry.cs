@@ -113,8 +113,15 @@ namespace Sbui.Core
                 {
                     var list = new List<string>();
                     foreach (var c in listPanel.Children)
+                    {
                         if (c is System.Windows.Controls.TextBox tx)
                             list.Add(tx.Text ?? "");
+                        else if (c is System.Windows.Controls.Grid g)
+                        {
+                            var tb = g.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+                            if (tb != null) list.Add(tb.Text ?? "");
+                        }
+                    }
                     return list.ToArray();
                 }
             }

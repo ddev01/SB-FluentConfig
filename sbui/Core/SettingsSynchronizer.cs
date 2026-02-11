@@ -167,6 +167,12 @@ namespace Sbui.Core
                         if (k != key) continue;
                         ControlExtractionHelper.LoadDuration(sp, GetValue(settings, key)?.ToString() ?? "permanent");
                     }
+                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
+                    {
+                        var k = tag.Substring(SbuiTags.CompetingPrefix.Length);
+                        if (k != key) continue;
+                        LoadCompetingIndices(sp, GetValue(settings, key));
+                    }
                 }
             }
         }
@@ -185,6 +191,10 @@ namespace Sbui.Core
                         var val = GetValue(settings, key);
                         if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                             tb.Text = val.Value<int>().ToString();
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.CompetingPrefix))
+                    {
+                        ; // Handled by parent StackPanel with CompetingPrefix
                     }
                     else
                     {
@@ -238,6 +248,11 @@ namespace Sbui.Core
                     {
                         var key = tag.Substring(SbuiTags.DurationPrefix.Length);
                         ControlExtractionHelper.LoadDuration(sp, GetValue(settings, key)?.ToString() ?? "permanent");
+                    }
+                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
+                    {
+                        var key = tag.Substring(SbuiTags.CompetingPrefix.Length);
+                        LoadCompetingIndices(sp, GetValue(settings, key));
                     }
                 }
             }
@@ -328,6 +343,14 @@ namespace Sbui.Core
                         if (val != null)
                             settings[key] = val;
                     }
+                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
+                    {
+                        var k = tag.Substring(SbuiTags.CompetingPrefix.Length);
+                        if (k != key) continue;
+                        var arr = ExtractCompetingIndices(sp);
+                        if (arr != null)
+                            settings[key] = arr;
+                    }
                 }
             }
             return settings;
@@ -346,6 +369,16 @@ namespace Sbui.Core
                     {
                         var key = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
                         settings[key] = int.TryParse(tb.Text, out var v) ? v : 0;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.CompetingPrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.CompetingPrefix.Length);
+                        try
+                        {
+                            var parsed = JToken.Parse(tb.Text ?? "[]");
+                            settings[key] = parsed is JArray a ? a : new JArray();
+                        }
+                        catch { settings[key] = new JArray(); }
                     }
                     else
                         settings[keyTb] = tb.Text ?? "";
@@ -392,6 +425,13 @@ namespace Sbui.Core
                         var val = ControlExtractionHelper.ExtractDuration(sp);
                         if (val != null)
                             settings[key] = val;
+                    }
+                    else if (tag.StartsWith(SbuiTags.CompetingPrefix))
+                    {
+                        var key = tag.Substring(SbuiTags.CompetingPrefix.Length);
+                        var arr = ExtractCompetingIndices(sp);
+                        if (arr != null)
+                            settings[key] = arr;
                     }
                 }
             }
@@ -467,11 +507,27 @@ namespace Sbui.Core
                 var listPanel = ControlExtractionHelper.GetDynamicListPanel(sp);
                 if (listPanel != null)
                 {
-                    var boxes = listPanel.Children.OfType<System.Windows.Controls.TextBox>().ToList();
+                    var boxes = GetDynamicTextboxList(listPanel);
                     for (int i = 0; i < boxes.Count && i < arr.Count; i++)
                         boxes[i].Text = arr[i]?.ToString() ?? "";
                 }
             }
+        }
+
+        private static List<System.Windows.Controls.TextBox> GetDynamicTextboxList(StackPanel listPanel)
+        {
+            var list = new List<System.Windows.Controls.TextBox>();
+            foreach (var c in listPanel.Children)
+            {
+                if (c is System.Windows.Controls.TextBox t)
+                    list.Add(t);
+                else if (c is Grid g)
+                {
+                    var tb = g.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+                    if (tb != null) list.Add(tb);
+                }
+            }
+            return list;
         }
 
         private static JArray ExtractDynamicTextboxes(StackPanel sp)
@@ -480,8 +536,15 @@ namespace Sbui.Core
             if (listPanel == null) return null;
             var arr = new JArray();
             foreach (var c in listPanel.Children)
+            {
                 if (c is System.Windows.Controls.TextBox t)
                     arr.Add(t.Text ?? "");
+                else if (c is Grid g)
+                {
+                    var tb = g.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+                    if (tb != null) arr.Add(tb.Text ?? "");
+                }
+            }
             return arr;
         }
 
@@ -508,6 +571,53 @@ namespace Sbui.Core
                 if (c is Border b && b.Tag is string tag)
                     arr.Add(tag);
             return arr;
+        }
+
+        private static JArray ExtractCompetingIndices(StackPanel sp)
+        {
+            var tb = sp.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            if (tb == null || string.IsNullOrEmpty(tb.Text)) return new JArray();
+            try
+            {
+                var parsed = JToken.Parse(tb.Text);
+                return parsed as JArray ?? new JArray();
+            }
+            catch
+            {
+                return new JArray();
+            }
+        }
+
+        private static void LoadCompetingIndices(StackPanel sp, JToken token)
+        {
+            var tb = sp.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
+            if (tb == null) return;
+            var indices = new List<int>();
+            if (token is JArray arr)
+            {
+                foreach (var item in arr)
+                {
+                    if (item != null && (item.Type == JTokenType.Integer || item.Type == JTokenType.Float))
+                        indices.Add(item.Value<int>());
+                }
+            }
+            tb.Text = "[" + string.Join(",", indices) + "]";
+            if (sp.Tag is string tag && tag.StartsWith(SbuiTags.CompetingPrefix))
+            {
+                var saveKey = tag.Substring(SbuiTags.CompetingPrefix.Length);
+                var prefix = saveKey + "_opt_";
+                if (sp.Parent is StackPanel parent)
+                {
+                    foreach (var child in parent.Children)
+                    {
+                        if (child is ToggleSwitch ts && ts.Tag is string t && t.StartsWith(prefix))
+                        {
+                            if (int.TryParse(t.Substring(prefix.Length), out var i))
+                                ts.IsChecked = indices.Contains(i);
+                        }
+                    }
+                }
+            }
         }
 
     }

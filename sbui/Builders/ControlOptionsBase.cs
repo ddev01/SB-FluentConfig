@@ -19,12 +19,16 @@ namespace Sbui
         public virtual void Range(double min, double max) { }
         public virtual void Step(double value) { }
         public virtual void Password() { }
+        public virtual void Multiline() { }
         public virtual void ShowWhen(string key) { }
         public virtual void Options(string[] options) { }
         public virtual void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions) { }
         public virtual void WithPairValue(string valueKey) { }
         public virtual void DefaultByValue(string value) { }
         public virtual void DefaultIndex(int index) { }
+        public virtual void WithCompeting(string[] options) { }
+        public virtual void MaxSelected(int n) { }
+        public virtual void DefaultIndices(int[] indices) { }
         public virtual void Refresh(Func<string[]> callback) { }
         public virtual void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback) { }
         public virtual void Preset(string[] values) { }

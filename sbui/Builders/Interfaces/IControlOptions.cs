@@ -20,12 +20,16 @@ namespace Sbui
         void Range(double min, double max);
         void Step(double value);
         void Password();
+        void Multiline();
         void ShowWhen(string key);
         void Options(string[] options);
         void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions);
         void WithPairValue(string valueKey);
         void DefaultByValue(string value);
         void DefaultIndex(int index);
+        void WithCompeting(string[] options);
+        void MaxSelected(int n);
+        void DefaultIndices(int[] indices);
         void Refresh(Func<string[]> callback);
         void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback);
         void Preset(string[] values);

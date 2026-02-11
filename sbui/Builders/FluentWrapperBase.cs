@@ -38,12 +38,16 @@ namespace Sbui
         public TWrapper Range(double min, double max) => Option(o => o.Range(min, max));
         public TWrapper Step(double value) => Option(o => o.Step(value));
         public TWrapper Password() => Option(o => o.Password());
+        public TWrapper Multiline() => Option(o => o.Multiline());
         public TWrapper ShowWhen(string key) => Option(o => o.ShowWhen(key));
         public TWrapper Options(string[] options) => Option(o => o.Options(options));
         public TWrapper Options(IEnumerable<(string Value, string Display)> pairOptions) => Option(o => o.OptionsPairs(pairOptions));
         public TWrapper WithPairValue(string valueKey) => Option(o => o.WithPairValue(valueKey));
         public TWrapper DefaultByValue(string value) => Option(o => o.DefaultByValue(value));
         public TWrapper DefaultIndex(int index) => Option(o => o.DefaultIndex(index));
+        public TWrapper WithCompeting(string[] options) => Option(o => o.WithCompeting(options));
+        public TWrapper MaxSelected(int n) => Option(o => o.MaxSelected(n));
+        public TWrapper DefaultIndices(int[] indices) => Option(o => o.DefaultIndices(indices));
         public TWrapper Refresh(Func<string[]> callback) => Option(o => o.Refresh(callback));
         public TWrapper Refresh(Func<IEnumerable<(string Value, string Display)>> callback) => Option(o => o.RefreshPairs(callback));
         public TWrapper Preset(string[] values) => Option(o => o.Preset(values));

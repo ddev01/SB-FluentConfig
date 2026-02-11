@@ -29,7 +29,7 @@ namespace Sbui
         public void Add()
         {
             var fullKey = _strategy.GetFullSaveKey(Key);
-            var el = new DynamicTextboxesWithPresetElement(Label, _hint ?? "", _tabName, fullKey, _presetValues);
+            var el = new DynamicTextboxesElement(Label, _hint ?? "", _tabName, fullKey, _presetValues);
             _strategy.Add(el, _showWhenKey);
         }
     }

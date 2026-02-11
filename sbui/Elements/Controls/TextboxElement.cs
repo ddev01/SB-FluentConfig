@@ -10,8 +10,9 @@ namespace Sbui.Elements
         public string SaveKey { get; set; }
         public string DefaultText { get; set; }
         public bool IsPassword { get; set; }
+        public bool IsMultiline { get; set; }
 
-        public TextboxElement(string title, string description, string tabName, string saveKey, string defaultText, bool isPassword, string visibilityKey = null)
+        public TextboxElement(string title, string description, string tabName, string saveKey, string defaultText, bool isPassword, bool isMultiline = false, string visibilityKey = null)
         {
             Title = title;
             Description = description ?? "";
@@ -19,6 +20,7 @@ namespace Sbui.Elements
             SaveKey = saveKey;
             DefaultText = defaultText ?? "";
             IsPassword = isPassword;
+            IsMultiline = isMultiline;
             VisibilityKey = visibilityKey;
         }
 
@@ -37,6 +39,13 @@ namespace Sbui.Elements
                 pb.PasswordChanged += (s, e) => context.MarkDirty();
                 context.Registry.Register(SaveKey, pb);
                 stack.Children.Add(pb);
+            }
+            else if (IsMultiline)
+            {
+                var tb = SbuiComponentFactory.CreateResponseBox(SaveKey, initial);
+                tb.TextChanged += (s, e) => context.MarkDirty();
+                context.Registry.Register(SaveKey, tb);
+                stack.Children.Add(tb);
             }
             else
             {

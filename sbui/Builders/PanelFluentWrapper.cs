@@ -24,12 +24,9 @@ namespace Sbui
         public PanelFluentWrapper IntegerInput(string label, string key) => Control(p => p.IntegerInput(label, key));
         public PanelFluentWrapper DurationInput(string label, string key) => Control(p => p.DurationInput(label, key));
         public PanelFluentWrapper Filepath(string label, string key) => Control(p => p.Filepath(label, key));
-        public PanelFluentWrapper ResponseBox(string label, string key) => Control(p => p.ResponseBox(label, key));
         public PanelFluentWrapper DecimalStepper(string label, string key) => Control(p => p.DecimalStepper(label, key));
         public PanelFluentWrapper ColorPicker(string label, string key) => Control(p => p.ColorPicker(label, key));
-        public PanelFluentWrapper SliderWithToggle(string label, string key) => Control(p => p.SliderWithToggle(label, key));
         public PanelFluentWrapper Dropdown(string label, string key) => Control(p => p.Dropdown(label, key));
-        public PanelFluentWrapper CompetingToggles(string label, string key) => Control(p => p.CompetingToggles(label, key));
         public PanelFluentWrapper DynamicTextboxes(string label, string key) => Control(p => p.DynamicTextboxes(label, key));
         public PanelFluentWrapper PillInput(string label, string key) => Control(p => p.PillInput(label, key));
         public PanelFluentWrapper WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(toggleKey, inverted, build); return Next(); }

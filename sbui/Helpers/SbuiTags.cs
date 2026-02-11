@@ -6,6 +6,7 @@ namespace Sbui.Helpers
     public static class SbuiTags
     {
         public const string IntegerPrefix = "integer:";
+        public const string CompetingPrefix = "competing:";
         public const string DynamicPrefix = "dynamic:";
         public const string PillPrefix = "pill:";
         public const string DurationPrefix = "duration:";
