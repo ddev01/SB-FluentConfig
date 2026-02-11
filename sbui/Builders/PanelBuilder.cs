@@ -7,7 +7,7 @@ namespace Sbui
     /// <summary>
     /// Fluent builder for adding controls to a specific panel (e.g. inside PillInput or WithVisibility callbacks).
     /// </summary>
-    public class PanelBuilder : ControlHostBuilder
+    public class PanelBuilder : ControlHostBuilder<PanelFluentWrapper>
     {
         internal readonly Sbui Ui;
         internal readonly Panel Panel;
@@ -27,6 +27,8 @@ namespace Sbui
             return new ControlBuilderCore(strategy, tabName ?? "", ui);
         }
 
+        protected override PanelFluentWrapper WrapControl(IFlushableControlBuilder b) => new PanelFluentWrapper(this, b);
+
         public PanelBuilder Title(string text)
         {
             AddTitle(text, TabName);
@@ -44,20 +46,6 @@ namespace Sbui
             AddSeparator(TabName);
             return this;
         }
-
-        public PanelFluentWrapper Toggle(string label, string key) => CreateControl(_core.CreateToggle(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper Textbox(string label, string key) => CreateControl(_core.CreateTextbox(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper Slider(string label, string key) => CreateControl(_core.CreateSlider(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper Button(string label) => CreateControl(_core.CreateButton(label), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper Input(string label, string key) => CreateControl(_core.CreateInput(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper IntegerInput(string label, string key) => CreateControl(_core.CreateIntegerInput(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper DurationInput(string label, string key) => CreateControl(_core.CreateDurationInput(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper Filepath(string label, string key) => CreateControl(_core.CreateFilepath(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper NumberInput(string label, string key) => CreateControl(_core.CreateNumberInput(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper ColorPicker(string label, string key) => CreateControl(_core.CreateColorPicker(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper Dropdown(string label, string key) => CreateControl(_core.CreateDropdown(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper DynamicTextboxes(string label, string key) => CreateControl(_core.CreateDynamicTextboxes(label, key), b => new PanelFluentWrapper(this, b));
-        public PanelFluentWrapper PillInput(string label, string key) => CreateControl(_core.CreatePillInput(label, key), b => new PanelFluentWrapper(this, b));
 
         public PanelBuilder WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build)
         {

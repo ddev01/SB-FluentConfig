@@ -8,7 +8,9 @@ namespace Sbui
     /// Base for PanelFluentWrapper and SectionFluentWrapper. Forwards option methods to IControlOptions;
     /// control methods (Toggle, Textbox, etc.) delegate to the host builder via Control().
     /// </summary>
-    public abstract class FluentWrapperBase<TWrapper, THost> where TWrapper : FluentWrapperBase<TWrapper, THost>
+    public abstract class FluentWrapperBase<TWrapper, THost>
+        where TWrapper : FluentWrapperBase<TWrapper, THost>
+        where THost : ControlHostBuilder<TWrapper>
     {
         protected readonly THost Host;
         protected readonly IControlOptions PendingOptions;
@@ -28,6 +30,8 @@ namespace Sbui
 
         /// <summary>Delegate a control call to the host builder.</summary>
         protected TWrapper Control(Func<THost, TWrapper> invoke) => invoke(Host);
+
+        // ── Option methods (forwarded to pending builder's IControlOptions) ──
 
         public TWrapper Hint(string text) => Option(o => o.Hint(text));
         public TWrapper Default(bool value) => Option(o => o.Default(value));
@@ -62,5 +66,21 @@ namespace Sbui
         public TWrapper OnPillAdded(Action<string, StackPanel, CallbackContext> build) => Option(o => o.OnPillAdded(build));
         public TWrapper OnPillRemoved(Action<string, StackPanel, CallbackContext> build) => Option(o => o.OnPillRemoved(build));
         public TWrapper Type(string value) => Option(o => o.Type(value));
+
+        // ── Control creation methods (shared across all wrappers) ──
+
+        public TWrapper Toggle(string label, string key) => Control(h => h.Toggle(label, key));
+        public TWrapper Textbox(string label, string key) => Control(h => h.Textbox(label, key));
+        public TWrapper Slider(string label, string key) => Control(h => h.Slider(label, key));
+        public TWrapper Button(string label) => Control(h => h.Button(label));
+        public TWrapper Input(string label, string key) => Control(h => h.Input(label, key));
+        public TWrapper IntegerInput(string label, string key) => Control(h => h.IntegerInput(label, key));
+        public TWrapper DurationInput(string label, string key) => Control(h => h.DurationInput(label, key));
+        public TWrapper Filepath(string label, string key) => Control(h => h.Filepath(label, key));
+        public TWrapper NumberInput(string label, string key) => Control(h => h.NumberInput(label, key));
+        public TWrapper ColorPicker(string label, string key) => Control(h => h.ColorPicker(label, key));
+        public TWrapper Dropdown(string label, string key) => Control(h => h.Dropdown(label, key));
+        public TWrapper DynamicTextboxes(string label, string key) => Control(h => h.DynamicTextboxes(label, key));
+        public TWrapper PillInput(string label, string key) => Control(h => h.PillInput(label, key));
     }
 }

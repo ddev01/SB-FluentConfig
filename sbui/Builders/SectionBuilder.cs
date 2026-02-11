@@ -6,7 +6,7 @@ namespace Sbui
     /// <summary>
     /// Fluent builder for a section (tab). Intro, Toggle, Textbox, Slider, Button, Separator, etc.; WithVisibility.
     /// </summary>
-    public class SectionBuilder : ControlHostBuilder
+    public class SectionBuilder : ControlHostBuilder<SectionFluentWrapper>
     {
         private readonly Sbui _ui;
         private readonly string _tabName;
@@ -23,6 +23,8 @@ namespace Sbui
             var strategy = new AddToTabStrategy(ui, tabName ?? "");
             return new ControlBuilderCore(strategy, tabName ?? "", ui);
         }
+
+        protected override SectionFluentWrapper WrapControl(IFlushableControlBuilder b) => new SectionFluentWrapper(this, b);
 
         public SectionBuilder Intro(string text)
         {
@@ -41,20 +43,6 @@ namespace Sbui
             AddSeparator(_tabName);
             return this;
         }
-
-        public SectionFluentWrapper Toggle(string label, string key) => CreateControl(_core.CreateToggle(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper Textbox(string label, string key) => CreateControl(_core.CreateTextbox(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper Slider(string label, string key) => CreateControl(_core.CreateSlider(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper Button(string label) => CreateControl(_core.CreateButton(label), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper Input(string label, string key) => CreateControl(_core.CreateInput(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper IntegerInput(string label, string key) => CreateControl(_core.CreateIntegerInput(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper DurationInput(string label, string key) => CreateControl(_core.CreateDurationInput(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper Filepath(string label, string key) => CreateControl(_core.CreateFilepath(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper NumberInput(string label, string key) => CreateControl(_core.CreateNumberInput(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper ColorPicker(string label, string key) => CreateControl(_core.CreateColorPicker(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper Dropdown(string label, string key) => CreateControl(_core.CreateDropdown(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper DynamicTextboxes(string label, string key) => CreateControl(_core.CreateDynamicTextboxes(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper PillInput(string label, string key) => CreateControl(_core.CreatePillInput(label, key), b => new SectionFluentWrapper(this, b));
 
         public SectionBuilder WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build)
         {
