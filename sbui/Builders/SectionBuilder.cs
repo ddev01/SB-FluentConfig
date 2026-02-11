@@ -49,7 +49,7 @@ namespace Sbui
         public SectionFluentWrapper IntegerInput(string label, string key) => CreateControl(_core.CreateIntegerInput(label, key), b => new SectionFluentWrapper(this, b));
         public SectionFluentWrapper DurationInput(string label, string key) => CreateControl(_core.CreateDurationInput(label, key), b => new SectionFluentWrapper(this, b));
         public SectionFluentWrapper Filepath(string label, string key) => CreateControl(_core.CreateFilepath(label, key), b => new SectionFluentWrapper(this, b));
-        public SectionFluentWrapper DecimalStepper(string label, string key) => CreateControl(_core.CreateDecimalStepper(label, key), b => new SectionFluentWrapper(this, b));
+        public SectionFluentWrapper NumberInput(string label, string key) => CreateControl(_core.CreateNumberInput(label, key), b => new SectionFluentWrapper(this, b));
         public SectionFluentWrapper ColorPicker(string label, string key) => CreateControl(_core.CreateColorPicker(label, key), b => new SectionFluentWrapper(this, b));
         public SectionFluentWrapper Dropdown(string label, string key) => CreateControl(_core.CreateDropdown(label, key), b => new SectionFluentWrapper(this, b));
         public SectionFluentWrapper DynamicTextboxes(string label, string key) => CreateControl(_core.CreateDynamicTextboxes(label, key), b => new SectionFluentWrapper(this, b));

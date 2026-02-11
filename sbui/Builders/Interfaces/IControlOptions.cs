@@ -38,6 +38,7 @@ namespace Sbui
         void Text(string caption);
         void OnClick(Action<UiContext> callback);
         void WithPermanentOption(bool value);
+        void WithStepper(bool value = true);
         void WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build);
         void OnPillAdded(Action<string, StackPanel, CallbackContext> build);
         void OnPillRemoved(Action<string, StackPanel, CallbackContext> build);

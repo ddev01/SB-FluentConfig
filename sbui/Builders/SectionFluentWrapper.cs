@@ -24,7 +24,7 @@ namespace Sbui
         public SectionFluentWrapper IntegerInput(string label, string key) => Control(s => s.IntegerInput(label, key));
         public SectionFluentWrapper DurationInput(string label, string key) => Control(s => s.DurationInput(label, key));
         public SectionFluentWrapper Filepath(string label, string key) => Control(s => s.Filepath(label, key));
-        public SectionFluentWrapper DecimalStepper(string label, string key) => Control(s => s.DecimalStepper(label, key));
+        public SectionFluentWrapper NumberInput(string label, string key) => Control(s => s.NumberInput(label, key));
         public SectionFluentWrapper ColorPicker(string label, string key) => Control(s => s.ColorPicker(label, key));
         public SectionFluentWrapper Dropdown(string label, string key) => Control(s => s.Dropdown(label, key));
         public SectionFluentWrapper DynamicTextboxes(string label, string key) => Control(s => s.DynamicTextboxes(label, key));

@@ -26,7 +26,7 @@ namespace Sbui
         public IntegerInputBuilder CreateIntegerInput(string label, string key) => new IntegerInputBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public DurationInputBuilder CreateDurationInput(string label, string key) => new DurationInputBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public FilepathBuilder CreateFilepath(string label, string key) => new FilepathBuilder(_strategy, _tabName, label ?? "", key ?? "");
-        public DecimalStepperBuilder CreateDecimalStepper(string label, string key) => new DecimalStepperBuilder(_strategy, _tabName, label ?? "", key ?? "");
+        public NumberInputBuilder CreateNumberInput(string label, string key) => new NumberInputBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public ColorPickerBuilder CreateColorPicker(string label, string key) => new ColorPickerBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public DropdownBuilder CreateDropdown(string label, string key) => new DropdownBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public DynamicTextboxesBuilder CreateDynamicTextboxes(string label, string key) => new DynamicTextboxesBuilder(_strategy, _tabName, label ?? "", key ?? "");

@@ -100,7 +100,7 @@
     <Compile Include="Elements\Controls\ClickableButtonElement.cs" />
     <Compile Include="Elements\Controls\ColorPickerElement.cs" />
     <Compile Include="Elements\Controls\CompetingToggleSwitchesElement.cs" />
-    <Compile Include="Elements\Controls\DecimalStepperElement.cs" />
+    <Compile Include="Elements\Controls\NumberInputElement.cs" />
     <Compile Include="Elements\Controls\DescriptionElement.cs" />
     <Compile Include="Elements\Controls\DurationInputElement.cs" />
     <Compile Include="Elements\Controls\DynamicTextboxesElement.cs" />
@@ -126,7 +126,7 @@
     <Compile Include="Builders\Interfaces\IFlushableControlBuilder.cs" />
     <Compile Include="Builders\Controls\ButtonBuilder.cs" />
     <Compile Include="Builders\Controls\ColorPickerBuilder.cs" />
-    <Compile Include="Builders\Controls\DecimalStepperBuilder.cs" />
+    <Compile Include="Builders\Controls\NumberInputBuilder.cs" />
     <Compile Include="Builders\Controls\DropdownBuilder.cs" />
     <Compile Include="Builders\Controls\DurationInputBuilder.cs" />
     <Compile Include="Builders\Controls\DynamicTextboxesBuilder.cs" />

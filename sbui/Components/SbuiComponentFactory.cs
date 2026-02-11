@@ -138,18 +138,6 @@ namespace Sbui.Components
             };
         }
 
-        public static System.Windows.Controls.TextBox CreateDecimalStepperTextBox(string saveKey, double value)
-        {
-            return new System.Windows.Controls.TextBox
-            {
-                Tag = saveKey,
-                Text = value.ToString("G"),
-                Width = 80,
-                Margin = new Thickness(0, 4, 8, 0),
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-        }
-
         public static System.Windows.Controls.TextBox CreateColorPickerTextBox(string saveKey, string initialColor)
         {
             return new System.Windows.Controls.TextBox

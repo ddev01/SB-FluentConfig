@@ -24,7 +24,7 @@ namespace Sbui
         public PanelFluentWrapper IntegerInput(string label, string key) => Control(p => p.IntegerInput(label, key));
         public PanelFluentWrapper DurationInput(string label, string key) => Control(p => p.DurationInput(label, key));
         public PanelFluentWrapper Filepath(string label, string key) => Control(p => p.Filepath(label, key));
-        public PanelFluentWrapper DecimalStepper(string label, string key) => Control(p => p.DecimalStepper(label, key));
+        public PanelFluentWrapper NumberInput(string label, string key) => Control(p => p.NumberInput(label, key));
         public PanelFluentWrapper ColorPicker(string label, string key) => Control(p => p.ColorPicker(label, key));
         public PanelFluentWrapper Dropdown(string label, string key) => Control(p => p.Dropdown(label, key));
         public PanelFluentWrapper DynamicTextboxes(string label, string key) => Control(p => p.DynamicTextboxes(label, key));

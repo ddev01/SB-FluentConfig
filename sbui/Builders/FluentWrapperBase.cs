@@ -56,6 +56,7 @@ namespace Sbui
         public TWrapper Text(string caption) => Option(o => o.Text(caption));
         public TWrapper OnClick(Action<UiContext> callback) => Option(o => o.OnClick(callback));
         public TWrapper WithPermanentOption(bool value) => Option(o => o.WithPermanentOption(value));
+        public TWrapper WithStepper(bool value = true) => Option(o => o.WithStepper(value));
         public TWrapper WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build) => Option(o => o.WithSectionsPanel(build));
         public TWrapper OnPillAdded(Action<string, StackPanel, CallbackContext> build) => Option(o => o.OnPillAdded(build));
         public TWrapper OnPillRemoved(Action<string, StackPanel, CallbackContext> build) => Option(o => o.OnPillRemoved(build));

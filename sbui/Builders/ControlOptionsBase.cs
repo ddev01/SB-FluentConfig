@@ -37,6 +37,7 @@ namespace Sbui
         public virtual void Text(string caption) { }
         public virtual void OnClick(Action<UiContext> callback) { }
         public virtual void WithPermanentOption(bool value) { }
+        public virtual void WithStepper(bool value = true) { }
         public virtual void WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build) { }
         public virtual void OnPillAdded(Action<string, StackPanel, CallbackContext> build) { }
         public virtual void OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { }

@@ -94,7 +94,7 @@ Settings are saved as JSON to Streamer.bot global variables (`Sbui_Settings_{ext
 ```csharp
 .Dropdown("Group", "excludedGroup")
     .Options(groups)
-    .WithRefresh(() => RefreshGroups())
+    .Refresh(() => RefreshGroups())
     .DefaultIndex(0)
 ```
 
@@ -111,7 +111,7 @@ Settings are saved as JSON to Streamer.bot global variables (`Sbui_Settings_{ext
 .Dropdown("Playlist", "playlistName")
     .WithPairValue("playlistId")
     .Options(playlists)
-    .WithRefresh(() => FetchPlaylists())
+    .Refresh(() => FetchPlaylists())
     .DefaultByValue(lastId)
 ```
 
@@ -129,6 +129,12 @@ Settings are saved as JSON to Streamer.bot global variables (`Sbui_Settings_{ext
 
 - **Full unit names** — `"seconds"`, `"minutes"`, `"hours"`, `"days"`, `"weeks"`, `"permanent"`.
 - **WithPermanentOption** — Adds a "permanent" option when true.
+
+---
+
+## Elements reference
+
+See **[ELEMENTS.md](ELEMENTS.md)** for a complete reference of all controls, their options, parameter types, defaults, and constraints. Use it when configuring any element without code examples.
 
 ---
 
