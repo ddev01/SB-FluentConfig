@@ -69,8 +69,10 @@ namespace Sbui.Helpers
 
         /// <summary>
         /// Shows a confirm dialog; returns MessageBoxResult (Yes/No).
+        /// Note: yesButton/noButton are reserved for future custom button text support
+        /// but are currently unused (WPF MessageBox does not support custom button labels).
         /// </summary>
-        public static MessageBoxResult ShowConfirmDialog(Window owner, string title, string message, string yesButton, string noButton)
+        public static MessageBoxResult ShowConfirmDialog(Window owner, string title, string message, string yesButton = null, string noButton = null)
         {
             if (owner == null) return MessageBoxResult.None;
             MessageBoxResult result = MessageBoxResult.None;
