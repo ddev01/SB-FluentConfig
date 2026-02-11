@@ -12,6 +12,7 @@ namespace Sbui
         internal readonly string Key;
         private string _hint;
         private string[] _presetValues = Array.Empty<string>();
+        private bool _allowDuplicates = true;
         private string _showWhenKey;
 
         internal DynamicTextboxesBuilder(IAddStrategy strategy, string tabName, string label, string key)
@@ -24,12 +25,13 @@ namespace Sbui
 
         public override void Hint(string text) { _hint = text; }
         public override void Preset(string[] values) { _presetValues = values ?? Array.Empty<string>(); }
+        public override void AllowDuplicates(bool value) { _allowDuplicates = value; }
         public override void ShowWhen(string key) { _showWhenKey = key; }
 
         public void Add()
         {
             var fullKey = _strategy.GetFullSaveKey(Key);
-            var el = new DynamicTextboxesElement(Label, _hint ?? "", _tabName, fullKey, _presetValues);
+            var el = new DynamicTextboxesElement(Label, _hint ?? "", _tabName, fullKey, _presetValues, _allowDuplicates);
             _strategy.Add(el, _showWhenKey);
         }
     }

@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Controls;
 using Sbui.Elements;
+using Sbui.Helpers;
 
 namespace Sbui
 {
@@ -33,7 +34,11 @@ namespace Sbui
         public void Add()
         {
             var fullKey = _strategy.GetFullSaveKey(Key);
-            var el = new IntegerInputElement(Label, HintText ?? "", _tabName, fullKey, DefaultValue, Min, Max);
+            var el = new InputElement(Label, HintText ?? "", _tabName, fullKey,
+                Helpers.InputValidation.InputType.Int,
+                "", DefaultValue, 0, 0,
+                Min, Max, 0, 100, 0, 100,
+                1, false, ShowWhenKey);
             _strategy.Add(el, ShowWhenKey);
         }
     }

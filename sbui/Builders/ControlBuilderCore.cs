@@ -23,6 +23,7 @@ namespace Sbui
         public TextboxBuilder CreateTextbox(string label, string key) => new TextboxBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public SliderBuilder CreateSlider(string label, string key) => new SliderBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public ButtonBuilder CreateButton(string label) => new ButtonBuilder(_strategy, _ui, _tabName, label ?? "");
+        public InputBuilder CreateInput(string label, string key) => new InputBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public IntegerInputBuilder CreateIntegerInput(string label, string key) => new IntegerInputBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public DurationInputBuilder CreateDurationInput(string label, string key) => new DurationInputBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public FilepathBuilder CreateFilepath(string label, string key) => new FilepathBuilder(_strategy, _tabName, label ?? "", key ?? "");

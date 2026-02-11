@@ -79,9 +79,11 @@ namespace Sbui.Core
 
         private static object GetValueFromTextBox(System.Windows.Controls.TextBox tb, Type targetType)
         {
-            if (targetType == typeof(double) && double.TryParse(tb.Text, out var dVal))
+            if (targetType == typeof(double) && InputValidation.TryParseDouble(tb.Text, out var dVal, double.MinValue, double.MaxValue))
                 return dVal;
-            if (targetType == typeof(int) && int.TryParse(tb.Text, out var iVal))
+            if (targetType == typeof(float) && InputValidation.TryParseFloat(tb.Text, out var fVal, float.MinValue, float.MaxValue))
+                return fVal;
+            if (targetType == typeof(int) && InputValidation.TryParseInt(tb.Text, out var iVal, int.MinValue, int.MaxValue))
                 return iVal;
             return tb.Text ?? "";
         }

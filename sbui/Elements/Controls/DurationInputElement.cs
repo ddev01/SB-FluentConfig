@@ -61,11 +61,13 @@ namespace Sbui.Elements
                 VerticalContentAlignment = VerticalAlignment.Center,
                 IsEnabled = !isPermanent
             };
+            InputValidation.CreatePreviewTextInputHandler(numBox, InputValidation.InputType.Int);
+            InputValidation.AddDataObjectPastingHandler(numBox, InputValidation.InputType.Int);
             numBox.TextChanged += (s, e) =>
             {
                 context.MarkDirty();
-                if (int.TryParse(numBox.Text, out var v) && v < 0)
-                    numBox.Text = "0";
+                if (InputValidation.TryParseInt(numBox.Text, out var v, 0, int.MaxValue))
+                    numBox.Text = v.ToString();
             };
 
             var unitCombo = SbuiComponentFactory.CreateComboBoxForEmbedded(options, unitIndex);

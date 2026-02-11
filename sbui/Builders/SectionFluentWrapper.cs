@@ -21,6 +21,7 @@ namespace Sbui
         public SectionFluentWrapper Textbox(string label, string key) => Control(s => s.Textbox(label, key));
         public SectionFluentWrapper Slider(string label, string key) => Control(s => s.Slider(label, key));
         public SectionFluentWrapper Button(string label) => Control(s => s.Button(label));
+        public SectionFluentWrapper Input(string label, string key) => Control(s => s.Input(label, key));
         public SectionFluentWrapper IntegerInput(string label, string key) => Control(s => s.IntegerInput(label, key));
         public SectionFluentWrapper DurationInput(string label, string key) => Control(s => s.DurationInput(label, key));
         public SectionFluentWrapper Filepath(string label, string key) => Control(s => s.Filepath(label, key));

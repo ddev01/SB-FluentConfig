@@ -48,6 +48,28 @@ namespace Sbui.Core
                             tb.Text = value?.ToString() ?? "";
                         return;
                     }
+                    if (keyTb.StartsWith(SbuiTags.DoublePrefix) && keyTb.Substring(SbuiTags.DoublePrefix.Length) == key)
+                    {
+                        if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
+                            tb.Text = InputValidation.FormatDouble(value.Value<double>());
+                        else
+                            tb.Text = value?.ToString() ?? "";
+                        return;
+                    }
+                    if (keyTb.StartsWith(SbuiTags.FloatPrefix) && keyTb.Substring(SbuiTags.FloatPrefix.Length) == key)
+                    {
+                        if (value != null && (value.Type == JTokenType.Integer || value.Type == JTokenType.Float))
+                            tb.Text = InputValidation.FormatFloat(value.Value<float>());
+                        else
+                            tb.Text = value?.ToString() ?? "";
+                        return;
+                    }
+                    if (keyTb.StartsWith(SbuiTags.ColorPrefix) && keyTb.Substring(SbuiTags.ColorPrefix.Length) == key)
+                    {
+                        var val = value?.ToString() ?? "";
+                        tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
+                        return;
+                    }
                 }
                 else if (child is System.Windows.Controls.PasswordBox pb && pb.Tag is string keyPb && keyPb == key)
                 {
@@ -108,6 +130,33 @@ namespace Sbui.Core
                         var val = GetValue(settings, key);
                         if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                             tb.Text = val.Value<int>().ToString();
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
+                    {
+                        var k = keyTb.Substring(SbuiTags.DoublePrefix.Length);
+                        if (k != key) continue;
+                        var val = GetValue(settings, key);
+                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                            tb.Text = InputValidation.FormatDouble(val.Value<double>());
+                        else
+                            tb.Text = val != null ? val.ToString() : "";
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
+                    {
+                        var k = keyTb.Substring(SbuiTags.FloatPrefix.Length);
+                        if (k != key) continue;
+                        var val = GetValue(settings, key);
+                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                            tb.Text = InputValidation.FormatFloat(val.Value<float>());
+                        else
+                            tb.Text = val != null ? val.ToString() : "";
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
+                    {
+                        var k = keyTb.Substring(SbuiTags.ColorPrefix.Length);
+                        if (k != key) continue;
+                        var val = GetValue(settings, key)?.ToString() ?? "";
+                        tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
                     }
                     else
                     {
@@ -191,6 +240,30 @@ namespace Sbui.Core
                         var val = GetValue(settings, key);
                         if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
                             tb.Text = val.Value<int>().ToString();
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.DoublePrefix.Length);
+                        var val = GetValue(settings, key);
+                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                            tb.Text = InputValidation.FormatDouble(val.Value<double>());
+                        else
+                            tb.Text = val != null ? val.ToString() : "";
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.FloatPrefix.Length);
+                        var val = GetValue(settings, key);
+                        if (val != null && (val.Type == JTokenType.Integer || val.Type == JTokenType.Float))
+                            tb.Text = InputValidation.FormatFloat(val.Value<float>());
+                        else
+                            tb.Text = val != null ? val.ToString() : "";
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.ColorPrefix.Length);
+                        var val = GetValue(settings, key)?.ToString() ?? "";
+                        tb.Text = InputValidation.IsValidHexColor(val) ? val : "#000000";
                     }
                     else if (keyTb.StartsWith(SbuiTags.CompetingPrefix))
                     {
@@ -279,7 +352,25 @@ namespace Sbui.Core
                     {
                         var k = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
                         if (k != key) continue;
-                        settings[key] = int.TryParse(tb.Text, out var v) ? v : 0;
+                        settings[key] = InputValidation.TryParseInt(tb.Text, out var v, int.MinValue, int.MaxValue) ? v : 0;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
+                    {
+                        var k = keyTb.Substring(SbuiTags.DoublePrefix.Length);
+                        if (k != key) continue;
+                        settings[key] = InputValidation.TryParseDouble(tb.Text, out var v, double.MinValue, double.MaxValue) ? v : 0.0;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
+                    {
+                        var k = keyTb.Substring(SbuiTags.FloatPrefix.Length);
+                        if (k != key) continue;
+                        settings[key] = InputValidation.TryParseFloat(tb.Text, out var v, float.MinValue, float.MaxValue) ? v : 0f;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
+                    {
+                        var k = keyTb.Substring(SbuiTags.ColorPrefix.Length);
+                        if (k != key) continue;
+                        settings[key] = InputValidation.IsValidHexColor(tb.Text ?? "") ? (tb.Text ?? "#000000") : "#000000";
                     }
                     else
                     {
@@ -368,7 +459,22 @@ namespace Sbui.Core
                     if (keyTb.StartsWith(SbuiTags.IntegerPrefix))
                     {
                         var key = keyTb.Substring(SbuiTags.IntegerPrefix.Length);
-                        settings[key] = int.TryParse(tb.Text, out var v) ? v : 0;
+                        settings[key] = InputValidation.TryParseInt(tb.Text, out var v, int.MinValue, int.MaxValue) ? v : 0;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.DoublePrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.DoublePrefix.Length);
+                        settings[key] = InputValidation.TryParseDouble(tb.Text, out var v, double.MinValue, double.MaxValue) ? v : 0.0;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.FloatPrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.FloatPrefix.Length);
+                        settings[key] = InputValidation.TryParseFloat(tb.Text, out var v, float.MinValue, float.MaxValue) ? v : 0f;
+                    }
+                    else if (keyTb.StartsWith(SbuiTags.ColorPrefix))
+                    {
+                        var key = keyTb.Substring(SbuiTags.ColorPrefix.Length);
+                        settings[key] = InputValidation.IsValidHexColor(tb.Text ?? "") ? (tb.Text ?? "#000000") : "#000000";
                     }
                     else if (keyTb.StartsWith(SbuiTags.CompetingPrefix))
                     {

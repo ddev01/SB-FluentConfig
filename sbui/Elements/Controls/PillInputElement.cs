@@ -83,6 +83,20 @@ namespace Sbui.Elements
             {
                 if (string.IsNullOrWhiteSpace(text)) return;
                 text = text.Trim();
+
+                if (isUserAdd)
+                {
+                    foreach (var child in pillsPanel.Children)
+                    {
+                        if (child is Border b && b.Tag is string existingTag &&
+                            string.Equals(existingTag, text, StringComparison.OrdinalIgnoreCase))
+                        {
+                            context.Log($"Duplicate pill name: \"{text}\". Each pill must have a unique name.");
+                            return;
+                        }
+                    }
+                }
+
                 var pillBorder = new Border
                 {
                     Tag = text,

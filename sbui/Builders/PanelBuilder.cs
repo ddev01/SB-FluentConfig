@@ -49,6 +49,7 @@ namespace Sbui
         public PanelFluentWrapper Textbox(string label, string key) => CreateControl(_core.CreateTextbox(label, key), b => new PanelFluentWrapper(this, b));
         public PanelFluentWrapper Slider(string label, string key) => CreateControl(_core.CreateSlider(label, key), b => new PanelFluentWrapper(this, b));
         public PanelFluentWrapper Button(string label) => CreateControl(_core.CreateButton(label), b => new PanelFluentWrapper(this, b));
+        public PanelFluentWrapper Input(string label, string key) => CreateControl(_core.CreateInput(label, key), b => new PanelFluentWrapper(this, b));
         public PanelFluentWrapper IntegerInput(string label, string key) => CreateControl(_core.CreateIntegerInput(label, key), b => new PanelFluentWrapper(this, b));
         public PanelFluentWrapper DurationInput(string label, string key) => CreateControl(_core.CreateDurationInput(label, key), b => new PanelFluentWrapper(this, b));
         public PanelFluentWrapper Filepath(string label, string key) => CreateControl(_core.CreateFilepath(label, key), b => new PanelFluentWrapper(this, b));

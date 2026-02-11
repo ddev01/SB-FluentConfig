@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using Sbui.Components;
+using Sbui.Helpers;
 
 namespace Sbui.Elements
 {
@@ -40,6 +41,8 @@ namespace Sbui.Elements
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             var valueBox = SbuiComponentFactory.CreateSliderValueBox(val);
+            InputValidation.CreatePreviewTextInputHandler(valueBox, InputValidation.InputType.Int);
+            InputValidation.AddDataObjectPastingHandler(valueBox, InputValidation.InputType.Int);
             var slider = SbuiComponentFactory.CreateSlider(SaveKey, Min, Max, val);
             context.Registry.Register(SaveKey, slider);
             Grid.SetColumn(valueBox, 0);
@@ -55,8 +58,13 @@ namespace Sbui.Elements
             valueBox.TextChanged += (s, e) =>
             {
                 context.MarkDirty();
-                if (int.TryParse(valueBox.Text, out var v))
-                    slider.Value = Math.Max(Min, Math.Min(Max, v));
+                if (InputValidation.TryParseInt(valueBox.Text, out var v, Min, Max))
+                    slider.Value = v;
+            };
+            valueBox.LostFocus += (s, e) =>
+            {
+                if (!InputValidation.TryParseInt(valueBox.Text, out var v, Min, Max))
+                    valueBox.Text = ((int)slider.Value).ToString();
             };
             stack.Children.Add(grid);
             panel.Children.Add(stack);

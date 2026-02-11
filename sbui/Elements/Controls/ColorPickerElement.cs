@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using ColorPicker;
 using Sbui.Components;
+using Sbui.Helpers;
 using Wpf.Ui.Controls;
 using Button = Wpf.Ui.Controls.Button;
 
@@ -63,6 +64,7 @@ namespace Sbui.Elements
                 preview.Fill = Brushes.Gray;
             }
             var tb = SbuiComponentFactory.CreateColorPickerTextBox(SaveKey, initial);
+            tb.Tag = SbuiTags.ColorPrefix + SaveKey;
             preview.MouseDown += (s, e) =>
             {
                 Color initialColor;
@@ -130,12 +132,23 @@ namespace Sbui.Elements
             tb.TextChanged += (s, e) =>
             {
                 context.MarkDirty();
-                try
+                if (InputValidation.IsValidHexColor(tb.Text))
                 {
-                    var c = (Color)ColorConverter.ConvertFromString(tb.Text);
-                    preview.Fill = new SolidColorBrush(c);
+                    try
+                    {
+                        var c = (Color)ColorConverter.ConvertFromString(tb.Text);
+                        preview.Fill = new SolidColorBrush(c);
+                        tb.BorderBrush = null;
+                        tb.BorderThickness = new Thickness(0);
+                    }
+                    catch { preview.Fill = Brushes.Gray; }
                 }
-                catch (Exception) { }
+                else
+                {
+                    preview.Fill = Brushes.Gray;
+                    tb.BorderBrush = new SolidColorBrush(Color.FromRgb(255, 80, 80));
+                    tb.BorderThickness = new Thickness(1);
+                }
             };
             context.Registry.Register(SaveKey, tb);
             Grid.SetColumn(tb, 0);

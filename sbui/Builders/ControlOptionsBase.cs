@@ -32,6 +32,7 @@ namespace Sbui
         public virtual void Refresh(Func<string[]> callback) { }
         public virtual void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback) { }
         public virtual void Preset(string[] values) { }
+        public virtual void AllowDuplicates(bool value) { }
         public virtual void ToggleDefault(bool value) { }
         public virtual void Color(string hex) { }
         public virtual void Text(string caption) { }
@@ -41,5 +42,6 @@ namespace Sbui
         public virtual void WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build) { }
         public virtual void OnPillAdded(Action<string, StackPanel, CallbackContext> build) { }
         public virtual void OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { }
+        public virtual void Type(string value) { }
     }
 }

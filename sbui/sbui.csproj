@@ -100,13 +100,12 @@
     <Compile Include="Elements\Controls\ClickableButtonElement.cs" />
     <Compile Include="Elements\Controls\ColorPickerElement.cs" />
     <Compile Include="Elements\Controls\CompetingToggleSwitchesElement.cs" />
-    <Compile Include="Elements\Controls\NumberInputElement.cs" />
     <Compile Include="Elements\Controls\DescriptionElement.cs" />
     <Compile Include="Elements\Controls\DurationInputElement.cs" />
     <Compile Include="Elements\Controls\DynamicTextboxesElement.cs" />
     <Compile Include="Elements\Controls\FilepathElement.cs" />
     <Compile Include="Elements\Controls\InlineSeparatorElement.cs" />
-    <Compile Include="Elements\Controls\IntegerInputElement.cs" />
+    <Compile Include="Elements\Controls\InputElement.cs" />
     <Compile Include="Elements\Controls\PillInputElement.cs" />
     <Compile Include="Elements\Controls\DropdownElement.cs" />
     <Compile Include="Elements\Controls\SliderElement.cs" />
@@ -117,6 +116,7 @@
     <Compile Include="Helpers\DialogHelper.cs" />
     <Compile Include="Helpers\ProgressWindowHelper.cs" />
     <Compile Include="Helpers\ControlExtractionHelper.cs" />
+    <Compile Include="Helpers\InputValidation.cs" />
     <Compile Include="Helpers\SbuiTags.cs" />
     <Compile Include="Helpers\VisualTreeHelper.cs" />
     <Compile Include="Interfaces\IProgressReporter.cs" />
@@ -131,6 +131,7 @@
     <Compile Include="Builders\Controls\DurationInputBuilder.cs" />
     <Compile Include="Builders\Controls\DynamicTextboxesBuilder.cs" />
     <Compile Include="Builders\Controls\FilepathBuilder.cs" />
+    <Compile Include="Builders\Controls\InputBuilder.cs" />
     <Compile Include="Builders\Controls\IntegerInputBuilder.cs" />
     <Compile Include="Builders\Controls\PillInputBuilder.cs" />
     <Compile Include="Builders\Controls\SliderBuilder.cs" />

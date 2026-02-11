@@ -38,13 +38,14 @@ Available in `SectionBuilder` (inside `Section(...)`).
 | Textbox | `string` | Hint, Default, Password, Multiline, ShowWhen |
 | Slider | `int` | Hint, Range, Default, ShowWhen |
 | Button | *(none)* | Hint, Text, Color, OnClick, ShowWhen |
-| IntegerInput | `int` | Hint, Range, Default, ShowWhen |
+| Input | `string` \| `int` \| `double` \| `float` | Hint, Type, Range, Step, Default, WithStepper, ShowWhen |
+| IntegerInput | `int` | *(alias for Input with Type "int")* Hint, Range, Default, ShowWhen |
 | DurationInput | `string` | Hint, Default, WithPermanentOption, ShowWhen |
 | Filepath | `string` | Hint, Default, ShowWhen |
-| NumberInput | `double` | Hint, WithStepper, Range, Step, Default, ShowWhen |
+| NumberInput | `double` | *(alias for Input with Type "double")* Hint, WithStepper, Range, Step, Default, ShowWhen |
 | ColorPicker | `string` (hex) | Hint, Default, ShowWhen |
 | Dropdown | `string` | Hint, Options, WithPairValue, Refresh, DefaultIndex, DefaultByValue, ShowWhen |
-| DynamicTextboxes | `string[]` | Hint, Preset, ShowWhen |
+| DynamicTextboxes | `string[]` | Hint, Preset, AllowDuplicates, ShowWhen |
 | PillInput | `string[]` | Hint, WithSectionsPanel, OnPillAdded, OnPillRemoved, ShowWhen |
 
 ---
@@ -121,10 +122,29 @@ Without WithExclusive: single on/off switch.
 
 ---
 
+## Input
+
+**Signature:** `Input(label, key)`  
+**Stored as:** `string` (default), `int`, `double`, or `float` depending on `Type`
+
+Generic input with type-based validation. Use `Type("string")`, `Type("int")`, `Type("double")`, or `Type("float")` to enforce validation and formatting. Double/float values use comma as decimal separator.
+
+| Option | Params | Default |
+|--------|--------|---------|
+| Hint | `string` | — |
+| **Type** | `string` | `"string"` — `"string"`, `"int"`, `"double"`, `"float"` |
+| Range | `(int min, int max)` or `(double min, double max)` | int: `(0, int.MaxValue)`; double/float: `(0, 100)` |
+| Step | `double` | `1` — double/float only |
+| Default | `string` \| `int` \| `double` | Type-dependent |
+| WithStepper | `bool` | `false` — double/float only, adds +/- buttons |
+| ShowWhen | `key` | — |
+
+---
+
 ## IntegerInput
 
 **Signature:** `IntegerInput(label, key)`  
-**Stored as:** `int`
+**Stored as:** `int` — Alias for `Input(label, key).Type("int")`
 
 | Option | Params | Default |
 |--------|--------|---------|
@@ -165,7 +185,7 @@ Without WithExclusive: single on/off switch.
 ## NumberInput
 
 **Signature:** `NumberInput(label, key)`  
-**Stored as:** `double`
+**Stored as:** `double` — Alias for `Input(label, key).Type("double")`. Double values use comma as decimal separator.
 
 | Option | Params | Default |
 |--------|--------|---------|
@@ -222,6 +242,7 @@ Without WithStepper: plain numeric text input. With WithStepper: text input plus
 |--------|--------|---------|
 | Hint | `string` | — |
 | Preset | `string[]` | `[]` |
+| **AllowDuplicates** | `bool` | `true` — When `false`, duplicate values show a validation error (red border). |
 | ShowWhen | `key` | — |
 
 User adds/removes rows. Each row = one array element.
@@ -240,6 +261,8 @@ User adds/removes rows. Each row = one array element.
 | OnPillAdded | `(pill, sections, ctx) => void` | — |
 | OnPillRemoved | `(pill, sections, ctx) => void` | — |
 | ShowWhen | `key` | — |
+
+**Validation:** Pill names must be unique (case-insensitive). Duplicate names are rejected with a log message.
 
 **CallbackContext (`ctx`):** `GetValue<T>(key)`, `RemoveSettingsKeys(...)`, `WithPanel(panel, tabName, build)`.
 

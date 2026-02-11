@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,14 +20,16 @@ namespace Sbui.Elements
         public string Description { get; set; }
         public string SaveKey { get; set; }
         public string[] PresetValues { get; set; }
+        public bool AllowDuplicates { get; set; }
 
-        public DynamicTextboxesElement(string title, string description, string tabName, string saveKey, string[] presetValues, string visibilityKey = null)
+        public DynamicTextboxesElement(string title, string description, string tabName, string saveKey, string[] presetValues, bool allowDuplicates = true, string visibilityKey = null)
         {
             Title = title;
             Description = description ?? "";
             TabName = tabName ?? "";
             SaveKey = saveKey;
             PresetValues = presetValues ?? System.Array.Empty<string>();
+            AllowDuplicates = allowDuplicates;
             VisibilityKey = visibilityKey;
         }
 
@@ -54,13 +57,13 @@ namespace Sbui.Elements
             for (int i = 0; i < count; i++)
             {
                 var text = existing != null && i < existing.Count ? existing[i]?.ToString() ?? "" : (PresetValues != null && i < PresetValues.Length ? PresetValues[i] : "");
-                listPanel.Children.Add(CreateRow(SaveKey, i, text, listPanel, context));
+                listPanel.Children.Add(CreateRow(SaveKey, i, text, listPanel, context, AllowDuplicates));
             }
             stack.Children.Add(listPanel);
             var addBtn = new Button { Content = "Add", Margin = new Thickness(0, 8, 0, 0), Padding = new Thickness(12, 6, 12, 6) };
             addBtn.Click += (s, e) =>
             {
-                listPanel.Children.Add(CreateRow(SaveKey, listPanel.Children.Count, "", listPanel, context));
+                listPanel.Children.Add(CreateRow(SaveKey, listPanel.Children.Count, "", listPanel, context, AllowDuplicates));
                 context.MarkDirty();
             };
             stack.Children.Add(addBtn);
@@ -68,7 +71,7 @@ namespace Sbui.Elements
             panel.Children.Add(stack);
         }
 
-        private static FrameworkElement CreateRow(string saveKey, int index, string text, StackPanel listPanel, IRenderContext context)
+        private static FrameworkElement CreateRow(string saveKey, int index, string text, StackPanel listPanel, IRenderContext context, bool allowDuplicates)
         {
             var row = new Grid();
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -82,7 +85,24 @@ namespace Sbui.Elements
                 Padding = new Thickness(6, 4, 6, 4),
                 Margin = new Thickness(0, 4, 0, 0)
             };
-            tb.TextChanged += (s, e) => context.MarkDirty();
+            void CheckDuplicate()
+            {
+                if (allowDuplicates) return;
+                var values = listPanel.Children
+                    .OfType<Grid>()
+                    .Select(g => g.Children.OfType<System.Windows.Controls.TextBox>().FirstOrDefault()?.Text ?? "")
+                    .ToList();
+                var idx = listPanel.Children.IndexOf(row);
+                var hasDup = idx >= 0 && InputValidation.HasDuplicateValues(values, idx, false);
+                tb.BorderBrush = hasDup ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 80, 80)) : null;
+                tb.BorderThickness = hasDup ? new Thickness(1) : new Thickness(0);
+            }
+            tb.TextChanged += (s, e) =>
+            {
+                context.MarkDirty();
+                CheckDuplicate();
+            };
+            tb.LostFocus += (s, e) => CheckDuplicate();
             var trashIcon = new System.Windows.Controls.TextBlock
             {
                 Text = "\uE74D",
