@@ -47,6 +47,11 @@ namespace Sbui
         private Dictionary<string, StackPanel> _dynamicTextboxPanels = new Dictionary<string, StackPanel>();
 
         private StackPanel _visibilityOverridePanel;
+        internal StackPanel VisibilityOverridePanel => _visibilityOverridePanel;
+        internal TabManager TabManagerInternal => _tabManager;
+        internal ControlRegistry ControlRegistryInternal => _controlRegistry;
+        internal JObject ExistingSettings => _existingSettings;
+        internal void EnsureExistingSettings() { if (_existingSettings == null) _existingSettings = new JObject(); }
         private readonly SbuiPanelContext _sbuiPanelContext;
 
 
@@ -75,7 +80,7 @@ namespace Sbui
 
         public static bool IsOpen => SbuiWindowManager.IsOpen;
 
-        private static void LogInternal(string message)
+        internal static void LogInternal(string message)
         {
             if (_logCallback != null)
                 _logCallback(message);
@@ -227,7 +232,7 @@ namespace Sbui
             _synchronizer.LoadSettingsIntoControls(_controlRegistry, _existingSettings);
         }
 
-        private void MarkDirty()
+        internal void MarkDirty()
         {
             _dirty = true;
         }
@@ -254,7 +259,7 @@ namespace Sbui
             _window?.Close();
         }
 
-        private void EnsureTabExists(string tabName)
+        internal void EnsureTabExists(string tabName)
         {
             _tabManager?.EnsureTab(tabName);
         }

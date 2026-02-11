@@ -148,7 +148,7 @@
     <Compile Include="Builders\SectionFluentWrapper.cs" />
     <Compile Include="App\CallbackContext.cs" />
     <Compile Include="App\Sbui.cs" />
-    <Compile Include="App\Sbui.PanelContext.cs" />
+    <Compile Include="App\SbuiPanelContext.cs" />
     <Compile Include="App\UiContext.cs" />
     <Compile Include="SbuiUi.cs" />
   </ItemGroup>
