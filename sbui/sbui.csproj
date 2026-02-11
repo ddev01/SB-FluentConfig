@@ -137,6 +137,7 @@
     <Compile Include="Builders\Controls\SliderBuilder.cs" />
     <Compile Include="Builders\Controls\TextboxBuilder.cs" />
     <Compile Include="Builders\Controls\ToggleBuilder.cs" />
+    <Compile Include="Builders\ControlBuilderBase.cs" />
     <Compile Include="Builders\ControlBuilderCore.cs" />
     <Compile Include="Builders\ControlHostBuilder.cs" />
     <Compile Include="Builders\ControlOptionsBase.cs" />

@@ -1,41 +1,31 @@
 using System;
-using System.Windows.Controls;
 using Sbui.Elements;
 
 namespace Sbui
 {
-    public class ButtonBuilder : ControlOptionsBase, IFlushableControlBuilder
+    public class ButtonBuilder : ControlBuilderBase
     {
-        private readonly IAddStrategy _strategy;
         private readonly Sbui _ui;
-        private readonly string _tabName;
-        internal readonly string Label;
-        internal string HintText { get; private set; }
-        internal string ButtonText { get; private set; }
-        internal string ColorHex { get; private set; }
-        internal Action<UiContext> OnClickCallback { get; private set; }
-        internal string ShowWhenKey { get; private set; }
+        private string _buttonText;
+        private string _colorHex;
+        private Action<UiContext> _onClickCallback;
 
         internal ButtonBuilder(IAddStrategy strategy, Sbui ui, string tabName, string label)
+            : base(strategy, tabName, label, "")
         {
-            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
             _ui = ui ?? throw new ArgumentNullException(nameof(ui));
-            _tabName = tabName ?? "";
-            Label = label ?? "";
         }
 
-        public override void Hint(string text) { HintText = text; }
-        public override void Text(string caption) { ButtonText = caption; }
-        public override void Color(string hex) { ColorHex = hex; }
-        public override void OnClick(Action<UiContext> callback) { OnClickCallback = callback; }
-        public override void ShowWhen(string key) { ShowWhenKey = key; }
+        public override void Text(string caption) { _buttonText = caption; }
+        public override void Color(string hex) { _colorHex = hex; }
+        public override void OnClick(Action<UiContext> callback) { _onClickCallback = callback; }
 
-        public void Add()
+        public override void Add()
         {
             Action callback = null;
-            if (OnClickCallback != null)
+            if (_onClickCallback != null)
             {
-                var cb = OnClickCallback;
+                var cb = _onClickCallback;
                 var window = ((IRenderContext)_ui).Window;
                 callback = () =>
                 {
@@ -46,8 +36,8 @@ namespace Sbui
                         cb(ctx);
                 };
             }
-            var el = new ClickableButtonElement(Label, HintText ?? "", ButtonText ?? "OK", ColorHex ?? "", _tabName, callback);
-            _strategy.Add(el, ShowWhenKey);
+            var el = new ClickableButtonElement(Label, HintText ?? "", _buttonText ?? "OK", _colorHex ?? "", TabName, callback);
+            Strategy.Add(el, ShowWhenKey);
         }
     }
 }
