@@ -14,6 +14,15 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="Streamer.bot.Plugin.Interface">
+      <HintPath>..\..\..\..\Desktop\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\sbui\sbui.csproj" />
   </ItemGroup>
 </Project>

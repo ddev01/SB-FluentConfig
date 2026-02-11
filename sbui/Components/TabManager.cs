@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,6 +8,7 @@ namespace Sbui.Components
 {
     /// <summary>
     /// Ensures tab exists, maps tab name to StackPanel, and manages sidebar selection (scroll offset save/restore).
+    /// Supports deferred (lazy) tab building: register a build callback and it runs on first tab switch.
     /// </summary>
     public class TabManager
     {
@@ -15,6 +17,7 @@ namespace Sbui.Components
         private readonly ListBox _sidebar;
         private ScrollViewer _contentScrollViewer;
         private readonly Dictionary<string, double> _tabScrollOffsets = new Dictionary<string, double>();
+        private readonly Dictionary<string, Action> _deferredBuilders = new Dictionary<string, Action>();
 
         public TabManager(StackPanel tabContainer, ListBox sidebar)
         {
@@ -29,6 +32,47 @@ namespace Sbui.Components
         public void SetScrollViewer(ScrollViewer scrollViewer)
         {
             _contentScrollViewer = scrollViewer;
+        }
+
+        /// <summary>
+        /// Registers a deferred builder for a tab. The builder will be invoked the first time the tab is selected.
+        /// The tab and sidebar item are created immediately (so they appear in the sidebar) but remain empty.
+        /// </summary>
+        public void RegisterDeferredBuilder(string tabName, Action builder)
+        {
+            if (string.IsNullOrEmpty(tabName) || builder == null) return;
+            EnsureTab(tabName);
+            _deferredBuilders[tabName] = builder;
+        }
+
+        /// <summary>
+        /// Builds the deferred content for a specific tab (the first/eager tab).
+        /// Called after the window is shown to populate the initially visible tab.
+        /// </summary>
+        internal void BuildFirstDeferred(string tabName)
+        {
+            if (_deferredBuilders.TryGetValue(tabName, out var builder))
+            {
+                builder();
+                _deferredBuilders.Remove(tabName);
+            }
+        }
+
+        /// <summary>
+        /// Builds all remaining deferred tabs that haven't been built yet.
+        /// </summary>
+        internal void BuildAllDeferred()
+        {
+            // Copy keys to avoid modifying collection during iteration
+            var keys = new List<string>(_deferredBuilders.Keys);
+            foreach (var key in keys)
+            {
+                if (_deferredBuilders.TryGetValue(key, out var builder))
+                {
+                    builder();
+                    _deferredBuilders.Remove(key);
+                }
+            }
         }
 
         /// <summary>
@@ -94,6 +138,12 @@ namespace Sbui.Components
             if (_sidebar.SelectedItem is ListBoxItem selected && selected.Tag is string tabName &&
                 _tabContentPanels.TryGetValue(tabName, out var panel))
             {
+                // Build deferred content on first activation
+                if (_deferredBuilders.TryGetValue(tabName, out var builder))
+                {
+                    builder();
+                    _deferredBuilders.Remove(tabName);
+                }
                 panel.Visibility = Visibility.Visible;
                 if (_contentScrollViewer != null && _tabScrollOffsets.TryGetValue(tabName, out var offset))
                     _contentScrollViewer.ScrollToVerticalOffset(offset);

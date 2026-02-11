@@ -75,7 +75,7 @@ public class CPHInline
             }
 
             SbuiUi.Create(CPH, "Sbui Full Test", "1.0")
-                .Header("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYxAXPiJKEN56xb3g_LJzPaNVuOu2nW9a4VQ&s")
+                // .Header("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYxAXPiJKEN56xb3g_LJzPaNVuOu2nW9a4VQ&s")
                 .Section("General Settings", "General", g => g
                     .Intro("Test all Sbui controls. Use Save to persist; buttons below exercise dialogs and GetPendingValue.")
                     .Toggle("Enable Requirement", "custom_requirement_enabled")

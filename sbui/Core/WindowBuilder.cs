@@ -1,8 +1,6 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Media;
 using Newtonsoft.Json.Linq;
 using Sbui.Components;
@@ -11,54 +9,88 @@ using Wpf.Ui.Controls;
 namespace Sbui.Core
 {
     /// <summary>
-    /// Builds the FluentWindow with dock layout, main grid, sidebar, tab container, ScrollViewer, and footer buttons.
+    /// Builds the main Window (FluentWindow or plain Window) with dock layout, main grid,
+    /// sidebar, tab container, ScrollViewer, and footer buttons.
     /// Theme is not applied here; the caller applies it after Build.
     /// </summary>
     public class WindowBuilder
     {
         private readonly string _title;
         private readonly JObject _settings;
+        private readonly PerformanceTracer _tracer;
+        private readonly bool _plainWindow;
 
         public WindowBuilder(string extensionName, string displayVersion, JObject settings)
+            : this(extensionName, displayVersion, settings, null, false)
+        {
+        }
+
+        internal WindowBuilder(string extensionName, string displayVersion, JObject settings, PerformanceTracer tracer, bool plainWindow = false)
         {
             _title = !string.IsNullOrEmpty(displayVersion)
                 ? $"{extensionName} (v{displayVersion})"
                 : extensionName;
             _settings = settings;
+            _tracer = tracer;
+            _plainWindow = plainWindow;
         }
 
-        public FluentWindow Build(
+        public Window Build(
             out Grid mainGrid,
             out ContentControl headerPlaceholder,
             out TabManager tabManager,
             out System.Windows.Controls.ListBox sidebar,
             out ScrollViewer contentScrollViewer,
+            out DockPanel contentPanel,
             Action onSave,
             Action onSaveAndExit,
             Action onReset,
             Action onExit)
         {
+            _tracer?.BeginPhase("WindowBuilder.CreateWindow");
             var window = CreateWindow();
             var mainDock = CreateMainLayout(out mainGrid, out headerPlaceholder, out tabManager, out sidebar, out contentScrollViewer);
+            _tracer?.BeginPhase("WindowBuilder.CreateFooter");
             var footer = CreateFooter(onSave, onSaveAndExit, onReset, onExit);
 
             DockPanel.SetDock(footer, Dock.Bottom);
             mainDock.Children.Insert(0, footer);
             mainDock.Children.Add(mainGrid);
 
-            window.Content = mainDock;
+            // Don't set window.Content here — caller controls when to attach content
+            // (allows showing window with loading overlay first, then swapping in real content)
+            contentPanel = mainDock;
             return window;
         }
 
-        private FluentWindow CreateWindow()
+        private Window CreateWindow()
         {
-            var window = new FluentWindow
+            Window window;
+            if (_plainWindow)
             {
-                Title = _title,
-                Width = 600,
-                Height = 400,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen
-            };
+                // Plain Window: skips Mica backdrop, custom chrome, DWM API calls, and rounded corners.
+                // Much faster Show() (~800-1200ms savings) but loses the polished FluentWindow chrome.
+                // All controls inside still use WPF UI styles via application-level theme resources.
+                window = new Window
+                {
+                    Title = _title,
+                    Width = 600,
+                    Height = 400,
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                    Background = new SolidColorBrush(Color.FromRgb(0x1e, 0x1e, 0x2e))
+                };
+            }
+            else
+            {
+                window = new FluentWindow
+                {
+                    Title = _title,
+                    Width = 600,
+                    Height = 400,
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen
+                };
+            }
+
             if (_settings != null)
             {
                 var w = _settings["WindowWidth"];
@@ -82,6 +114,7 @@ namespace Sbui.Core
             out System.Windows.Controls.ListBox sidebar,
             out ScrollViewer contentScrollViewer)
         {
+            _tracer?.BeginPhase("WindowBuilder.DockPanel+Grid");
             var mainDock = new DockPanel
             {
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -98,10 +131,12 @@ namespace Sbui.Core
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
+            _tracer?.BeginPhase("WindowBuilder.HeaderPlaceholder");
             headerPlaceholder = new ContentControl { Margin = new Thickness(0, 0, 0, 0) };
             Grid.SetRow(headerPlaceholder, 0);
             mainGrid.Children.Add(headerPlaceholder);
 
+            _tracer?.BeginPhase("WindowBuilder.SidebarContentGrid");
             var sidebarContentGrid = new Grid
             {
                 VerticalAlignment = VerticalAlignment.Stretch,
@@ -110,7 +145,9 @@ namespace Sbui.Core
             sidebarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = 160 });
             sidebarContentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
+            _tracer?.BeginPhase("WindowBuilder.CreateStyledSidebar");
             sidebar = CreateStyledSidebar();
+            _tracer?.BeginPhase("WindowBuilder.ScrollViewer+TabManager");
             var tabContainer = new StackPanel
             {
                 Orientation = Orientation.Vertical,
@@ -140,51 +177,57 @@ namespace Sbui.Core
             return mainDock;
         }
 
+        // Cached frozen brushes for sidebar styling — avoids per-instance allocations.
+        private static readonly SolidColorBrush _sidebarWhiteBrush = Freeze(new SolidColorBrush(Colors.White));
+        private static readonly SolidColorBrush _sidebarHoverBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x26, 0x2d, 0x3d)));
+        private static readonly SolidColorBrush _sidebarSelectedBorderBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x63, 0x6b, 0x9a)));
+        private static readonly LinearGradientBrush _sidebarSelectedGradient = FreezeGradient(
+            Color.FromRgb(0x2d, 0x35, 0x4a),
+            Color.FromRgb(0x22, 0x28, 0x38));
+
+        private static SolidColorBrush Freeze(SolidColorBrush b) { b.Freeze(); return b; }
+        private static LinearGradientBrush FreezeGradient(Color c1, Color c2)
+        {
+            var b = new LinearGradientBrush(c1, c2, new Point(0, 0), new Point(1, 1));
+            b.Freeze();
+            return b;
+        }
+
+        /// <summary>
+        /// Creates the sidebar ListBox with a simplified style that avoids expensive FrameworkElementFactory/ControlTemplate.
+        /// Uses only Setters and Triggers on the default ListBoxItem template for faster initialization.
+        /// </summary>
         private static System.Windows.Controls.ListBox CreateStyledSidebar()
         {
             var sidebar = new System.Windows.Controls.ListBox
             {
                 Background = Brushes.Transparent,
                 BorderThickness = new Thickness(0),
-                Foreground = new SolidColorBrush(Colors.White),
+                Foreground = _sidebarWhiteBrush,
                 FontSize = 14,
                 Padding = new Thickness(4, 2, 8, 2),
                 MinWidth = 140
             };
+
             var listItemStyle = new Style(typeof(ListBoxItem));
             listItemStyle.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(12, 10, 12, 10)));
             listItemStyle.Setters.Add(new Setter(Control.MarginProperty, new Thickness(4, 2, 4, 2)));
-            listItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, new SolidColorBrush(Colors.White)));
+            listItemStyle.Setters.Add(new Setter(Control.ForegroundProperty, _sidebarWhiteBrush));
             listItemStyle.Setters.Add(new Setter(Control.FontWeightProperty, FontWeights.SemiBold));
             listItemStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Left));
             listItemStyle.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.Transparent));
             listItemStyle.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(0)));
-            var borderFactory = new FrameworkElementFactory(typeof(Border));
-            borderFactory.Name = "Bd";
-            borderFactory.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
-            borderFactory.SetBinding(Border.BackgroundProperty, new Binding("Background") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-            borderFactory.SetBinding(Border.BorderBrushProperty, new Binding("BorderBrush") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-            borderFactory.SetBinding(Border.BorderThicknessProperty, new Binding("BorderThickness") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-            borderFactory.SetBinding(Border.PaddingProperty, new Binding("Padding") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-            var contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
-            contentFactory.SetBinding(ContentPresenter.ContentProperty, new Binding("Content") { RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) });
-            contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Left);
-            contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-            borderFactory.AppendChild(contentFactory);
-            listItemStyle.Setters.Add(new Setter(Control.TemplateProperty, new ControlTemplate(typeof(ListBoxItem)) { VisualTree = borderFactory }));
+
             var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x26, 0x2d, 0x3d))));
+            hoverTrigger.Setters.Add(new Setter(Control.BackgroundProperty, _sidebarHoverBrush));
             listItemStyle.Triggers.Add(hoverTrigger);
+
             var selectedTrigger = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
-            var selectedGradient = new LinearGradientBrush(
-                Color.FromRgb(0x2d, 0x35, 0x4a),
-                Color.FromRgb(0x22, 0x28, 0x38),
-                new Point(0, 0),
-                new Point(1, 1));
-            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, selectedGradient));
-            selectedTrigger.Setters.Add(new Setter(Control.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x63, 0x6b, 0x9a))));
+            selectedTrigger.Setters.Add(new Setter(Control.BackgroundProperty, _sidebarSelectedGradient));
+            selectedTrigger.Setters.Add(new Setter(Control.BorderBrushProperty, _sidebarSelectedBorderBrush));
             selectedTrigger.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(3, 0, 0, 0)));
             listItemStyle.Triggers.Add(selectedTrigger);
+
             sidebar.ItemContainerStyle = listItemStyle;
             return sidebar;
         }

@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+using System.Windows;
 using Newtonsoft.Json.Linq;
 using Sbui.Core;
 using System.Windows.Controls;
-using Wpf.Ui.Controls;
 
 namespace Sbui.Elements
 {
@@ -22,7 +22,8 @@ namespace Sbui.Elements
         JToken GetSetting(string path);
         ControlRegistry Registry { get; }
         void MarkDirty();
-        FluentWindow Window { get; }
+        /// <summary>The main window. May be FluentWindow or plain Window depending on plainWindow setting.</summary>
+        Window Window { get; }
         void Log(string message);
         void UpdateDropdown(string key, string[] options, int selectedIndex);
         void UpdateDropdownWithPairValue(string displayKey, string valueKey, System.Collections.Generic.IEnumerable<(string Value, string Display)> options, string selectedValue);

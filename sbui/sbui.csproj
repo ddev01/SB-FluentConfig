@@ -89,6 +89,7 @@
     <Compile Include="Core\SettingsManager.cs" />
     <Compile Include="Core\SettingsPathHelper.cs" />
     <Compile Include="Core\ControlRegistry.cs" />
+    <Compile Include="Core\PerformanceTracer.cs" />
     <Compile Include="Core\SettingsSynchronizer.cs" />
     <Compile Include="Core\SbuiWindowManager.cs" />
     <Compile Include="Core\WindowBuilder.cs" />

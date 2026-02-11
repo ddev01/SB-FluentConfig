@@ -11,6 +11,17 @@ namespace Sbui.Components
     /// </summary>
     public static class SbuiComponentFactory
     {
+        // Cached frozen brushes to avoid per-control allocations and reduce GC pressure
+        private static readonly SolidColorBrush WhiteBrush = Freeze(new SolidColorBrush(Colors.White));
+        private static readonly SolidColorBrush GrayBrush = Freeze(new SolidColorBrush(Colors.Gray));
+        private static readonly SolidColorBrush SeparatorBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x3d, 0x45, 0x55)));
+
+        private static SolidColorBrush Freeze(SolidColorBrush brush)
+        {
+            brush.Freeze();
+            return brush;
+        }
+
         public static ToggleSwitch CreateToggleSwitch(string saveKey, bool isChecked)
         {
             var ts = new ToggleSwitch { Tag = saveKey, IsChecked = isChecked };
@@ -172,7 +183,7 @@ namespace Sbui.Components
                 Text = text ?? "",
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Colors.White)
+                Foreground = WhiteBrush
             };
         }
 
@@ -182,7 +193,7 @@ namespace Sbui.Components
             {
                 Text = text ?? "",
                 FontSize = 12,
-                Foreground = new SolidColorBrush(Colors.Gray),
+                Foreground = GrayBrush,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 2, 0, 4)
             };
@@ -194,7 +205,7 @@ namespace Sbui.Components
             {
                 Height = 1,
                 Margin = new Thickness(0, 16, 0, 16),
-                Background = new SolidColorBrush(Color.FromRgb(0x3d, 0x45, 0x55)),
+                Background = SeparatorBrush,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
         }

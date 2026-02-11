@@ -28,19 +28,21 @@ namespace Sbui
 {
     public partial class Sbui : IRenderContext
     {
-        private FluentWindow _window;
+        private Window _window;
         private readonly IInlineInvokeProxy _cph;
         private readonly string _extensionName;
         private readonly string _displayVersion;
         private readonly string _settingsKey;
         private JObject _existingSettings;
         private readonly bool _withUi;
+        private readonly bool _plainWindow;
         private readonly SettingsManager _settingsManager;
         private TabManager _tabManager;
         private Grid _mainGrid;
         private ContentControl _headerPlaceholder;
         private System.Windows.Controls.ListBox _sidebar;
         private ScrollViewer _contentScrollViewer;
+        private DockPanel _contentPanel;
         private bool _dirty;
         private readonly ControlRegistry _controlRegistry = new ControlRegistry();
         private readonly SettingsSynchronizer _synchronizer = new SettingsSynchronizer();
@@ -53,7 +55,13 @@ namespace Sbui
         internal JObject ExistingSettings => _existingSettings;
         internal void EnsureExistingSettings() { if (_existingSettings == null) _existingSettings = new JObject(); }
         private readonly SbuiPanelContext _sbuiPanelContext;
+        private PerformanceTracer _perfTracer;
 
+        /// <summary>
+        /// Performance tracer for instrumented startup profiling.
+        /// Available after construction; call LogSummary() after Show() to see the full report.
+        /// </summary>
+        internal PerformanceTracer PerfTracer => _perfTracer;
 
         private static Action<string> _logCallback;
 
@@ -101,7 +109,7 @@ namespace Sbui
         }
         ControlRegistry IRenderContext.Registry => _controlRegistry;
         void IRenderContext.MarkDirty() => MarkDirty();
-        FluentWindow IRenderContext.Window => _window;
+        Window IRenderContext.Window => _window;
         void IRenderContext.Log(string message) => LogInternal(message);
         void IRenderContext.UpdateDropdown(string key, string[] options, int selectedIndex) => UpdateDropdown(key, options, selectedIndex);
         void IRenderContext.UpdateDropdownWithPairValue(string displayKey, string valueKey, System.Collections.Generic.IEnumerable<(string Value, string Display)> options, string selectedValue) => UpdateDropdownWithPairValue(displayKey, valueKey, options, selectedValue);
@@ -132,7 +140,7 @@ namespace Sbui
         public void Toast(string message)
         {
             if (_window == null) return;
-            DialogHelper.Toast((Window)_window, message);
+            DialogHelper.Toast(_window, message);
         }
 
         /// <summary>
@@ -145,13 +153,19 @@ namespace Sbui
         /// <summary>
         /// Constructor with CPH and optional display version for window title (e.g. "{extensionName} (v{displayVersion})").
         /// </summary>
-        public Sbui(IInlineInvokeProxy cph, string extensionName, string displayVersion, bool withUi = true)
+        public Sbui(IInlineInvokeProxy cph, string extensionName, string displayVersion, bool withUi = true, bool plainWindow = false)
         {
+            _perfTracer = new PerformanceTracer(LogInternal);
+            _perfTracer.Start("Constructor.Init");
+
             _cph = cph;
             _extensionName = extensionName ?? "Settings";
             _displayVersion = string.IsNullOrEmpty(displayVersion) ? null : displayVersion;
             _settingsKey = cph != null ? "Sbui_Settings_" + extensionName : null;
             _withUi = withUi;
+            _plainWindow = plainWindow;
+
+            _perfTracer.BeginPhase("SettingsManager.Create+Load");
             _settingsManager = new SettingsManager(cph, _settingsKey, LogInternal);
             _existingSettings = _settingsManager.Load();
             _sbuiPanelContext = new SbuiPanelContext(this);
@@ -170,25 +184,42 @@ namespace Sbui
                     "Current apartment state: " + Thread.CurrentThread.GetApartmentState());
             }
 
+            _perfTracer.BeginPhase("WPF Application.Create");
             if (Application.Current == null)
             {
                 new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                // WPF UI requires ThemesDictionary + ControlsDictionary for dark styling of TextBox, ScrollViewer, etc.
+                Application.Current.Resources.MergedDictionaries.Add(
+                    new Wpf.Ui.Markup.ThemesDictionary { Theme = ApplicationTheme.Dark });
+                Application.Current.Resources.MergedDictionaries.Add(
+                    new Wpf.Ui.Markup.ControlsDictionary());
             }
 
-            var builder = new WindowBuilder(_extensionName, _displayVersion ?? "", _existingSettings);
+            _perfTracer.BeginPhase("ThemeManager.Apply (global)");
+            ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
+
+            _perfTracer.BeginPhase("WindowBuilder.Build");
+            var builder = new WindowBuilder(_extensionName, _displayVersion ?? "", _existingSettings, _perfTracer, _plainWindow);
             _window = builder.Build(
                 out _mainGrid,
                 out _headerPlaceholder,
                 out _tabManager,
                 out _sidebar,
                 out _contentScrollViewer,
+                out _contentPanel,
                 onSave: SaveValuesInternal,
                 onSaveAndExit: () => { SaveValuesInternal(); _window?.Close(); },
                 onReset: HandleReset,
                 onExit: HandleExit
             );
-            ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Mica, true);
-            ApplicationThemeManager.Apply((FrameworkElement)_window);
+
+            // Per-window theme apply is needed for FluentWindow dark title bar + Mica backdrop.
+            // Skip for plain Window — it doesn't need Mica/DWM setup and uses explicit Background brush.
+            if (!_plainWindow)
+            {
+                _perfTracer.BeginPhase("ThemeManager.Apply (window)");
+                ApplicationThemeManager.Apply((FrameworkElement)_window);
+            }
 
             _window.Closed += (s, e) =>
             {
@@ -199,6 +230,7 @@ namespace Sbui
             };
 
             SbuiWindowManager.SetOpened(true);
+            _perfTracer.BeginPhase("Post-InitializeUI");
         }
 
         /// <summary>
@@ -262,6 +294,33 @@ namespace Sbui
         internal void EnsureTabExists(string tabName)
         {
             _tabManager?.EnsureTab(tabName);
+        }
+
+        /// <summary>
+        /// Builds all deferred sections synchronously. Used by tests.
+        /// </summary>
+        internal void BuildAllDeferredSections()
+        {
+            _tabManager?.BuildAllDeferred();
+        }
+
+        /// <summary>
+        /// Registers a deferred section builder. The tab/sidebar item is created immediately,
+        /// but the section content is only built on first tab switch (lazy loading).
+        /// </summary>
+        internal void RegisterDeferredSection(string tabId, string title, Action<SectionBuilder> build)
+        {
+            if (_tabManager == null || build == null) return;
+            _tabManager.RegisterDeferredBuilder(tabId, () =>
+            {
+                _perfTracer?.BeginPhase($"Section (lazy): {tabId}");
+                var titleEl = new Elements.TitleElement(title ?? "", tabId ?? "");
+                AddElement(tabId ?? "", titleEl, null);
+                var section = new SectionBuilder(this, tabId ?? "");
+                build(section);
+                section.FlushPending();
+                _perfTracer?.EndPhase();
+            });
         }
 
         /// <summary>
@@ -361,6 +420,7 @@ namespace Sbui
 
         /// <summary>
         /// Single code path: add an element to the given tab (or current panel when inside WithPanel). Used by fluent builders.
+        /// Logs per-element timing when PerformanceTracer is active and render takes > 5ms.
         /// </summary>
         internal void AddElement(string tabName, Elements.UIElement element, string showWhenKey = null)
         {
@@ -368,11 +428,17 @@ namespace Sbui
             element.TabName = tabName ?? "";
             if (!string.IsNullOrEmpty(showWhenKey))
             {
+                var sw1 = _perfTracer != null ? Stopwatch.StartNew() : null;
                 AddWithOptionalVisibility(showWhenKey, tabName, () => element.Render(this));
+                if (sw1 != null && sw1.ElapsedMilliseconds > 5)
+                    LogInternal($"[PerfTrace]   └ {element.GetType().Name} (+visibility): {sw1.ElapsedMilliseconds}ms");
                 return;
             }
+            var sw = _perfTracer != null ? Stopwatch.StartNew() : null;
             EnsureTabExists(tabName);
             element.Render(this);
+            if (sw != null && sw.ElapsedMilliseconds > 5)
+                LogInternal($"[PerfTrace]   └ {element.GetType().Name}: {sw.ElapsedMilliseconds}ms");
         }
 
         /// <summary>
@@ -393,25 +459,28 @@ namespace Sbui
 
         /// <summary>
         /// Add a header image at the top of the UI. Only one header is shown; multiple calls result in the last URL being used.
+        /// Loads asynchronously by default — shows a placeholder while the image downloads.
         /// </summary>
         public void AddHeader(string imageUrl)
         {
             if (_headerPlaceholder == null || string.IsNullOrEmpty(imageUrl)) return;
+            _perfTracer?.BeginPhase("AddHeader (async image)");
             var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             try
             {
-                var bi = new System.Windows.Media.Imaging.BitmapImage();
-                bi.BeginInit();
-                bi.UriSource = new Uri(imageUrl, UriKind.Absolute);
-                bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                bi.EndInit();
-                headerPanel.Children.Add(new System.Windows.Controls.Image
+                var img = new System.Windows.Controls.Image
                 {
-                    Source = bi,
                     MaxHeight = 120,
                     Stretch = System.Windows.Media.Stretch.Uniform,
                     HorizontalAlignment = HorizontalAlignment.Stretch
-                });
+                };
+
+                // Load asynchronously — WPF downloads in background, updates Image when done.
+                // No BitmapCacheOption.OnLoad so we don't block the UI thread.
+                var bi = new BitmapImage(new Uri(imageUrl, UriKind.Absolute));
+                img.Source = bi;
+
+                headerPanel.Children.Add(img);
             }
             catch (Exception ex)
             {
@@ -478,7 +547,7 @@ namespace Sbui
         public void AddPopupWindow(string title, string message)
         {
             if (_window == null) return;
-            DialogHelper.AddPopupWindow((Window)_window, title, message);
+            DialogHelper.AddPopupWindow(_window, title, message);
         }
 
         /// <summary>
@@ -487,7 +556,7 @@ namespace Sbui
         public System.Windows.MessageBoxResult ShowConfirmDialog(string title, string message, string yesButton, string noButton)
         {
             if (_window == null) return System.Windows.MessageBoxResult.None;
-            return DialogHelper.ShowConfirmDialog((Window)_window, title, message, yesButton, noButton);
+            return DialogHelper.ShowConfirmDialog(_window, title, message, yesButton, noButton);
         }
 
         /// <summary>
@@ -496,7 +565,7 @@ namespace Sbui
         public IProgressReporter ShowProgressWindow(string title, string message, string progressLabel, int total)
         {
             if (_window == null) return null;
-            return ProgressWindowHelper.Show((Window)_window, title, message, progressLabel, total);
+            return ProgressWindowHelper.Show(_window, title, message, progressLabel, total);
         }
 
         /// <summary>
@@ -535,15 +604,93 @@ namespace Sbui
             Log(_existingSettings.ToString());
         }
 
-        public void ShowUI()
+        /// <summary>
+        /// Shows the window immediately with a minimal loading overlay (tiny visual tree = fast Show),
+        /// then swaps in the real content beneath the overlay and builds the first section.
+        /// The overlay stays visible until the first section is fully built, then is removed.
+        /// Uses DispatcherFrame to pump messages so the spinner animates during the build.
+        /// Remaining sections are built lazily on tab switch.
+        /// </summary>
+        internal void ShowUIWithLoadingOverlay(string firstTabId)
         {
             if (_window == null)
             {
-                Log("ShowUI called but window is null. Was constructor called with withUi=false?");
+                Log("ShowUIWithLoadingOverlay called but window is null. Was constructor called with withUi=false?");
                 return;
             }
+
+            // Create a minimal loading overlay — this is the ONLY content shown at first
+            _perfTracer?.BeginPhase("CreateLoadingOverlay");
+            var overlay = new System.Windows.Controls.Grid
+            {
+                Background = new SolidColorBrush(Color.FromArgb(255, 0x1e, 0x1e, 0x2e)),
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+            var loadingPanel = new StackPanel
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var progressRing = new Wpf.Ui.Controls.ProgressRing
+            {
+                IsIndeterminate = true,
+                Width = 48,
+                Height = 48
+            };
+            var loadingText = new System.Windows.Controls.TextBlock
+            {
+                Text = "Loading...",
+                Foreground = new SolidColorBrush(Colors.White),
+                FontSize = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(0, 12, 0, 0)
+            };
+            loadingPanel.Children.Add(progressRing);
+            loadingPanel.Children.Add(loadingText);
+            overlay.Children.Add(loadingPanel);
+
+            // Set window content to ONLY the loading overlay — tiny visual tree for fast Show()
+            _window.Content = overlay;
+
+            // Show window immediately — with just the spinner, this should be much faster
+            // than showing the full sidebar+grid+footer+scrollviewer tree
+            _perfTracer?.BeginPhase("Window.Show+Activate (overlay only)");
             _window.Show();
             _window.Activate();
+            _perfTracer?.EndPhase();
+
+            // Use DispatcherFrame to pump the message loop — the spinner stays animated
+            // while we swap in content and build the first section
+            var frame = new System.Windows.Threading.DispatcherFrame();
+
+            _window.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Background,
+                new Action(() =>
+                {
+                    // Swap in the real content — replaces the loading overlay.
+                    // WPF doesn't render mid-callback, so the user goes directly
+                    // from seeing the spinner to seeing the completed first tab.
+                    _perfTracer?.BeginPhase("SwapContent (real layout)");
+                    if (_contentPanel != null)
+                        _window.Content = _contentPanel;
+
+                    // Build the first (eager) section
+                    if (!string.IsNullOrEmpty(firstTabId) && _tabManager != null)
+                    {
+                        _perfTracer?.BeginPhase($"Section (first tab): {firstTabId}");
+                        _tabManager.BuildFirstDeferred(firstTabId);
+                    }
+
+                    _perfTracer?.EndPhase();
+                    _perfTracer?.LogSummary();
+
+                    // Exit the frame — this lets ShowUIWithLoadingOverlay return
+                    frame.Continue = false;
+                }));
+
+            // Pump messages until the content is built — spinner animates during this time
+            System.Windows.Threading.Dispatcher.PushFrame(frame);
         }
     }
 }

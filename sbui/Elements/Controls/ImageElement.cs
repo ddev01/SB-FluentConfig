@@ -41,6 +41,7 @@ namespace Sbui.Elements
                 bi.UriSource = new Uri(ImageUrl, UriKind.RelativeOrAbsolute);
                 bi.CacheOption = BitmapCacheOption.OnLoad;
                 bi.EndInit();
+                if (bi.CanFreeze) bi.Freeze();
                 img.Source = bi;
             }
             catch (Exception ex)
