@@ -8,6 +8,31 @@ using Button = Wpf.Ui.Controls.Button;
 
 namespace Sbui.Elements
 {
+    /// <summary>
+    /// Options for constructing an InputElement, replacing the 17-parameter constructor.
+    /// </summary>
+    public class InputElementOptions
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string TabName { get; set; } = "";
+        public string SaveKey { get; set; }
+        public InputValidation.InputType InputType { get; set; }
+        public string DefaultString { get; set; } = "";
+        public int DefaultInt { get; set; }
+        public double DefaultDouble { get; set; }
+        public float DefaultFloat { get; set; }
+        public int MinInt { get; set; }
+        public int MaxInt { get; set; } = int.MaxValue;
+        public double MinDouble { get; set; }
+        public double MaxDouble { get; set; } = 100;
+        public float MinFloat { get; set; }
+        public float MaxFloat { get; set; } = 100;
+        public double Step { get; set; } = 1;
+        public bool WithStepper { get; set; }
+        public string VisibilityKey { get; set; }
+    }
+
     public class InputElement : UIElement
     {
         public string Title { get; set; }
@@ -27,6 +52,35 @@ namespace Sbui.Elements
         public double Step { get; set; }
         public bool WithStepper { get; set; }
 
+        /// <summary>
+        /// Construct from an options object (preferred).
+        /// </summary>
+        public InputElement(InputElementOptions opts)
+        {
+            if (opts == null) throw new ArgumentNullException(nameof(opts));
+            Title = opts.Title ?? "";
+            Description = opts.Description ?? "";
+            TabName = opts.TabName ?? "";
+            SaveKey = opts.SaveKey;
+            InputType = opts.InputType;
+            DefaultString = opts.DefaultString ?? "";
+            DefaultInt = opts.DefaultInt;
+            DefaultDouble = opts.DefaultDouble;
+            DefaultFloat = opts.DefaultFloat;
+            MinInt = opts.MinInt;
+            MaxInt = opts.MaxInt;
+            MinDouble = opts.MinDouble;
+            MaxDouble = opts.MaxDouble;
+            MinFloat = opts.MinFloat;
+            MaxFloat = opts.MaxFloat;
+            Step = opts.Step;
+            WithStepper = opts.WithStepper && (opts.InputType == InputValidation.InputType.Double || opts.InputType == InputValidation.InputType.Float);
+            VisibilityKey = opts.VisibilityKey;
+        }
+
+        /// <summary>
+        /// Legacy positional constructor — delegates to the options constructor.
+        /// </summary>
         public InputElement(
             string title, string description, string tabName, string saveKey,
             InputValidation.InputType inputType,
@@ -34,26 +88,28 @@ namespace Sbui.Elements
             int minInt, int maxInt, double minDouble, double maxDouble, float minFloat, float maxFloat,
             double step, bool withStepper,
             string visibilityKey = null)
-        {
-            Title = title;
-            Description = description ?? "";
-            TabName = tabName ?? "";
-            SaveKey = saveKey;
-            InputType = inputType;
-            DefaultString = defaultString ?? "";
-            DefaultInt = defaultInt;
-            DefaultDouble = defaultDouble;
-            DefaultFloat = defaultFloat;
-            MinInt = minInt;
-            MaxInt = maxInt;
-            MinDouble = minDouble;
-            MaxDouble = maxDouble;
-            MinFloat = minFloat;
-            MaxFloat = maxFloat;
-            Step = step;
-            WithStepper = withStepper && (inputType == InputValidation.InputType.Double || inputType == InputValidation.InputType.Float);
-            VisibilityKey = visibilityKey;
-        }
+            : this(new InputElementOptions
+            {
+                Title = title,
+                Description = description,
+                TabName = tabName,
+                SaveKey = saveKey,
+                InputType = inputType,
+                DefaultString = defaultString,
+                DefaultInt = defaultInt,
+                DefaultDouble = defaultDouble,
+                DefaultFloat = defaultFloat,
+                MinInt = minInt,
+                MaxInt = maxInt,
+                MinDouble = minDouble,
+                MaxDouble = maxDouble,
+                MinFloat = minFloat,
+                MaxFloat = maxFloat,
+                Step = step,
+                WithStepper = withStepper,
+                VisibilityKey = visibilityKey
+            })
+        { }
 
         public override void Render(IRenderContext context)
         {
@@ -61,54 +117,7 @@ namespace Sbui.Elements
             if (panel == null) return;
 
             var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
-
-            string tag = SaveKey;
-            string initialText = DefaultString;
-
-            if (InputType == InputValidation.InputType.Int)
-            {
-                tag = SbuiTags.IntegerPrefix + SaveKey;
-                var token = context.GetSetting(SaveKey);
-                int val = DefaultInt;
-                if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Integer || token.Type == Newtonsoft.Json.Linq.JTokenType.Float))
-                {
-                    try { val = token.ToObject<int>(); }
-                    catch (Exception ex) { context.Log($"InputElement: failed to parse int for '{SaveKey}': {ex.Message}"); }
-                }
-                val = Math.Max(MinInt, Math.Min(MaxInt, val));
-                initialText = val.ToString();
-            }
-            else if (InputType == InputValidation.InputType.Double)
-            {
-                tag = SbuiTags.DoublePrefix + SaveKey;
-                var token = context.GetSetting(SaveKey);
-                double val = DefaultDouble;
-                if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Float || token.Type == Newtonsoft.Json.Linq.JTokenType.Integer))
-                {
-                    try { val = token.ToObject<double>(); }
-                    catch (Exception ex) { context.Log($"InputElement: failed to parse double for '{SaveKey}': {ex.Message}"); }
-                }
-                val = Math.Max(MinDouble, Math.Min(MaxDouble, val));
-                initialText = InputValidation.FormatDouble(val);
-            }
-            else if (InputType == InputValidation.InputType.Float)
-            {
-                tag = SbuiTags.FloatPrefix + SaveKey;
-                var token = context.GetSetting(SaveKey);
-                float val = DefaultFloat;
-                if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Float || token.Type == Newtonsoft.Json.Linq.JTokenType.Integer))
-                {
-                    try { val = token.ToObject<float>(); }
-                    catch (Exception ex) { context.Log($"InputElement: failed to parse float for '{SaveKey}': {ex.Message}"); }
-                }
-                val = Math.Max(MinFloat, Math.Min(MaxFloat, val));
-                initialText = InputValidation.FormatFloat(val);
-            }
-            else
-            {
-                var token = context.GetSetting(SaveKey);
-                if (token != null) initialText = token.ToString() ?? DefaultString;
-            }
+            ResolveInitialValue(context, out var tag, out var initialText);
 
             var tb = new System.Windows.Controls.TextBox
             {
@@ -119,12 +128,90 @@ namespace Sbui.Elements
                 VerticalContentAlignment = VerticalAlignment.Center
             };
 
-            if (InputType == InputValidation.InputType.Int || InputType == InputValidation.InputType.Double || InputType == InputValidation.InputType.Float)
+            if (InputType != InputValidation.InputType.String)
             {
                 InputValidation.CreatePreviewTextInputHandler(tb, InputType);
                 InputValidation.AddDataObjectPastingHandler(tb, InputType);
             }
 
+            AttachTextChangedHandler(tb, context);
+            context.Registry.Register(SaveKey, tb);
+
+            if (ShouldShowStepper())
+            {
+                stack.Children.Add(CreateStepperRow(tb, context));
+            }
+            else
+            {
+                if (InputType == InputValidation.InputType.String)
+                    tb.MinWidth = 200;
+                stack.Children.Add(tb);
+            }
+
+            panel.Children.Add(stack);
+        }
+
+        private bool ShouldShowStepper()
+        {
+            return InputType == InputValidation.InputType.Int
+                || (WithStepper && (InputType == InputValidation.InputType.Double || InputType == InputValidation.InputType.Float));
+        }
+
+        private void ResolveInitialValue(IRenderContext context, out string tag, out string initialText)
+        {
+            tag = SaveKey;
+            initialText = DefaultString;
+            var token = context.GetSetting(SaveKey);
+
+            switch (InputType)
+            {
+                case InputValidation.InputType.Int:
+                    tag = SbuiTags.IntegerPrefix + SaveKey;
+                    int iv = DefaultInt;
+                    if (token != null && IsNumericToken(token))
+                    {
+                        try { iv = token.ToObject<int>(); }
+                        catch (Exception ex) { context.Log($"InputElement: failed to parse int for '{SaveKey}': {ex.Message}"); }
+                    }
+                    initialText = Math.Max(MinInt, Math.Min(MaxInt, iv)).ToString();
+                    break;
+
+                case InputValidation.InputType.Double:
+                    tag = SbuiTags.DoublePrefix + SaveKey;
+                    double dv = DefaultDouble;
+                    if (token != null && IsNumericToken(token))
+                    {
+                        try { dv = token.ToObject<double>(); }
+                        catch (Exception ex) { context.Log($"InputElement: failed to parse double for '{SaveKey}': {ex.Message}"); }
+                    }
+                    initialText = InputValidation.FormatDouble(Math.Max(MinDouble, Math.Min(MaxDouble, dv)));
+                    break;
+
+                case InputValidation.InputType.Float:
+                    tag = SbuiTags.FloatPrefix + SaveKey;
+                    float fv = DefaultFloat;
+                    if (token != null && IsNumericToken(token))
+                    {
+                        try { fv = token.ToObject<float>(); }
+                        catch (Exception ex) { context.Log($"InputElement: failed to parse float for '{SaveKey}': {ex.Message}"); }
+                    }
+                    initialText = InputValidation.FormatFloat(Math.Max(MinFloat, Math.Min(MaxFloat, fv)));
+                    break;
+
+                default:
+                    if (token != null) initialText = token.ToString() ?? DefaultString;
+                    break;
+            }
+        }
+
+        private static bool IsNumericToken(Newtonsoft.Json.Linq.JToken token)
+        {
+            return token.Type == Newtonsoft.Json.Linq.JTokenType.Integer
+                || token.Type == Newtonsoft.Json.Linq.JTokenType.Float;
+        }
+
+        private void AttachTextChangedHandler(System.Windows.Controls.TextBox tb, IRenderContext context)
+        {
             bool isUpdating = false;
             tb.TextChanged += (s, e) =>
             {
@@ -151,114 +238,81 @@ namespace Sbui.Elements
                 }
                 finally { isUpdating = false; }
             };
+        }
 
-            context.Registry.Register(SaveKey, tb);
+        private Grid CreateStepperRow(System.Windows.Controls.TextBox tb, IRenderContext context)
+        {
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            if (WithStepper && (InputType == InputValidation.InputType.Double || InputType == InputValidation.InputType.Float))
+            var minusBtn = CreateStepperButton("−");
+            minusBtn.Click += (s, ev) => ApplyStep(tb, context, -1);
+
+            var plusBtn = CreateStepperButton("+");
+            plusBtn.Click += (s, ev) => ApplyStep(tb, context, +1);
+
+            var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
+            buttonPanel.Children.Add(minusBtn);
+            buttonPanel.Children.Add(plusBtn);
+
+            Grid.SetColumn(tb, 0);
+            Grid.SetColumn(buttonPanel, 1);
+            row.Children.Add(tb);
+            row.Children.Add(buttonPanel);
+
+            return row;
+        }
+
+        private static Button CreateStepperButton(string symbol)
+        {
+            return new Button
             {
-                var row = new Grid();
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                var minusBtn = new Button
+                Content = new System.Windows.Controls.TextBlock
                 {
-                    Content = new System.Windows.Controls.TextBlock { Text = "−", FontSize = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                    Width = 28, Height = 28, Margin = new Thickness(0, 4, 2, 0), Padding = new Thickness(0)
-                };
-                minusBtn.Click += (s, ev) =>
-                {
-                    if (InputType == InputValidation.InputType.Double && InputValidation.TryParseDouble(tb.Text, out var v, MinDouble, MaxDouble))
-                    {
-                        v = Math.Max(MinDouble, v - Step);
-                        tb.Text = InputValidation.FormatDouble(v);
-                        context.MarkDirty();
-                    }
-                    else if (InputType == InputValidation.InputType.Float && InputValidation.TryParseFloat(tb.Text, out var vf, MinFloat, MaxFloat))
-                    {
-                        vf = Math.Max(MinFloat, vf - (float)Step);
-                        tb.Text = InputValidation.FormatFloat(vf);
-                        context.MarkDirty();
-                    }
-                };
-                var plusBtn = new Button
-                {
-                    Content = new System.Windows.Controls.TextBlock { Text = "+", FontSize = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                    Width = 28, Height = 28, Margin = new Thickness(0, 4, 0, 0), Padding = new Thickness(0)
-                };
-                plusBtn.Click += (s, ev) =>
-                {
-                    if (InputType == InputValidation.InputType.Double && InputValidation.TryParseDouble(tb.Text, out var v, MinDouble, MaxDouble))
-                    {
-                        v = Math.Min(MaxDouble, v + Step);
-                        tb.Text = InputValidation.FormatDouble(v);
-                        context.MarkDirty();
-                    }
-                    else if (InputType == InputValidation.InputType.Float && InputValidation.TryParseFloat(tb.Text, out var vf, MinFloat, MaxFloat))
-                    {
-                        vf = Math.Min(MaxFloat, vf + (float)Step);
-                        tb.Text = InputValidation.FormatFloat(vf);
-                        context.MarkDirty();
-                    }
-                };
-                var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
-                buttonPanel.Children.Add(minusBtn);
-                buttonPanel.Children.Add(plusBtn);
-                Grid.SetColumn(tb, 0);
-                Grid.SetColumn(buttonPanel, 1);
-                row.Children.Add(tb);
-                row.Children.Add(buttonPanel);
-                stack.Children.Add(row);
-            }
-            else if (InputType == InputValidation.InputType.Int)
-            {
-                var row = new Grid();
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                var minusBtn = new Button
-                {
-                    Content = new System.Windows.Controls.TextBlock { Text = "−", FontSize = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                    Width = 28, Height = 28, Margin = new Thickness(0, 4, 2, 0), Padding = new Thickness(0)
-                };
-                minusBtn.Click += (s, ev) =>
-                {
-                    if (InputValidation.TryParseInt(tb.Text, out var v, MinInt, MaxInt))
-                    {
-                        v = Math.Max(MinInt, v - 1);
-                        tb.Text = v.ToString();
-                        context.MarkDirty();
-                    }
-                };
-                var plusBtn = new Button
-                {
-                    Content = new System.Windows.Controls.TextBlock { Text = "+", FontSize = 16, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
-                    Width = 28, Height = 28, Margin = new Thickness(0, 4, 0, 0), Padding = new Thickness(0)
-                };
-                plusBtn.Click += (s, ev) =>
-                {
-                    if (InputValidation.TryParseInt(tb.Text, out var v, MinInt, MaxInt))
-                    {
-                        v = Math.Min(MaxInt, v + 1);
-                        tb.Text = v.ToString();
-                        context.MarkDirty();
-                    }
-                };
-                var buttonPanel = new StackPanel { Orientation = Orientation.Horizontal };
-                buttonPanel.Children.Add(minusBtn);
-                buttonPanel.Children.Add(plusBtn);
-                Grid.SetColumn(tb, 0);
-                Grid.SetColumn(buttonPanel, 1);
-                row.Children.Add(tb);
-                row.Children.Add(buttonPanel);
-                stack.Children.Add(row);
-            }
-            else
-            {
-                stack.Children.Add(tb);
-            }
+                    Text = symbol,
+                    FontSize = 16,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Width = 28,
+                Height = 28,
+                Margin = new Thickness(0, 4, symbol == "−" ? 2 : 0, 0),
+                Padding = new Thickness(0)
+            };
+        }
 
-            if (InputType == InputValidation.InputType.String)
-                tb.MinWidth = 200;
+        private void ApplyStep(System.Windows.Controls.TextBox tb, IRenderContext context, int direction)
+        {
+            switch (InputType)
+            {
+                case InputValidation.InputType.Int:
+                    if (InputValidation.TryParseInt(tb.Text, out var iv, MinInt, MaxInt))
+                    {
+                        iv = direction > 0 ? Math.Min(MaxInt, iv + 1) : Math.Max(MinInt, iv - 1);
+                        tb.Text = iv.ToString();
+                        context.MarkDirty();
+                    }
+                    break;
 
-            panel.Children.Add(stack);
+                case InputValidation.InputType.Double:
+                    if (InputValidation.TryParseDouble(tb.Text, out var dv, MinDouble, MaxDouble))
+                    {
+                        dv = direction > 0 ? Math.Min(MaxDouble, dv + Step) : Math.Max(MinDouble, dv - Step);
+                        tb.Text = InputValidation.FormatDouble(dv);
+                        context.MarkDirty();
+                    }
+                    break;
+
+                case InputValidation.InputType.Float:
+                    if (InputValidation.TryParseFloat(tb.Text, out var fv, MinFloat, MaxFloat))
+                    {
+                        fv = direction > 0 ? Math.Min(MaxFloat, fv + (float)Step) : Math.Max(MinFloat, fv - (float)Step);
+                        tb.Text = InputValidation.FormatFloat(fv);
+                        context.MarkDirty();
+                    }
+                    break;
+            }
         }
     }
 }
