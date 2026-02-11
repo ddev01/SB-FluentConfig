@@ -22,7 +22,7 @@ namespace Sbui
 
         protected TWrapper Option(Action<IControlOptions> apply)
         {
-            if (PendingOptions != null) apply(PendingOptions);
+            if (PendingOptions != null && apply != null) apply(PendingOptions);
             return (TWrapper)this;
         }
 

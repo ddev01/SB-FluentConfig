@@ -1,3 +1,4 @@
+using System;
 using System.Windows.Controls;
 using Newtonsoft.Json.Linq;
 using Sbui.Components;
@@ -28,7 +29,13 @@ namespace Sbui.Elements
             if (panel == null) return;
             var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
             stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            var isChecked = context.GetSetting(SaveKey) != null ? context.GetSetting(SaveKey).ToObject<bool>() : DefaultValue;
+            bool isChecked = DefaultValue;
+            var settingToken = context.GetSetting(SaveKey);
+            if (settingToken != null)
+            {
+                try { isChecked = settingToken.ToObject<bool>(); }
+                catch (Exception ex) { context.Log($"ToggleSwitchElement: failed to parse bool for '{SaveKey}': {ex.Message}"); }
+            }
             var ts = SbuiComponentFactory.CreateToggleSwitch(SaveKey, isChecked);
             ts.Checked += (s, e) => context.MarkDirty();
             ts.Unchecked += (s, e) => context.MarkDirty();

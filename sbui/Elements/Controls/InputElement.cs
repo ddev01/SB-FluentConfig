@@ -75,7 +75,8 @@ namespace Sbui.Elements
                 int val = DefaultInt;
                 if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Integer || token.Type == Newtonsoft.Json.Linq.JTokenType.Float))
                 {
-                    try { val = token.ToObject<int>(); } catch { }
+                    try { val = token.ToObject<int>(); }
+                    catch (Exception ex) { context.Log($"InputElement: failed to parse int for '{SaveKey}': {ex.Message}"); }
                 }
                 val = Math.Max(MinInt, Math.Min(MaxInt, val));
                 initialText = val.ToString();
@@ -86,7 +87,10 @@ namespace Sbui.Elements
                 var token = context.GetSetting(SaveKey);
                 double val = DefaultDouble;
                 if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Float || token.Type == Newtonsoft.Json.Linq.JTokenType.Integer))
-                    val = token.ToObject<double>();
+                {
+                    try { val = token.ToObject<double>(); }
+                    catch (Exception ex) { context.Log($"InputElement: failed to parse double for '{SaveKey}': {ex.Message}"); }
+                }
                 val = Math.Max(MinDouble, Math.Min(MaxDouble, val));
                 initialText = InputValidation.FormatDouble(val);
             }
@@ -96,7 +100,10 @@ namespace Sbui.Elements
                 var token = context.GetSetting(SaveKey);
                 float val = DefaultFloat;
                 if (token != null && (token.Type == Newtonsoft.Json.Linq.JTokenType.Float || token.Type == Newtonsoft.Json.Linq.JTokenType.Integer))
-                    val = token.ToObject<float>();
+                {
+                    try { val = token.ToObject<float>(); }
+                    catch (Exception ex) { context.Log($"InputElement: failed to parse float for '{SaveKey}': {ex.Message}"); }
+                }
                 val = Math.Max(MinFloat, Math.Min(MaxFloat, val));
                 initialText = InputValidation.FormatFloat(val);
             }
@@ -121,24 +128,31 @@ namespace Sbui.Elements
                 InputValidation.AddDataObjectPastingHandler(tb, InputType);
             }
 
+            bool isUpdating = false;
             tb.TextChanged += (s, e) =>
             {
-                context.MarkDirty();
-                if (InputType == InputValidation.InputType.Int)
+                if (isUpdating) return;
+                isUpdating = true;
+                try
                 {
-                    if (InputValidation.TryParseInt(tb.Text, out var v, MinInt, MaxInt))
-                        tb.Text = v.ToString();
+                    context.MarkDirty();
+                    if (InputType == InputValidation.InputType.Int)
+                    {
+                        if (InputValidation.TryParseInt(tb.Text, out var v, MinInt, MaxInt))
+                            tb.Text = v.ToString();
+                    }
+                    else if (InputType == InputValidation.InputType.Double)
+                    {
+                        if (InputValidation.TryParseDouble(tb.Text, out var v, MinDouble, MaxDouble))
+                            tb.Text = InputValidation.FormatDouble(v);
+                    }
+                    else if (InputType == InputValidation.InputType.Float)
+                    {
+                        if (InputValidation.TryParseFloat(tb.Text, out var v, MinFloat, MaxFloat))
+                            tb.Text = InputValidation.FormatFloat(v);
+                    }
                 }
-                else if (InputType == InputValidation.InputType.Double)
-                {
-                    if (InputValidation.TryParseDouble(tb.Text, out var v, MinDouble, MaxDouble))
-                        tb.Text = InputValidation.FormatDouble(v);
-                }
-                else if (InputType == InputValidation.InputType.Float)
-                {
-                    if (InputValidation.TryParseFloat(tb.Text, out var v, MinFloat, MaxFloat))
-                        tb.Text = InputValidation.FormatFloat(v);
-                }
+                finally { isUpdating = false; }
             };
 
             context.Registry.Register(SaveKey, tb);

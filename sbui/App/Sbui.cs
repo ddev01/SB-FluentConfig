@@ -514,8 +514,9 @@ namespace Sbui
             {
                 return Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
             }
-            catch
+            catch (Exception ex)
             {
+                LogInternal($"GetVersion failed: {ex.Message}");
                 return "1.0.0";
             }
         }

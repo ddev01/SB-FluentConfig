@@ -484,7 +484,11 @@ namespace Sbui.Core
                             var parsed = JToken.Parse(tb.Text ?? "[]");
                             settings[key] = parsed is JArray a ? a : new JArray();
                         }
-                        catch { settings[key] = new JArray(); }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Sbui] SettingsSynchronizer: failed to parse competing prefix for key '{key}': {ex.Message}");
+                            settings[key] = new JArray();
+                        }
                     }
                     else
                         settings[keyTb] = tb.Text ?? "";
@@ -688,8 +692,9 @@ namespace Sbui.Core
                 var parsed = JToken.Parse(tb.Text);
                 return parsed as JArray ?? new JArray();
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[Sbui] SettingsSynchronizer.ExtractCompetingIndices: failed to parse: {ex.Message}");
                 return new JArray();
             }
         }

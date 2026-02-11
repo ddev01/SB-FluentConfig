@@ -53,9 +53,12 @@ namespace Sbui.Components
                 }
                 else if (m.Groups["col"].Success)
                 {
+                    Color parsedColor;
+                    try { parsedColor = (Color)ColorConverter.ConvertFromString(m.Groups["col"].Value); }
+                    catch { parsedColor = Colors.White; }
                     var span = new Span
                     {
-                        Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(m.Groups["col"].Value))
+                        Foreground = new SolidColorBrush(parsedColor)
                     };
                     foreach (var i in Parse(m.Groups["colTxt"].Value))
                         span.Inlines.Add(i);
@@ -63,7 +66,10 @@ namespace Sbui.Components
                 }
                 else if (m.Groups["size"].Success)
                 {
-                    var span = new Span { FontSize = double.Parse(m.Groups["size"].Value) };
+                    double fontSize;
+                    if (!double.TryParse(m.Groups["size"].Value, out fontSize) || fontSize <= 0)
+                        fontSize = 14;
+                    var span = new Span { FontSize = fontSize };
                     foreach (var i in Parse(m.Groups["sizeTxt"].Value))
                         span.Inlines.Add(i);
                     yield return span;
@@ -76,9 +82,18 @@ namespace Sbui.Components
                 {
                     var linkText = m.Groups["linkText"].Value;
                     var linkUrl = m.Groups["linkUrl"].Value;
+                    Uri parsedUri = null;
+                    try { parsedUri = new Uri(linkUrl, UriKind.RelativeOrAbsolute); }
+                    catch { /* invalid URI — will fall back to plain text below */ }
+                    if (parsedUri == null)
+                    {
+                        yield return new Run(linkText);
+                        start = m.Index + m.Length;
+                        continue;
+                    }
                     var hyperlink = new Hyperlink(new Run(linkText))
                     {
-                        NavigateUri = new Uri(linkUrl, UriKind.RelativeOrAbsolute)
+                        NavigateUri = parsedUri
                     };
                     hyperlink.RequestNavigate += (s, e) =>
                     {
@@ -87,7 +102,10 @@ namespace Sbui.Components
                         {
                             Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
                         }
-                        catch (Exception) { }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Sbui] RichTextParser: failed to open link: {ex.Message}");
+                        }
                     };
                     yield return hyperlink;
                 }

@@ -81,7 +81,10 @@ namespace Sbui.Elements
                 {
                     colorPickerRd.Source = new Uri("pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml", UriKind.RelativeOrAbsolute);
                 }
-                catch (Exception) { }
+                catch (Exception ex)
+                {
+                    context.Log($"ColorPickerElement: failed to load ColorPicker resource dictionary: {ex.Message}");
+                }
                 var standardColorPicker = new StandardColorPicker
                 {
                     SelectedColor = initialColor,

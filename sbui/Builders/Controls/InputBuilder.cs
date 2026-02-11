@@ -40,8 +40,8 @@ namespace Sbui
         public override void Default(string value) { _defaultString = value ?? ""; }
         public override void Default(int value) { _defaultInt = value; }
         public override void Default(double value) { _defaultDouble = value; _defaultFloat = (float)value; }
-        public override void Range(int min, int max) { _minInt = min; _maxInt = max; }
-        public override void Range(double min, double max) { _minDouble = min; _maxDouble = max; _minFloat = (float)min; _maxFloat = (float)max; }
+        public override void Range(int min, int max) { _minInt = Math.Min(min, max); _maxInt = Math.Max(min, max); }
+        public override void Range(double min, double max) { _minDouble = Math.Min(min, max); _maxDouble = Math.Max(min, max); _minFloat = (float)Math.Min(min, max); _maxFloat = (float)Math.Max(min, max); }
         public override void Step(double value) { _step = value; }
         public override void WithStepper(bool value = true) { _withStepper = value; }
         public override void ShowWhen(string key) { _showWhenKey = key; }

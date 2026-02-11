@@ -80,8 +80,9 @@ namespace Sbui.Core
             {
                 return token.ToObject<T>();
             }
-            catch
+            catch (Exception ex)
             {
+                _log?.Invoke($"[Sbui] SettingsManager.GetValue failed for key '{key}': {ex.Message}");
                 return defaultValue;
             }
         }

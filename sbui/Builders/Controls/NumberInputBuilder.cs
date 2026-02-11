@@ -29,7 +29,7 @@ namespace Sbui
 
         public override void Hint(string text) { _hint = text; }
         public override void Default(double value) { _defaultValue = value; }
-        public override void Range(double min, double max) { _min = min; _max = max; }
+        public override void Range(double min, double max) { _min = Math.Min(min, max); _max = Math.Max(min, max); }
         public override void Step(double value) { _step = value; }
         public override void WithStepper(bool value) { _withStepper = value; }
         public override void ShowWhen(string key) { _showWhenKey = key; }

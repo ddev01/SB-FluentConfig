@@ -28,7 +28,7 @@ namespace Sbui
 
         public override void Hint(string text) { HintText = text; }
         public override void Default(int value) { DefaultValue = value; }
-        public override void Range(int min, int max) { Min = min; Max = max; }
+        public override void Range(int min, int max) { Min = Math.Min(min, max); Max = Math.Max(min, max); }
         public override void ShowWhen(string key) { ShowWhenKey = key; }
 
         public void Add()

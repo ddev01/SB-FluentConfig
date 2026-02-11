@@ -73,7 +73,10 @@ namespace Sbui.Core
                         return (T)stackVal;
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Sbui] ControlRegistry.GetValue failed for key '{key}': {ex.Message}");
+            }
             return default;
         }
 

@@ -4,9 +4,11 @@ namespace Sbui.Core
 {
     /// <summary>
     /// Manages window-open state and close callback. Extracted from Sbui for clarity.
+    /// Thread-safe: all static state is guarded by a lock.
     /// </summary>
     public static class SbuiWindowManager
     {
+        private static readonly object _lock = new object();
         private static bool _anyWindowOpen;
         private static Action<double, double> _windowClosedCallback;
 
@@ -15,7 +17,7 @@ namespace Sbui.Core
         /// </summary>
         public static void SetWindowClosedCallback(Action<double, double> callback)
         {
-            _windowClosedCallback = callback;
+            lock (_lock) { _windowClosedCallback = callback; }
         }
 
         /// <summary>
@@ -23,18 +25,29 @@ namespace Sbui.Core
         /// </summary>
         public static bool AlreadyOpened(string title, string version, Action<string> log)
         {
-            if (!_anyWindowOpen) return false;
-            log?.Invoke($"UI ({title} (v{version})) already open, skipping...");
-            return true;
+            lock (_lock)
+            {
+                if (!_anyWindowOpen) return false;
+                log?.Invoke($"UI ({title} (v{version})) already open, skipping...");
+                return true;
+            }
         }
 
-        public static bool IsOpen => _anyWindowOpen;
+        public static bool IsOpen
+        {
+            get { lock (_lock) { return _anyWindowOpen; } }
+        }
 
-        internal static void SetOpened(bool opened) => _anyWindowOpen = opened;
+        internal static void SetOpened(bool opened)
+        {
+            lock (_lock) { _anyWindowOpen = opened; }
+        }
 
         internal static void InvokeWindowClosedCallback(double width, double height)
         {
-            _windowClosedCallback?.Invoke(width, height);
+            Action<double, double> cb;
+            lock (_lock) { cb = _windowClosedCallback; }
+            cb?.Invoke(width, height);
         }
     }
 }
