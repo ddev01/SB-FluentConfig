@@ -1,17 +1,22 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Controls;
 
 namespace Sbui
 {
     /// <summary>
-    /// Base for PanelFluentWrapper and SectionFluentWrapper. Forwards option methods to IControlOptions (no dynamic).
+    /// Base for PanelFluentWrapper and SectionFluentWrapper. Forwards option methods to IControlOptions;
+    /// control methods (Toggle, Textbox, etc.) delegate to the host builder via Control().
     /// </summary>
-    public abstract class FluentWrapperBase<TWrapper> where TWrapper : FluentWrapperBase<TWrapper>
+    public abstract class FluentWrapperBase<TWrapper, THost> where TWrapper : FluentWrapperBase<TWrapper, THost>
     {
+        protected readonly THost Host;
         protected readonly IControlOptions PendingOptions;
 
-        protected FluentWrapperBase(IControlOptions pendingOptions)
+        protected FluentWrapperBase(THost host, IControlOptions pendingOptions)
         {
+            if (host == null) throw new ArgumentNullException(nameof(host));
+            Host = host;
             PendingOptions = pendingOptions;
         }
 
@@ -20,6 +25,9 @@ namespace Sbui
             if (PendingOptions != null) apply(PendingOptions);
             return (TWrapper)this;
         }
+
+        /// <summary>Delegate a control call to the host builder.</summary>
+        protected TWrapper Control(Func<THost, TWrapper> invoke) => invoke(Host);
 
         public TWrapper Hint(string text) => Option(o => o.Hint(text));
         public TWrapper Default(bool value) => Option(o => o.Default(value));
@@ -32,8 +40,12 @@ namespace Sbui
         public TWrapper Password() => Option(o => o.Password());
         public TWrapper ShowWhen(string key) => Option(o => o.ShowWhen(key));
         public TWrapper Options(string[] options) => Option(o => o.Options(options));
+        public TWrapper Options(IEnumerable<(string Value, string Display)> pairOptions) => Option(o => o.OptionsPairs(pairOptions));
+        public TWrapper WithPairValue(string valueKey) => Option(o => o.WithPairValue(valueKey));
+        public TWrapper DefaultByValue(string value) => Option(o => o.DefaultByValue(value));
         public TWrapper DefaultIndex(int index) => Option(o => o.DefaultIndex(index));
         public TWrapper Refresh(Func<string[]> callback) => Option(o => o.Refresh(callback));
+        public TWrapper Refresh(Func<IEnumerable<(string Value, string Display)>> callback) => Option(o => o.RefreshPairs(callback));
         public TWrapper Preset(string[] values) => Option(o => o.Preset(values));
         public TWrapper ToggleDefault(bool value) => Option(o => o.ToggleDefault(value));
         public TWrapper Color(string hex) => Option(o => o.Color(hex));

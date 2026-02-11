@@ -6,7 +6,7 @@ namespace Sbui
     /// <summary>
     /// Shared factory for control builders. Used by PanelBuilder and SectionBuilder to avoid duplicating constructor calls.
     /// </summary>
-    internal sealed class ControlBuilderCore
+    public sealed class ControlBuilderCore
     {
         private readonly IAddStrategy _strategy;
         private readonly string _tabName;
@@ -30,7 +30,7 @@ namespace Sbui
         public DecimalStepperBuilder CreateDecimalStepper(string label, string key) => new DecimalStepperBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public ColorPickerBuilder CreateColorPicker(string label, string key) => new ColorPickerBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public SliderWithToggleBuilder CreateSliderWithToggle(string label, string key) => new SliderWithToggleBuilder(_strategy, _tabName, label ?? "", key ?? "");
-        public RefreshableDropdownBuilder CreateRefreshableDropdown(string label, string key) => new RefreshableDropdownBuilder(_strategy, _tabName, label ?? "", key ?? "");
+        public DropdownBuilder CreateDropdown(string label, string key) => new DropdownBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public CompetingTogglesBuilder CreateCompetingToggles(string label, string key) => new CompetingTogglesBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public DynamicTextboxesBuilder CreateDynamicTextboxes(string label, string key) => new DynamicTextboxesBuilder(_strategy, _tabName, label ?? "", key ?? "");
         public PillInputBuilder CreatePillInput(string label, string key) => new PillInputBuilder(_strategy, _ui, _tabName, label ?? "", key ?? "");

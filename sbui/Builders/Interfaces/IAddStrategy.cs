@@ -7,7 +7,7 @@ namespace Sbui
     /// <summary>
     /// Strategy for adding an element (to tab directly or to a panel via WithPanel). Used by control builders.
     /// </summary>
-    internal interface IAddStrategy
+    public interface IAddStrategy
     {
         string GetFullSaveKey(string saveKey);
         void Add(Elements.UIElement element, string showWhenKey);

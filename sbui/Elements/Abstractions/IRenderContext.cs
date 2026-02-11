@@ -25,6 +25,7 @@ namespace Sbui.Elements
         FluentWindow Window { get; }
         void Log(string message);
         void UpdateDropdown(string key, string[] options, int selectedIndex);
+        void UpdateDropdownWithPairValue(string displayKey, string valueKey, System.Collections.Generic.IEnumerable<(string Value, string Display)> options, string selectedValue);
         /// <summary>For dynamic textbox lists; key -> panel that contains the list of textboxes.</summary>
         IDictionary<string, StackPanel> DynamicTextboxPanels { get; }
     }

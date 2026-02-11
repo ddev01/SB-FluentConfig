@@ -26,7 +26,7 @@ using SettingsPathHelper = Sbui.Core.SettingsPathHelper;
 
 namespace Sbui
 {
-    public class Sbui : IRenderContext
+    public partial class Sbui : IRenderContext
     {
         private FluentWindow _window;
         private readonly IInlineInvokeProxy _cph;
@@ -38,6 +38,7 @@ namespace Sbui
         private readonly SettingsManager _settingsManager;
         private TabManager _tabManager;
         private Grid _mainGrid;
+        private ContentControl _headerPlaceholder;
         private System.Windows.Controls.ListBox _sidebar;
         private ScrollViewer _contentScrollViewer;
         private bool _dirty;
@@ -45,15 +46,11 @@ namespace Sbui
         private readonly SettingsSynchronizer _synchronizer = new SettingsSynchronizer();
         private Dictionary<string, StackPanel> _dynamicTextboxPanels = new Dictionary<string, StackPanel>();
 
-        private static bool _anyWindowOpen;
         private StackPanel _visibilityOverridePanel;
+        private readonly SbuiPanelContext _sbuiPanelContext;
 
-        // Context stacks for nested content (WithRepeatableRows, WithVisibility)
-        private Stack<Panel> _panelContext = new Stack<Panel>();
-        private Stack<string> _saveKeyContext = new Stack<string>();
 
         private static Action<string> _logCallback;
-        private static Action<double, double> _windowClosedCallback;
 
         public static void SetLogCallback(Action<string> callback)
         {
@@ -65,7 +62,7 @@ namespace Sbui
         /// </summary>
         public static void SetWindowClosedCallback(Action<double, double> callback)
         {
-            _windowClosedCallback = callback;
+            SbuiWindowManager.SetWindowClosedCallback(callback);
         }
 
         /// <summary>
@@ -73,12 +70,10 @@ namespace Sbui
         /// </summary>
         public static bool AlreadyOpened(string title = "Sbui", string version = "1.0")
         {
-            if (!_anyWindowOpen) return false;
-            LogInternal($"UI ({title} (v{version})) already open, skipping...");
-            return true;
+            return SbuiWindowManager.AlreadyOpened(title, version, LogInternal);
         }
 
-        public static bool IsOpen => _anyWindowOpen;
+        public static bool IsOpen => SbuiWindowManager.IsOpen;
 
         private static void LogInternal(string message)
         {
@@ -90,7 +85,7 @@ namespace Sbui
 
         StackPanel IRenderContext.GetPanel(string tabName)
         {
-            var panel = GetTargetPanel(tabName);
+            var panel = _sbuiPanelContext.GetTargetPanel(tabName);
             return panel as StackPanel ?? _tabManager?.GetPanel(tabName);
         }
         JObject IRenderContext.Settings => _existingSettings;
@@ -104,6 +99,7 @@ namespace Sbui
         FluentWindow IRenderContext.Window => _window;
         void IRenderContext.Log(string message) => LogInternal(message);
         void IRenderContext.UpdateDropdown(string key, string[] options, int selectedIndex) => UpdateDropdown(key, options, selectedIndex);
+        void IRenderContext.UpdateDropdownWithPairValue(string displayKey, string valueKey, System.Collections.Generic.IEnumerable<(string Value, string Display)> options, string selectedValue) => UpdateDropdownWithPairValue(displayKey, valueKey, options, selectedValue);
         IDictionary<string, StackPanel> IRenderContext.DynamicTextboxPanels => _dynamicTextboxPanels;
         void IRenderContext.SetVisibilityOverridePanel(StackPanel panel) => _visibilityOverridePanel = panel;
         void IRenderContext.ClearVisibilityOverridePanel() => _visibilityOverridePanel = null;
@@ -158,8 +154,9 @@ namespace Sbui
             _displayVersion = string.IsNullOrEmpty(displayVersion) ? null : displayVersion;
             _settingsKey = cph != null ? "Sbui_Settings_" + extensionName : null;
             _withUi = withUi;
-            _settingsManager = new SettingsManager(cph, _settingsKey);
+            _settingsManager = new SettingsManager(cph, _settingsKey, LogInternal);
             _existingSettings = _settingsManager.Load();
+            _sbuiPanelContext = new SbuiPanelContext(this);
 
             if (!_withUi) return;
 
@@ -183,6 +180,7 @@ namespace Sbui
             var builder = new WindowBuilder(_extensionName, _displayVersion ?? "", _existingSettings);
             _window = builder.Build(
                 out _mainGrid,
+                out _headerPlaceholder,
                 out _tabManager,
                 out _sidebar,
                 out _contentScrollViewer,
@@ -196,13 +194,13 @@ namespace Sbui
 
             _window.Closed += (s, e) =>
             {
-                if (_window?.WindowState == WindowState.Normal && _windowClosedCallback != null)
-                    _windowClosedCallback(_window.Width, _window.Height);
-                _anyWindowOpen = false;
+                if (_window?.WindowState == WindowState.Normal)
+                    SbuiWindowManager.InvokeWindowClosedCallback(_window.Width, _window.Height);
+                SbuiWindowManager.SetOpened(false);
                 LogInternal("Sbui UI has been closed.");
             };
 
-            _anyWindowOpen = true;
+            SbuiWindowManager.SetOpened(true);
         }
 
         /// <summary>
@@ -233,7 +231,7 @@ namespace Sbui
         private void OverwriteUiWithSettings()
         {
             if (_mainGrid == null || _existingSettings == null) return;
-            _synchronizer.LoadSettingsIntoControls(_mainGrid, _existingSettings);
+            _synchronizer.LoadSettingsIntoControls(_controlRegistry, _existingSettings);
         }
 
         private void MarkDirty()
@@ -273,23 +271,7 @@ namespace Sbui
         /// </summary>
         public void WithPanel(Panel panel, Action content)
         {
-            if (panel == null || content == null) return;
-            _panelContext.Push(panel);
-            try { content(); }
-            finally { _panelContext.Pop(); }
-        }
-
-        /// <summary>
-        /// Gets the target panel for the next Add* call.
-        /// Returns the top of the context stack if it exists,
-        /// otherwise returns the current tab's panel.
-        /// </summary>
-        private Panel GetTargetPanel(string tabName)
-        {
-            if (_panelContext.Count > 0)
-                return _panelContext.Peek();
-            EnsureTabExists(tabName);
-            return _visibilityOverridePanel ?? (Panel)_tabManager?.GetPanel(tabName);
+            _sbuiPanelContext.WithPanel(panel, content);
         }
 
         /// <summary>
@@ -297,13 +279,11 @@ namespace Sbui
         /// </summary>
         internal string GetFullSaveKey(string saveKey)
         {
-            return _saveKeyContext.Count > 0
-                ? $"{_saveKeyContext.Peek()}.{saveKey}"
-                : saveKey;
+            return _sbuiPanelContext.GetFullSaveKey(saveKey);
         }
 
         /// <summary>
-        /// Updates a dropdown (e.g. from AddRefreshableDropdown) with new options and selected index.
+        /// Updates a dropdown with new options and selected index.
         /// </summary>
         public void UpdateDropdown(string key, string[] options, int selectedIndex)
         {
@@ -315,9 +295,33 @@ namespace Sbui
             cb.SelectedIndex = Math.Max(0, Math.Min(selectedIndex, options.Length > 0 ? options.Length - 1 : 0));
         }
 
+        /// <summary>
+        /// Updates a pair-value dropdown with new options and selected value.
+        /// </summary>
+        public void UpdateDropdownWithPairValue(string displayKey, string valueKey, System.Collections.Generic.IEnumerable<(string Value, string Display)> options, string selectedValue)
+        {
+            if (_window == null) return;
+            var cb = _controlRegistry.Get<System.Windows.Controls.ComboBox>(displayKey);
+            if (cb == null) return;
+            var list = options != null ? new System.Collections.Generic.List<Elements.DropdownItem>() : null;
+            if (list != null)
+            {
+                foreach (var p in options)
+                    list.Add(new Elements.DropdownItem { Value = p.Value, Display = p.Display });
+            }
+            cb.ItemsSource = list ?? new System.Collections.Generic.List<Elements.DropdownItem>();
+            var idx = 0;
+            if (list != null && !string.IsNullOrEmpty(selectedValue))
+            {
+                var i = list.FindIndex(x => string.Equals(x.Value, selectedValue, StringComparison.OrdinalIgnoreCase));
+                if (i >= 0) idx = i;
+            }
+            cb.SelectedIndex = Math.Max(0, Math.Min(idx, list?.Count - 1 ?? 0));
+        }
+
         private JObject BuildSettings()
         {
-            return _mainGrid != null ? _synchronizer.ExtractSettingsFromControls(_mainGrid) : null;
+            return _synchronizer.ExtractSettingsFromControls(_controlRegistry);
         }
 
         /// <summary>
@@ -336,10 +340,10 @@ namespace Sbui
             var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
             container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
 
-            var panel = (Panel)GetTargetPanel(tabName);
-            _panelContext.Push(container);
+            var panel = (Panel)_sbuiPanelContext.GetTargetPanel(tabName);
+            _sbuiPanelContext.PushPanel(container);
             addContent();
-            _panelContext.Pop();
+            _sbuiPanelContext.PopPanel();
 
             toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
             toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
@@ -354,23 +358,7 @@ namespace Sbui
         /// <param name="inverted">When true, content is visible when toggle is OFF instead of ON.</param>
         public void WithVisibility(string toggleSaveKey, string tabName, Action content, bool inverted = false)
         {
-            if (content == null) return;
-            var toggle = _controlRegistry.Get<ToggleSwitch>(toggleSaveKey);
-            if (toggle == null)
-                throw new InvalidOperationException($"Toggle '{toggleSaveKey}' must be added before WithVisibility block");
-            var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
-            container.Visibility = (toggle.IsChecked == true) != inverted ? Visibility.Visible : Visibility.Collapsed;
-
-            var currentPanel = GetTargetPanel(tabName);
-            _panelContext.Push(container);
-            content();
-            _panelContext.Pop();
-
-            toggle.Checked += (s, e) => container.Visibility = inverted ? Visibility.Collapsed : Visibility.Visible;
-            toggle.Unchecked += (s, e) => container.Visibility = inverted ? Visibility.Visible : Visibility.Collapsed;
-
-            if (currentPanel != null)
-                currentPanel.Children.Add(container);
+            _sbuiPanelContext.WithVisibility(toggleSaveKey, tabName, content, inverted);
         }
 
         /// <summary>
@@ -394,25 +382,7 @@ namespace Sbui
         /// </summary>
         public void WithVisibility(string toggleSaveKey, string tabName, bool inverted, Action<PanelBuilder> build)
         {
-            if (build == null) return;
-            var toggle = _controlRegistry.Get<ToggleSwitch>(toggleSaveKey);
-            if (toggle == null)
-                throw new InvalidOperationException($"Toggle '{toggleSaveKey}' must be added before WithVisibility block");
-            var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
-            container.Visibility = (toggle.IsChecked == true) != inverted ? Visibility.Visible : Visibility.Collapsed;
-
-            var currentPanel = GetTargetPanel(tabName);
-            _panelContext.Push(container);
-            var pb = new PanelBuilder(this, container, tabName);
-            build(pb);
-            pb.FlushPending();
-            _panelContext.Pop();
-
-            toggle.Checked += (s, e) => container.Visibility = inverted ? Visibility.Collapsed : Visibility.Visible;
-            toggle.Unchecked += (s, e) => container.Visibility = inverted ? Visibility.Visible : Visibility.Collapsed;
-
-            if (currentPanel != null)
-                currentPanel.Children.Add(container);
+            _sbuiPanelContext.WithVisibility(toggleSaveKey, tabName, inverted, build);
         }
 
         /// <summary>
@@ -420,51 +390,7 @@ namespace Sbui
         /// </summary>
         public void WithRepeatableRows(string saveKey, string tabName, Action<PanelBuilder> buildRow)
         {
-            if (buildRow == null) return;
-            var panel = GetTargetPanel(tabName);
-            if (panel == null) return;
-
-            var container = new StackPanel { Margin = new Thickness(0, 10, 0, 10) };
-            var rowsData = LoadRowsData(saveKey);
-
-            for (int i = 0; i < rowsData.Count; i++)
-            {
-                var (outerRow, contentPanel) = CreateRowPanel(i, saveKey, container);
-                _panelContext.Push(contentPanel);
-                _saveKeyContext.Push($"{saveKey}[{i}]");
-                var rowPb = new PanelBuilder(this, contentPanel, tabName);
-                buildRow(rowPb);
-                rowPb.FlushPending();
-                _saveKeyContext.Pop();
-                _panelContext.Pop();
-                container.Children.Add(outerRow);
-            }
-
-            var addBtn = new Wpf.Ui.Controls.Button
-            {
-                Content = "+ Add Row",
-                Margin = new Thickness(0, 5, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Padding = new Thickness(15, 5, 15, 5)
-            };
-            addBtn.Click += (s, e) => AddRowWithBuilder(container, saveKey, tabName, buildRow);
-            container.Children.Add(addBtn);
-
-            panel.Children.Add(container);
-        }
-
-        private void AddRowWithBuilder(Panel container, string saveKey, string tabName, Action<PanelBuilder> buildRow)
-        {
-            int newIndex = Math.Max(0, container.Children.Count - 1);
-            var (outerRow, contentPanel) = CreateRowPanel(newIndex, saveKey, container);
-            _panelContext.Push(contentPanel);
-            _saveKeyContext.Push($"{saveKey}[{newIndex}]");
-            var rowPb = new PanelBuilder(this, contentPanel, tabName);
-            buildRow(rowPb);
-            rowPb.FlushPending();
-            _saveKeyContext.Pop();
-            _panelContext.Pop();
-            container.Children.Insert(container.Children.Count - 1, outerRow);
+            _sbuiPanelContext.WithRepeatableRows(saveKey, tabName, buildRow);
         }
 
         /// <summary>
@@ -472,7 +398,7 @@ namespace Sbui
         /// </summary>
         public void AddHeader(string imageUrl)
         {
-            if (_mainGrid == null || string.IsNullOrEmpty(imageUrl)) return;
+            if (_headerPlaceholder == null || string.IsNullOrEmpty(imageUrl)) return;
             var headerPanel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
             try
             {
@@ -500,101 +426,7 @@ namespace Sbui
                     Margin = new Thickness(0, 4, 0, 4)
                 });
             }
-            _mainGrid.RowDefinitions.Insert(0, new RowDefinition { Height = GridLength.Auto });
-            Grid.SetRow(headerPanel, 0);
-            _mainGrid.Children.Insert(0, headerPanel);
-            for (int i = 1; i < _mainGrid.Children.Count; i++)
-            {
-                var child = _mainGrid.Children[i] as FrameworkElement;
-                if (child != null && Grid.GetRow(child) >= 0)
-                    Grid.SetRow(child, Grid.GetRow(child) + 1);
-            }
-        }
-
-        private (DockPanel outerRow, StackPanel contentPanel) CreateRowPanel(int rowIndex, string saveKey, Panel container)
-        {
-            var outerRow = new DockPanel
-            {
-                Margin = new Thickness(0, 5, 0, 5),
-                Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255))
-            };
-            outerRow.Tag = new RowTag { RowIndex = rowIndex, SaveKey = saveKey };
-
-            var deleteBtn = new Wpf.Ui.Controls.Button
-            {
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = "×",
-                    FontSize = 18,
-                    Foreground = new SolidColorBrush(System.Windows.Media.Colors.White),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                },
-                Width = 30,
-                Height = 30,
-                Margin = new Thickness(5, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Top,
-                MinWidth = 30,
-                MinHeight = 30
-            };
-            System.Windows.Controls.Panel.SetZIndex(deleteBtn, 10);
-
-            var contentPanel = new StackPanel { Margin = new Thickness(10) };
-            deleteBtn.Click += (s, e) =>
-            {
-                container.Children.Remove(outerRow);
-                RenumberRows(container, saveKey);
-                DeleteRowData(saveKey, rowIndex);
-                MarkDirty();
-            };
-            DockPanel.SetDock(deleteBtn, Dock.Right);
-            outerRow.Children.Add(deleteBtn);
-            outerRow.Children.Add(contentPanel);
-
-            return (outerRow, contentPanel);
-        }
-
-        private void RenumberRows(Panel container, string saveKey)
-        {
-            int index = 0;
-            foreach (var child in container.Children)
-            {
-                if (child is DockPanel dock && dock.Tag is RowTag tag)
-                {
-                    tag.RowIndex = index++;
-                }
-            }
-        }
-
-        private void DeleteRowData(string saveKey, int rowIndex)
-        {
-            var arr = LoadRowsData(saveKey);
-            if (rowIndex >= 0 && rowIndex < arr.Count)
-            {
-                arr.RemoveAt(rowIndex);
-                if (_existingSettings == null) _existingSettings = new JObject();
-                _existingSettings[saveKey] = arr;
-                MarkDirty();
-            }
-        }
-
-        private JArray LoadRowsData(string saveKey)
-        {
-            if (_existingSettings == null) return new JArray();
-            var token = _existingSettings[saveKey];
-            if (token is JArray arr) return arr;
-            if (token != null)
-            {
-                try { return JArray.Parse(token.ToString()); }
-                catch (Exception ex) { LogInternal($"LoadRowsData parse error: {ex.Message}"); }
-            }
-            return new JArray();
-        }
-
-        private class RowTag
-        {
-            public int RowIndex;
-            public string SaveKey;
+            _headerPlaceholder.Content = headerPanel;
         }
 
         public T GetValue<T>(string key)
@@ -603,6 +435,19 @@ namespace Sbui
             if (token == null) return default;
             try { return token.ToObject<T>(); }
             catch (Exception ex) { LogInternal($"GetValue<{typeof(T).Name}> error for key '{key}': {ex.Message}"); return default; }
+        }
+
+        /// <summary>
+        /// Sets a value programmatically. Updates in-memory settings and, when the window is open, the corresponding control.
+        /// Call MarkDirty if you need the change persisted on next Save.
+        /// </summary>
+        public void SetValue<T>(string key, T value)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            if (_existingSettings == null) _existingSettings = new JObject();
+            _existingSettings[key] = value != null ? JToken.FromObject(value) : JValue.CreateNull();
+            if (_mainGrid != null)
+                _synchronizer.UpdateControl(_mainGrid, key, _existingSettings[key], _existingSettings);
         }
 
         /// <summary>

@@ -65,7 +65,7 @@ namespace Sbui.Core
                 if (control is System.Windows.Controls.Slider sl)
                     return (T)Convert.ChangeType(sl.Value, typeof(T));
                 if (control is System.Windows.Controls.ComboBox cb)
-                    return (T)(object)GetValueFromComboBox(cb, typeof(T));
+                    return (T)(object)GetValueFromComboBox(cb, key, typeof(T));
                 if (control is StackPanel stack && stack.Tag is string tag)
                 {
                     var stackVal = GetValueFromTaggedStackPanel(stack, tag, typeof(T));
@@ -86,10 +86,21 @@ namespace Sbui.Core
             return tb.Text ?? "";
         }
 
-        private static object GetValueFromComboBox(System.Windows.Controls.ComboBox cb, Type targetType)
+        private static object GetValueFromComboBox(System.Windows.Controls.ComboBox cb, string key, Type targetType)
         {
             if (targetType == typeof(int))
                 return cb.SelectedIndex;
+            if (cb.Tag is string tag && tag.StartsWith(SbuiTags.PairPrefix))
+            {
+                var parts = tag.Substring(SbuiTags.PairPrefix.Length).Split(new[] { ',' }, 2);
+                if (parts.Length == 2 && cb.SelectedItem is Elements.DropdownItem item)
+                {
+                    if (string.Equals(parts[1], key, StringComparison.OrdinalIgnoreCase))
+                        return item.Value ?? "";
+                    if (string.Equals(parts[0], key, StringComparison.OrdinalIgnoreCase))
+                        return item.Display ?? "";
+                }
+            }
             return cb.SelectedItem?.ToString() ?? "";
         }
 
@@ -97,7 +108,7 @@ namespace Sbui.Core
         {
             if (tag.StartsWith(SbuiTags.DynamicPrefix) && targetType == typeof(string[]))
             {
-                var listPanel = GetDynamicListPanel(stack);
+                var listPanel = ControlExtractionHelper.GetDynamicListPanel(stack);
                 if (listPanel != null)
                 {
                     var list = new List<string>();
@@ -109,7 +120,7 @@ namespace Sbui.Core
             }
             if (tag.StartsWith(SbuiTags.PillPrefix) && targetType == typeof(string[]))
             {
-                var pillsPanel = GetPillsPanel(stack);
+                var pillsPanel = ControlExtractionHelper.GetPillsPanel(stack);
                 if (pillsPanel != null)
                 {
                     var list = new List<string>();
@@ -121,44 +132,23 @@ namespace Sbui.Core
             }
             if (tag.StartsWith(SbuiTags.DurationPrefix) && targetType == typeof(string))
             {
-                var numBox = VisualTreeHelper.DescendantsOnly(stack).OfType<System.Windows.Controls.TextBox>().FirstOrDefault();
-                var combo = VisualTreeHelper.DescendantsOnly(stack).OfType<System.Windows.Controls.ComboBox>().FirstOrDefault();
-                if (numBox != null && combo != null)
-                {
-                    var idx = combo.SelectedIndex;
-                    if (idx >= 0 && combo.Items != null && idx < combo.Items.Count)
-                    {
-                        var unit = combo.Items[idx]?.ToString() ?? "permanent";
-                        if (unit == "permanent") return "permanent";
-                        var num = int.TryParse(numBox.Text, out var n) ? n : 0;
-                        return $"{num}{unit}";
-                    }
-                }
+                return ControlExtractionHelper.ExtractDuration(stack);
             }
-            return null;
-        }
-
-        private static StackPanel GetDynamicListPanel(StackPanel outer)
-        {
-            if (outer == null) return null;
-            foreach (var c in outer.Children)
-                if (c is StackPanel inner && inner.Children.OfType<System.Windows.Controls.TextBox>().Any())
-                    return inner;
-            return null;
-        }
-
-        private static WrapPanel GetPillsPanel(StackPanel outer)
-        {
-            if (outer == null) return null;
-            foreach (var c in outer.Children)
-                if (c is WrapPanel wp)
-                    return wp;
             return null;
         }
 
         internal bool TryGetValue(string key, out FrameworkElement control)
         {
             return _controls.TryGetValue(key, out control);
+        }
+
+        /// <summary>
+        /// Returns all registered key-control pairs for registry-based sync.
+        /// </summary>
+        public IEnumerable<KeyValuePair<string, FrameworkElement>> GetAllRegistered()
+        {
+            foreach (var kv in _controls)
+                yield return kv;
         }
     }
 }

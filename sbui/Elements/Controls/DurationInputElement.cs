@@ -15,7 +15,7 @@ namespace Sbui.Elements
         public bool PermanentOption { get; set; }
         public string DefaultValue { get; set; }
 
-        private static readonly string[] UnitOptions = { "s", "m", "h", "d", "w", "permanent" };
+        private static readonly string[] UnitOptions = { "seconds", "minutes", "hours", "days", "weeks", "permanent" };
 
         public DurationInputElement(string title, string description, string tabName, string saveKey, bool permanentOption = true, string defaultValue = "permanent", string visibilityKey = null)
         {
@@ -94,6 +94,20 @@ namespace Sbui.Elements
             value = value.Trim().ToLowerInvariant();
             if (value == "permanent") return;
 
+            // Try full unit names first (e.g. "30seconds", "3minutes")
+            var fullUnits = new[] { "seconds", "minutes", "hours", "days", "weeks" };
+            for (int u = 0; u < fullUnits.Length; u++)
+            {
+                if (value.EndsWith(fullUnits[u]))
+                {
+                    var numStr = value.Substring(0, value.Length - fullUnits[u].Length).Trim();
+                    int.TryParse(numStr, out num);
+                    unitIndex = u;
+                    return;
+                }
+            }
+
+            // Backward compatibility: compact format (e.g. "30s", "3m")
             var unitChars = "smhdw";
             for (int i = value.Length - 1; i >= 0; i--)
             {

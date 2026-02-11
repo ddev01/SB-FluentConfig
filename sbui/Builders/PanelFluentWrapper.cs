@@ -7,37 +7,32 @@ namespace Sbui
     /// Fluent wrapper for panel so control chains return a type that has both option methods (Hint, Default, ...)
     /// and panel methods (Toggle, Textbox, ...), allowing .Toggle().Hint().Textbox() without .Add().
     /// </summary>
-    public class PanelFluentWrapper : FluentWrapperBase<PanelFluentWrapper>
+    public class PanelFluentWrapper : FluentWrapperBase<PanelFluentWrapper, PanelBuilder>
     {
-        private readonly PanelBuilder _panel;
-
         internal PanelFluentWrapper(PanelBuilder panel, IFlushableControlBuilder pending)
-            : base(pending as IControlOptions)
-        {
-            _panel = panel ?? throw new ArgumentNullException(nameof(panel));
-        }
+            : base(panel, pending as IControlOptions) { }
 
-        private PanelFluentWrapper Next() => new PanelFluentWrapper(_panel, _panel.GetPending());
+        private PanelFluentWrapper Next() => new PanelFluentWrapper(Host, Host.GetPending());
 
-        // ---- Panel structure/controls: flush and delegate to panel ----
-        public PanelFluentWrapper Title(string text) { _panel.FlushPending(); _panel.Title(text); return Next(); }
-        public PanelFluentWrapper Intro(string text) { _panel.FlushPending(); _panel.Intro(text); return Next(); }
-        public PanelFluentWrapper Separator() { _panel.FlushPending(); _panel.Separator(); return Next(); }
-        public PanelFluentWrapper Toggle(string label, string key) { _panel.FlushPending(); _panel.Toggle(label, key); return Next(); }
-        public PanelFluentWrapper Textbox(string label, string key) { _panel.FlushPending(); _panel.Textbox(label, key); return Next(); }
-        public PanelFluentWrapper Slider(string label, string key) { _panel.FlushPending(); _panel.Slider(label, key); return Next(); }
-        public PanelFluentWrapper Button(string label) { _panel.FlushPending(); _panel.Button(label); return Next(); }
-        public PanelFluentWrapper IntegerInput(string label, string key) { _panel.FlushPending(); _panel.IntegerInput(label, key); return Next(); }
-        public PanelFluentWrapper DurationInput(string label, string key) { _panel.FlushPending(); _panel.DurationInput(label, key); return Next(); }
-        public PanelFluentWrapper Filepath(string label, string key) { _panel.FlushPending(); _panel.Filepath(label, key); return Next(); }
-        public PanelFluentWrapper ResponseBox(string label, string key) { _panel.FlushPending(); _panel.ResponseBox(label, key); return Next(); }
-        public PanelFluentWrapper DecimalStepper(string label, string key) { _panel.FlushPending(); _panel.DecimalStepper(label, key); return Next(); }
-        public PanelFluentWrapper ColorPicker(string label, string key) { _panel.FlushPending(); _panel.ColorPicker(label, key); return Next(); }
-        public PanelFluentWrapper SliderWithToggle(string label, string key) { _panel.FlushPending(); _panel.SliderWithToggle(label, key); return Next(); }
-        public PanelFluentWrapper RefreshableDropdown(string label, string key) { _panel.FlushPending(); _panel.RefreshableDropdown(label, key); return Next(); }
-        public PanelFluentWrapper CompetingToggles(string label, string key) { _panel.FlushPending(); _panel.CompetingToggles(label, key); return Next(); }
-        public PanelFluentWrapper DynamicTextboxes(string label, string key) { _panel.FlushPending(); _panel.DynamicTextboxes(label, key); return Next(); }
-        public PanelFluentWrapper WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build) { _panel.FlushPending(); _panel.WithVisibility(toggleKey, inverted, build); return Next(); }
-        public PanelFluentWrapper WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow) { _panel.FlushPending(); _panel.WithRepeatableRows(saveKey, buildRow); return Next(); }
+        public PanelFluentWrapper Title(string text) { Host.FlushPending(); Host.Title(text); return Next(); }
+        public PanelFluentWrapper Intro(string text) { Host.FlushPending(); Host.Intro(text); return Next(); }
+        public PanelFluentWrapper Separator() { Host.FlushPending(); Host.Separator(); return Next(); }
+        public PanelFluentWrapper Toggle(string label, string key) => Control(p => p.Toggle(label, key));
+        public PanelFluentWrapper Textbox(string label, string key) => Control(p => p.Textbox(label, key));
+        public PanelFluentWrapper Slider(string label, string key) => Control(p => p.Slider(label, key));
+        public PanelFluentWrapper Button(string label) => Control(p => p.Button(label));
+        public PanelFluentWrapper IntegerInput(string label, string key) => Control(p => p.IntegerInput(label, key));
+        public PanelFluentWrapper DurationInput(string label, string key) => Control(p => p.DurationInput(label, key));
+        public PanelFluentWrapper Filepath(string label, string key) => Control(p => p.Filepath(label, key));
+        public PanelFluentWrapper ResponseBox(string label, string key) => Control(p => p.ResponseBox(label, key));
+        public PanelFluentWrapper DecimalStepper(string label, string key) => Control(p => p.DecimalStepper(label, key));
+        public PanelFluentWrapper ColorPicker(string label, string key) => Control(p => p.ColorPicker(label, key));
+        public PanelFluentWrapper SliderWithToggle(string label, string key) => Control(p => p.SliderWithToggle(label, key));
+        public PanelFluentWrapper Dropdown(string label, string key) => Control(p => p.Dropdown(label, key));
+        public PanelFluentWrapper CompetingToggles(string label, string key) => Control(p => p.CompetingToggles(label, key));
+        public PanelFluentWrapper DynamicTextboxes(string label, string key) => Control(p => p.DynamicTextboxes(label, key));
+        public PanelFluentWrapper PillInput(string label, string key) => Control(p => p.PillInput(label, key));
+        public PanelFluentWrapper WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(toggleKey, inverted, build); return Next(); }
+        public PanelFluentWrapper WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow) { Host.FlushPending(); Host.WithRepeatableRows(saveKey, buildRow); return Next(); }
     }
 }

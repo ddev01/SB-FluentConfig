@@ -11,12 +11,14 @@ namespace Sbui.Core
     {
         private readonly IInlineInvokeProxy _invokeProxy;
         private readonly string _settingsKey;
+        private readonly Action<string> _log;
         private JObject _settings;
 
-        public SettingsManager(IInlineInvokeProxy invokeProxy, string settingsKey)
+        public SettingsManager(IInlineInvokeProxy invokeProxy, string settingsKey, Action<string> log = null)
         {
             _invokeProxy = invokeProxy;
             _settingsKey = settingsKey ?? "";
+            _log = log;
             _settings = new JObject();
         }
 
@@ -38,8 +40,9 @@ namespace Sbui.Core
                 else
                     _settings = new JObject();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _log?.Invoke($"[Sbui] SettingsManager.Load failed: {ex.Message}");
                 _settings = new JObject();
             }
             return _settings;
@@ -57,9 +60,9 @@ namespace Sbui.Core
                 _invokeProxy.SetGlobalVar(_settingsKey, settings.ToString(), true);
                 _settings = settings;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Persistence failed; keep in-memory state unchanged
+                _log?.Invoke($"[Sbui] SettingsManager.Save failed: {ex.Message}");
             }
         }
 

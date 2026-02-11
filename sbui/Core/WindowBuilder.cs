@@ -29,6 +29,7 @@ namespace Sbui.Core
 
         public FluentWindow Build(
             out Grid mainGrid,
+            out ContentControl headerPlaceholder,
             out TabManager tabManager,
             out System.Windows.Controls.ListBox sidebar,
             out ScrollViewer contentScrollViewer,
@@ -38,7 +39,7 @@ namespace Sbui.Core
             Action onExit)
         {
             var window = CreateWindow();
-            var mainDock = CreateMainLayout(out mainGrid, out tabManager, out sidebar, out contentScrollViewer);
+            var mainDock = CreateMainLayout(out mainGrid, out headerPlaceholder, out tabManager, out sidebar, out contentScrollViewer);
             var footer = CreateFooter(onSave, onSaveAndExit, onReset, onExit);
 
             DockPanel.SetDock(footer, Dock.Bottom);
@@ -76,6 +77,7 @@ namespace Sbui.Core
 
         private DockPanel CreateMainLayout(
             out Grid mainGrid,
+            out ContentControl headerPlaceholder,
             out TabManager tabManager,
             out System.Windows.Controls.ListBox sidebar,
             out ScrollViewer contentScrollViewer)
@@ -95,6 +97,10 @@ namespace Sbui.Core
             };
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            headerPlaceholder = new ContentControl { Margin = new Thickness(0, 0, 0, 0) };
+            Grid.SetRow(headerPlaceholder, 0);
+            mainGrid.Children.Add(headerPlaceholder);
 
             var sidebarContentGrid = new Grid
             {

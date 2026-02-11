@@ -4,7 +4,7 @@ using Sbui.Elements;
 
 namespace Sbui
 {
-    public class SliderBuilder : IFlushableControlBuilder, IControlOptions
+    public class SliderBuilder : ControlOptionsBase, IFlushableControlBuilder
     {
         private readonly IAddStrategy _strategy;
         private readonly string _tabName;
@@ -24,33 +24,10 @@ namespace Sbui
             Key = key ?? "";
         }
 
-        public SliderBuilder Hint(string text) { HintText = text; return this; }
-        public SliderBuilder Range(int min, int max) { Min = min; Max = max; return this; }
-        public SliderBuilder Default(int value) { DefaultValue = value; return this; }
-        public SliderBuilder ShowWhen(string key) { ShowWhenKey = key; return this; }
-
-        void IControlOptions.Hint(string text) { HintText = text; }
-        void IControlOptions.Default(bool value) { }
-        void IControlOptions.Default(string value) { }
-        void IControlOptions.Default(int value) { DefaultValue = value; }
-        void IControlOptions.Default(double value) { }
-        void IControlOptions.Range(int min, int max) { Min = min; Max = max; }
-        void IControlOptions.Range(double min, double max) { }
-        void IControlOptions.Step(double value) { }
-        void IControlOptions.Password() { }
-        void IControlOptions.ShowWhen(string key) { ShowWhenKey = key; }
-        void IControlOptions.Options(string[] options) { }
-        void IControlOptions.DefaultIndex(int index) { }
-        void IControlOptions.Refresh(Func<string[]> callback) { }
-        void IControlOptions.Preset(string[] values) { }
-        void IControlOptions.ToggleDefault(bool value) { }
-        void IControlOptions.Color(string hex) { }
-        void IControlOptions.Text(string caption) { }
-        void IControlOptions.OnClick(Action<UiContext> callback) { }
-        void IControlOptions.WithPermanentOption(bool value) { }
-        void IControlOptions.WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build) { }
-        void IControlOptions.OnPillAdded(Action<string, StackPanel, CallbackContext> build) { }
-        void IControlOptions.OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { }
+        public override void Hint(string text) { HintText = text; }
+        public override void Default(int value) { DefaultValue = value; }
+        public override void Range(int min, int max) { Min = min; Max = max; }
+        public override void ShowWhen(string key) { ShowWhenKey = key; }
 
         public void Add()
         {

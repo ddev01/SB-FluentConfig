@@ -4,7 +4,7 @@ using Sbui.Elements;
 
 namespace Sbui
 {
-    public class PillInputBuilder : IFlushableControlBuilder, IControlOptions
+    public class PillInputBuilder : ControlOptionsBase, IFlushableControlBuilder
     {
         private readonly IAddStrategy _strategy;
         private readonly Sbui _ui;
@@ -27,49 +27,11 @@ namespace Sbui
             Key = key ?? "";
         }
 
-        public PillInputBuilder Hint(string text) { _hint = text; return this; }
-        public PillInputBuilder ShowWhen(string key) { _showWhenKey = key; return this; }
-
-        public PillInputBuilder WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build)
-        {
-            WithSectionsPanelCallback = build;
-            return this;
-        }
-
-        public PillInputBuilder OnPillAdded(Action<string, StackPanel, CallbackContext> build)
-        {
-            OnPillAddedCallback = build;
-            return this;
-        }
-
-        public PillInputBuilder OnPillRemoved(Action<string, StackPanel, CallbackContext> build)
-        {
-            OnPillRemovedCallback = build;
-            return this;
-        }
-
-        void IControlOptions.Hint(string text) { _hint = text; }
-        void IControlOptions.Default(bool value) { }
-        void IControlOptions.Default(string value) { }
-        void IControlOptions.Default(int value) { }
-        void IControlOptions.Default(double value) { }
-        void IControlOptions.Range(int min, int max) { }
-        void IControlOptions.Range(double min, double max) { }
-        void IControlOptions.Step(double value) { }
-        void IControlOptions.Password() { }
-        void IControlOptions.ShowWhen(string key) { _showWhenKey = key; }
-        void IControlOptions.Options(string[] options) { }
-        void IControlOptions.DefaultIndex(int index) { }
-        void IControlOptions.Refresh(Func<string[]> callback) { }
-        void IControlOptions.Preset(string[] values) { }
-        void IControlOptions.ToggleDefault(bool value) { }
-        void IControlOptions.Color(string hex) { }
-        void IControlOptions.Text(string caption) { }
-        void IControlOptions.OnClick(Action<UiContext> callback) { }
-        void IControlOptions.WithPermanentOption(bool value) { }
-        void IControlOptions.WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build) { WithSectionsPanelCallback = build; }
-        void IControlOptions.OnPillAdded(Action<string, StackPanel, CallbackContext> build) { OnPillAddedCallback = build; }
-        void IControlOptions.OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { OnPillRemovedCallback = build; }
+        public override void Hint(string text) { _hint = text; }
+        public override void ShowWhen(string key) { _showWhenKey = key; }
+        public override void WithSectionsPanel(Action<StackPanel, Panel, CallbackContext> build) { WithSectionsPanelCallback = build; }
+        public override void OnPillAdded(Action<string, StackPanel, CallbackContext> build) { OnPillAddedCallback = build; }
+        public override void OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { OnPillRemovedCallback = build; }
 
         public void Add()
         {

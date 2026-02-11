@@ -90,6 +90,7 @@
     <Compile Include="Core\SettingsPathHelper.cs" />
     <Compile Include="Core\ControlRegistry.cs" />
     <Compile Include="Core\SettingsSynchronizer.cs" />
+    <Compile Include="Core\SbuiWindowManager.cs" />
     <Compile Include="Core\WindowBuilder.cs" />
     <Compile Include="Components\SbuiComponentFactory.cs" />
     <Compile Include="Components\TabManager.cs" />
@@ -107,7 +108,7 @@
     <Compile Include="Elements\Controls\InlineSeparatorElement.cs" />
     <Compile Include="Elements\Controls\IntegerInputElement.cs" />
     <Compile Include="Elements\Controls\PillInputElement.cs" />
-    <Compile Include="Elements\Controls\RefreshableDropdownElement.cs" />
+    <Compile Include="Elements\Controls\DropdownElement.cs" />
     <Compile Include="Elements\Controls\ResponseBoxElement.cs" />
     <Compile Include="Elements\Controls\SliderElement.cs" />
     <Compile Include="Elements\Controls\SliderWithToggleSwitchElement.cs" />
@@ -117,6 +118,7 @@
     <Compile Include="Helpers\ProgressReporter.cs" />
     <Compile Include="Helpers\DialogHelper.cs" />
     <Compile Include="Helpers\ProgressWindowHelper.cs" />
+    <Compile Include="Helpers\ControlExtractionHelper.cs" />
     <Compile Include="Helpers\SbuiTags.cs" />
     <Compile Include="Helpers\VisualTreeHelper.cs" />
     <Compile Include="Interfaces\IProgressReporter.cs" />
@@ -128,18 +130,20 @@
     <Compile Include="Builders\Controls\ColorPickerBuilder.cs" />
     <Compile Include="Builders\Controls\CompetingTogglesBuilder.cs" />
     <Compile Include="Builders\Controls\DecimalStepperBuilder.cs" />
+    <Compile Include="Builders\Controls\DropdownBuilder.cs" />
     <Compile Include="Builders\Controls\DurationInputBuilder.cs" />
     <Compile Include="Builders\Controls\DynamicTextboxesBuilder.cs" />
     <Compile Include="Builders\Controls\FilepathBuilder.cs" />
     <Compile Include="Builders\Controls\IntegerInputBuilder.cs" />
     <Compile Include="Builders\Controls\PillInputBuilder.cs" />
-    <Compile Include="Builders\Controls\RefreshableDropdownBuilder.cs" />
     <Compile Include="Builders\Controls\ResponseBoxBuilder.cs" />
     <Compile Include="Builders\Controls\SliderBuilder.cs" />
     <Compile Include="Builders\Controls\SliderWithToggleBuilder.cs" />
     <Compile Include="Builders\Controls\TextboxBuilder.cs" />
     <Compile Include="Builders\Controls\ToggleBuilder.cs" />
     <Compile Include="Builders\ControlBuilderCore.cs" />
+    <Compile Include="Builders\ControlHostBuilder.cs" />
+    <Compile Include="Builders\ControlOptionsBase.cs" />
     <Compile Include="Builders\FluentWrapperBase.cs" />
     <Compile Include="Builders\PanelBuilder.cs" />
     <Compile Include="Builders\PanelFluentWrapper.cs" />
@@ -147,6 +151,7 @@
     <Compile Include="Builders\SectionFluentWrapper.cs" />
     <Compile Include="App\CallbackContext.cs" />
     <Compile Include="App\Sbui.cs" />
+    <Compile Include="App\Sbui.PanelContext.cs" />
     <Compile Include="App\UiContext.cs" />
     <Compile Include="SbuiUi.cs" />
   </ItemGroup>

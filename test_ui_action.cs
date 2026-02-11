@@ -159,7 +159,7 @@ public class CPHInline
                 )
                 .Section("Refreshable Dropdown", "Dropdowns", d => d
                     .Intro("Dropdown with Refresh button; callback returns new options and UpdateDropdown is called.")
-                    .RefreshableDropdown("Choice", "dropdown_choice")
+                    .Dropdown("Choice", "dropdown_choice")
                         .Hint("Select an option. Click Refresh to reload list.")
                         .Options(options)
                         .Refresh(() => new[] { "Option A", "Option B", "Option C", "Option D (refreshed)" })

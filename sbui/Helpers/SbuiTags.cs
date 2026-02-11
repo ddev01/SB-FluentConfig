@@ -9,5 +9,6 @@ namespace Sbui.Helpers
         public const string DynamicPrefix = "dynamic:";
         public const string PillPrefix = "pill:";
         public const string DurationPrefix = "duration:";
+        public const string PairPrefix = "pair:";
     }
 }

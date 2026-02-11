@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Controls;
 
 namespace Sbui
@@ -21,8 +22,12 @@ namespace Sbui
         void Password();
         void ShowWhen(string key);
         void Options(string[] options);
+        void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions);
+        void WithPairValue(string valueKey);
+        void DefaultByValue(string value);
         void DefaultIndex(int index);
         void Refresh(Func<string[]> callback);
+        void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback);
         void Preset(string[] values);
         void ToggleDefault(bool value);
         void Color(string hex);
