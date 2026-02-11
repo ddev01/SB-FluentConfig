@@ -107,22 +107,6 @@ namespace Sbui.Elements
                 }
             }
 
-            // Backward compatibility: compact format (e.g. "30s", "3m")
-            var unitChars = "smhdw";
-            for (int i = value.Length - 1; i >= 0; i--)
-            {
-                var c = value[i];
-                if (char.IsDigit(c) || c == ' ')
-                    continue;
-                if (unitChars.IndexOf(c) >= 0)
-                {
-                    var numStr = value.Substring(0, i).Trim();
-                    int.TryParse(numStr, out num);
-                    switch (c) { case 's': unitIndex = 0; break; case 'm': unitIndex = 1; break; case 'h': unitIndex = 2; break; case 'd': unitIndex = 3; break; case 'w': unitIndex = 4; break; default: unitIndex = 5; break; }
-                    return;
-                }
-                break;
-            }
             int.TryParse(value, out num);
             unitIndex = 1; // default to minutes
         }

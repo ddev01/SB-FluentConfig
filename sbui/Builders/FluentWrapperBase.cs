@@ -45,7 +45,7 @@ namespace Sbui
         public TWrapper WithPairValue(string valueKey) => Option(o => o.WithPairValue(valueKey));
         public TWrapper DefaultByValue(string value) => Option(o => o.DefaultByValue(value));
         public TWrapper DefaultIndex(int index) => Option(o => o.DefaultIndex(index));
-        public TWrapper WithCompeting(string[] options) => Option(o => o.WithCompeting(options));
+        public TWrapper WithExclusive(string[] options) => Option(o => o.WithExclusive(options));
         public TWrapper MaxSelected(int n) => Option(o => o.MaxSelected(n));
         public TWrapper DefaultIndices(int[] indices) => Option(o => o.DefaultIndices(indices));
         public TWrapper Refresh(Func<string[]> callback) => Option(o => o.Refresh(callback));

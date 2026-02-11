@@ -28,7 +28,7 @@ namespace Sbui
         public override void Hint(string text) { _hint = text; }
         public override void Default(bool value) { _defaultValue = value; }
         public override void ShowWhen(string key) { _showWhenKey = key; }
-        public override void WithCompeting(string[] options) { _competingOptions = options ?? Array.Empty<string>(); }
+        public override void WithExclusive(string[] options) { _competingOptions = options ?? Array.Empty<string>(); }
         public override void MaxSelected(int n) { _maxSelected = Math.Max(1, n); }
         public override void DefaultIndices(int[] indices) { _defaultIndices = indices; }
         public override void DefaultIndex(int index) { _defaultIndices = new[] { index }; }

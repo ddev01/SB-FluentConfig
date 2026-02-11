@@ -170,10 +170,10 @@ public class CPHInline
                         .DefaultIndex(0)
                 )
                 .Section("Advanced Controls", "Advanced", a => a
-                    .Intro("Competing toggles (one active), dynamic textbox list, and WithVisibility section.")
+                    .Intro("Exclusive toggles (one active), dynamic textbox list, and WithVisibility section.")
                     .Toggle("Mode", "mode_index")
                         .Hint("Only one mode can be active.")
-                        .WithCompeting(new[] { "Mode 1", "Mode 2", "Mode 3" })
+                        .WithExclusive(new[] { "Mode 1", "Mode 2", "Mode 3" })
                         .DefaultIndex(0)
                     .DynamicTextboxes("Custom List", "custom_list")
                         .Hint("Add/remove textboxes; persisted as array.")

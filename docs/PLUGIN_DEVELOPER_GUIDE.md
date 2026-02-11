@@ -128,7 +128,6 @@ Settings are saved as JSON to Streamer.bot global variables (`Sbui_Settings_{ext
 ```
 
 - **Full unit names** — `"seconds"`, `"minutes"`, `"hours"`, `"days"`, `"weeks"`, `"permanent"`.
-- **Legacy support** — Compact form (`"30s"`, `"3m"`) is still parsed when loading.
 - **WithPermanentOption** — Adds a "permanent" option when true.
 
 ---

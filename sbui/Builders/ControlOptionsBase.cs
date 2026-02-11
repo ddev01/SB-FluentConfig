@@ -26,7 +26,7 @@ namespace Sbui
         public virtual void WithPairValue(string valueKey) { }
         public virtual void DefaultByValue(string value) { }
         public virtual void DefaultIndex(int index) { }
-        public virtual void WithCompeting(string[] options) { }
+        public virtual void WithExclusive(string[] options) { }
         public virtual void MaxSelected(int n) { }
         public virtual void DefaultIndices(int[] indices) { }
         public virtual void Refresh(Func<string[]> callback) { }

@@ -131,13 +131,6 @@ namespace Sbui
         }
 
         /// <summary>
-        /// Parameterless constructor for backward compatibility. No CPH persistence.
-        /// </summary>
-        public Sbui() : this(null, "", null, true)
-        {
-        }
-
-        /// <summary>
         /// Constructor with CPH for loading/saving settings. Use extensionName for storage key Sbui_Settings_{extensionName}.
         /// </summary>
         public Sbui(IInlineInvokeProxy cph, string extensionName, bool withUi = true) : this(cph, extensionName, null, withUi)
