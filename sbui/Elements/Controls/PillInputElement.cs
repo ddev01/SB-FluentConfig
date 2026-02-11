@@ -42,15 +42,8 @@ namespace Sbui.Elements
             var token = context.GetSetting(SaveKey);
             var existing = (token as JArray)?.Select(t => t?.ToString() ?? "").ToList() ?? new List<string>();
 
-            var outer = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Margin = new Thickness(0, 8, 0, 0),
-                Tag = SbuiTags.PillPrefix + SaveKey
-            };
-            outer.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                outer.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var outer = SbuiComponentFactory.CreateTitledStack(Title, Description);
+            outer.Tag = SbuiTags.PillPrefix + SaveKey;
 
             var addRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
             var inputBox = new System.Windows.Controls.TextBox

@@ -112,10 +112,7 @@ namespace Sbui.Elements
             if (IsPairValue && ValueKey != null)
                 context.Registry.Register(ValueKey, cb);
 
-            var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
-            stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
 
             if (HasRefresh)
             {

@@ -28,10 +28,7 @@ namespace Sbui.Elements
         {
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
-            var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
-            stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
             var initial = context.GetSetting(SaveKey)?.ToString() ?? DefaultText ?? "";
             if (IsPassword)
             {

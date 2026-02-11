@@ -33,10 +33,7 @@ namespace Sbui.Elements
             if (panel == null) return;
             var val = context.GetSetting(SaveKey) != null ? context.GetSetting(SaveKey).ToObject<int>() : DefaultValue;
             val = Math.Max(Min, Math.Min(Max, val));
-            var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
-            stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });

@@ -27,8 +27,7 @@ namespace Sbui.Elements
         {
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
-            var stack = new System.Windows.Controls.StackPanel { Orientation = Orientation.Vertical, Margin = new System.Windows.Thickness(0, 8, 0, 0) };
-            stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
+            var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
             bool isChecked = DefaultValue;
             var settingToken = context.GetSetting(SaveKey);
             if (settingToken != null)
@@ -41,8 +40,6 @@ namespace Sbui.Elements
             ts.Unchecked += (s, e) => context.MarkDirty();
             context.Registry.Register(SaveKey, ts);
             stack.Children.Add(ts);
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
             panel.Children.Add(stack);
         }
     }

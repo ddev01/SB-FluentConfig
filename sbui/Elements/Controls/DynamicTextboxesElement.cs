@@ -42,17 +42,10 @@ namespace Sbui.Elements
                 existing = arr;
             var count = existing?.Count ?? (PresetValues?.Length ?? 1);
             if (count < 1) count = 1;
-            var stack = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Margin = new Thickness(0, 8, 0, 0),
-                Tag = SbuiTags.DynamicPrefix + SaveKey
-            };
+            var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
+            stack.Tag = SbuiTags.DynamicPrefix + SaveKey;
             if (context.DynamicTextboxPanels != null)
                 context.DynamicTextboxPanels[SaveKey] = stack;
-            stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
             var listPanel = new StackPanel { Orientation = Orientation.Vertical };
             for (int i = 0; i < count; i++)
             {

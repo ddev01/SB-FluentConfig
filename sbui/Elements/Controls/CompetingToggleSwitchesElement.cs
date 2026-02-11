@@ -38,10 +38,7 @@ namespace Sbui.Elements
             if (panel == null) return;
             var options = Options ?? Array.Empty<string>();
             var maxSelected = Math.Max(1, MaxSelected);
-            var stack = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 8, 0, 0) };
-            stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var stack = SbuiComponentFactory.CreateTitledStack(Title, Description);
 
             if (maxSelected == 1)
             {

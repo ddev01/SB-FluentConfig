@@ -41,15 +41,8 @@ namespace Sbui.Elements
             unitIndex = Math.Max(0, Math.Min(unitIndex, options.Length - 1));
             var isPermanent = options[unitIndex] == "permanent";
 
-            var outer = new StackPanel
-            {
-                Orientation = Orientation.Vertical,
-                Margin = new Thickness(0, 8, 0, 0),
-                Tag = SbuiTags.DurationPrefix + SaveKey
-            };
-            outer.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                outer.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var outer = SbuiComponentFactory.CreateTitledStack(Title, Description);
+            outer.Tag = SbuiTags.DurationPrefix + SaveKey;
 
             var row = new StackPanel { Orientation = Orientation.Horizontal };
 

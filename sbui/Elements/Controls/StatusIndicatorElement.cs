@@ -47,11 +47,7 @@ namespace Sbui.Elements
             var panel = context.GetPanel(TabName);
             if (panel == null) return;
 
-            var stack = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 8, 0, 0) };
-            if (!string.IsNullOrEmpty(Title))
-                stack.Children.Add(SbuiComponentFactory.CreateTitleTextBlock(Title));
-            if (!string.IsNullOrEmpty(Description))
-                stack.Children.Add(SbuiComponentFactory.CreateDescriptionTextBlock(Description));
+            var stack = SbuiComponentFactory.CreateTitledStack(Title ?? "", Description);
 
             var row = new StackPanel { Orientation = Orientation.Horizontal };
             var statusBrush = GetStatusBrush(InitialStatus);

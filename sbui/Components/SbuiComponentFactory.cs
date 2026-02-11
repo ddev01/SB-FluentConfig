@@ -152,6 +152,19 @@ namespace Sbui.Components
             };
         }
 
+        /// <summary>
+        /// Creates a vertical StackPanel with a title and optional description, using the standard section margin.
+        /// Use this as the root container in element Render methods.
+        /// </summary>
+        public static StackPanel CreateTitledStack(string title, string description)
+        {
+            var stack = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 8, 0, 0) };
+            stack.Children.Add(CreateTitleTextBlock(title));
+            if (!string.IsNullOrEmpty(description))
+                stack.Children.Add(CreateDescriptionTextBlock(description));
+            return stack;
+        }
+
         public static System.Windows.Controls.TextBlock CreateTitleTextBlock(string text)
         {
             return new System.Windows.Controls.TextBlock
