@@ -26,24 +26,28 @@ namespace FluentConfig
 
         protected override SectionFluentWrapper WrapControl(IFlushableControlBuilder b) => new SectionFluentWrapper(this, b);
 
+        /// <summary>Adds intro/description text at the top of the section.</summary>
         public SectionBuilder Intro(string text)
         {
             AddIntro(text, _tabName);
             return this;
         }
 
+        /// <summary>Adds a section title block.</summary>
         public SectionBuilder Title(string text)
         {
             AddTitle(text, _tabName);
             return this;
         }
 
+        /// <summary>Adds a horizontal separator line.</summary>
         public SectionBuilder Separator()
         {
             AddSeparator(_tabName);
             return this;
         }
 
+        /// <summary>Adds a block visible when the toggle is on (or off when inverted).</summary>
         public SectionBuilder WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build)
         {
             FlushPending();
@@ -52,6 +56,7 @@ namespace FluentConfig
             return this;
         }
 
+        /// <summary>Adds a block visible when the toggle with the given key is on.</summary>
         public SectionBuilder WithVisibility(string toggleKey, Action<PanelBuilder> build)
         {
             return WithVisibility(toggleKey, false, build);

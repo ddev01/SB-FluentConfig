@@ -1,11 +1,9 @@
-// Streamer.bot C# Action Code
-// Copy and paste this into a new C# action in Streamer.bot
-// Tests FluentConfig fluent DSL: all controls, GetPendingValue, dialogs, Toast, Log, visibility, dropdown refresh,
-// PillInput (WithSectionsPanel, OnPillAdded, OnPillRemoved), WithRepeatableRows, WithVisibility inverted,
-// IntegerInput, DurationInput, pair-value dropdown, WithExclusive multi-select.
+// Streamer.bot C# action – complete FluentConfig example.
+// Demonstrates all controls: Toggle, Textbox, Slider, Button, Dropdown, PillInput, WithVisibility,
+// WithRepeatableRows, GetPendingValue, dialogs, Toast, Log, DurationInput, IntegerInput, ColorPicker, etc.
+// Copy into a new C# action to explore the full FluentConfig API.
 //
-// Required references (add by name for cross-system resolution):
-//   PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll (path)
+// Required references: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll (path).
 // See docs/REFERENCES.md for details.
 
 using FluentConfig;
@@ -49,18 +47,14 @@ public class CPHInline
     {
         try
         {
-            WriteLog("=== FluentConfig Full Test Action Started ===");
-            WriteLog($"Application.Current is null: {Application.Current == null}");
-
+            WriteLog("=== FluentConfig Complete Example Started ===");
             FluentConfig.FluentConfig.SetLogCallback((msg) => WriteLog($"[FluentConfig] {msg}"));
 
-            if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig Full Test", "1.0"))
+            if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig Complete Example", "1.0"))
             {
                 WriteLog("=== Action skipped - UI already open ===");
                 return true;
             }
-
-            WriteLog($"FluentConfig.GetVersion() = {FluentConfig.FluentConfig.GetVersion()}");
 
             var options = new[] { "Option A", "Option B", "Option C" };
             var pillPanels = new Dictionary<string, Panel>();
@@ -78,33 +72,32 @@ public class CPHInline
                 );
             }
 
-            FluentConfigUi.Create(CPH, "FluentConfig Full Test", "1.0")
-                // .Header("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYxAXPiJKEN56xb3g_LJzPaNVuOu2nW9a4VQ&s")
-                .Section("General Settings", "General", g => g
-                    .Intro("Test all FluentConfig controls. Use Save to persist; buttons below exercise dialogs and GetPendingValue.")
-                    .Toggle("Enable Requirement", "custom_requirement_enabled")
+            FluentConfigUi.Create(CPH, "FluentConfig Complete Example", "1.0")
+                .Section("General settings", "General", g => g
+                    .Intro("All FluentConfig controls. Use Save to persist; buttons exercise dialogs and GetPendingValue.")
+                    .Toggle("Enable requirement", "custom_requirement_enabled")
                         .Hint("Turn this on to require a custom condition.")
-                    .Textbox("Requirement Name", "custom_requirement_name")
+                    .Textbox("Requirement name", "custom_requirement_name")
                         .Hint("The name of your requirement (e.g. 'Level', 'AccessKey').")
-                    .Textbox("Secret Key", "secret_key")
+                    .Textbox("Secret key", "secret_key")
                         .Hint("Optional secret (password field).")
                         .Password()
-                    .Slider("Required Value", "custom_required_value")
+                    .Slider("Required value", "custom_required_value")
                         .Hint("Minimum value needed (1–1000000).")
                         .Range(1, 1000000)
                         .Default(250)
                     .Separator()
-                    .Toggle("Enable Optional Limit", "optional_limit_enabled")
+                    .Toggle("Enable optional limit", "optional_limit_enabled")
                         .Hint("Enable and set a limit (0–100).")
                         .Default(false)
-                    .Slider("Optional Limit", "optional_limit")
+                    .Slider("Optional limit", "optional_limit")
                         .Hint("Limit value when enabled.")
                         .Range(0, 100)
                         .Default(50)
                         .ShowWhen("optional_limit_enabled")
-                    .Filepath("Export Filepath", "export_filepath")
+                    .Filepath("Export filepath", "export_filepath")
                         .Hint("Path for export file. Leave empty for Streamer.bot directory.")
-                    .Textbox("Response Template", "response_template")
+                    .Textbox("Response template", "response_template")
                         .Multiline()
                         .Hint("Multiline template for responses.")
                         .Default("Hello {user}!")
@@ -114,10 +107,10 @@ public class CPHInline
                         .Range(0.1, 10.0)
                         .Step(0.1)
                         .Default(1.0)
-                    .ColorPicker("Accent Color", "accent_color")
+                    .ColorPicker("Accent color", "accent_color")
                         .Hint("Hex color (e.g. #714bfd).")
                         .Default("#714bfd")
-                    .IntegerInput("Max Retries", "max_retries")
+                    .IntegerInput("Max retries", "max_retries")
                         .Hint("Number of retry attempts (0–100).")
                         .Range(0, 100)
                         .Default(3)
@@ -133,9 +126,9 @@ public class CPHInline
                         .Default(10)
                         .ShowWhen("minpointsrequired")
                 )
-                .Section("Buttons & Dialogs", "Buttons", b => b
+                .Section("Buttons & dialogs", "Buttons", b => b
                     .Intro("Click buttons to test GetPendingValue, AddPopupWindow, ShowConfirmDialog, ShowProgressWindow, Toast, and Log.")
-                    .Button("Test GetPendingValue & Popup")
+                    .Button("Test GetPendingValue & popup")
                         .Hint("Reads multiple control types from General/Dropdowns and shows in a popup.")
                         .Text("Show values")
                         .Color("#714bfd")
@@ -153,7 +146,7 @@ public class CPHInline
                             string timeout = ui.Pending<string>("timeout");
                             ui.Popup("GetPendingValue Test", $"Requirement: '{name}'\nFilepath: '{path}'\nRequired Value: {sliderVal}\nEnabled: {enabled}\nRate: {rate}\nDropdown: {dropdownIdx}='{dropdownText}'\nDevice ID (pair): '{deviceId}'\nMaxRetries: {maxRetries}\nTimeout: '{timeout}'");
                         })
-                    .Button("Test Confirm Dialog")
+                    .Button("Test confirm dialog")
                         .Hint("Shows Yes/No dialog and displays result in a popup.")
                         .Text("Confirm")
                         .Color("#31a8ff")
@@ -162,7 +155,7 @@ public class CPHInline
                             var result = ui.ShowConfirmDialog("Confirm Test", "Do you want to continue?", "Yes", "No");
                             ui.Popup("Confirm Result", $"You chose: {result}");
                         })
-                    .Button("Test Progress Window")
+                    .Button("Test progress window")
                         .Hint("Shows progress window, simulates 10 steps, then closes.")
                         .Text("Progress")
                         .Color("#1ba489")
@@ -184,19 +177,19 @@ public class CPHInline
                                 });
                             }
                         })
-                    .Button("Test Toast")
+                    .Button("Test toast")
                         .Hint("Shows a short-lived toast notification.")
                         .Text("Toast")
                         .Color("#f09930")
                         .OnClick(ui => ui.Toast("Test toast – auto-dismiss in 3 seconds"))
-                    .Button("Test Log")
+                    .Button("Test log")
                         .Hint("Writes a line to the log callback.")
                         .Text("Log")
                         .Color("#636b9a")
                         .OnClick(ui => ui.Log("Test log message from button click"))
                 )
                 .Section("Refreshable Dropdown", "Dropdowns", d => d
-                    .Intro("Dropdown with Refresh; pair-value dropdown (display name + stored ID); both refresh and pair value.")
+                    .Intro("Dropdown with Refresh; pair-value dropdown (display name + stored ID).")
                     .Dropdown("Choice", "dropdown_choice")
                         .Hint("Select an option. Click Refresh to reload list.")
                         .Options(options)
@@ -208,8 +201,8 @@ public class CPHInline
                         .Options(new[] { ("id1", "Device A"), ("id2", "Device B"), ("id3", "Device C") })
                         .DefaultByValue("id2")
                 )
-                .Section("Advanced Controls", "Advanced", a => a
-                    .Intro("Exclusive toggles (single + multi-select), dynamic textbox list, WithVisibility, WithRepeatableRows, inverted visibility.")
+                .Section("Advanced controls", "Advanced", a => a
+                    .Intro("Exclusive toggles, dynamic textbox list, WithVisibility, WithRepeatableRows, inverted visibility.")
                     .Toggle("Mode", "mode_index")
                         .Hint("Only one mode can be active (single-select).")
                         .WithExclusive(new[] { "Mode 1", "Mode 2", "Mode 3" })
@@ -219,7 +212,7 @@ public class CPHInline
                         .WithExclusive(new[] { "Feature A", "Feature B", "Feature C" })
                         .MaxSelected(2)
                         .DefaultIndices(new[] { 0, 1 })
-                    .DynamicTextboxes("Custom List", "custom_list")
+                    .DynamicTextboxes("Custom list", "custom_list")
                         .Hint("Add/remove textboxes; persisted as array.")
                         .Preset(new[] { "Item 1", "Item 2" })
                     .Toggle("Show extra options", "show_extra_options")
@@ -232,7 +225,7 @@ public class CPHInline
                             .Range(0, 50)
                             .Default(25)
                         .WithRepeatableRows("extra_rows", row => row
-                            .Textbox("Row Label", "label")
+                            .Textbox("Row label", "label")
                                 .Hint("Label for this row.")
                             .IntegerInput("Amount", "amount")
                                 .Range(0, 999)
@@ -248,9 +241,9 @@ public class CPHInline
                             .Default("default for free")
                     )
                 )
-                .Section("PillInput & Callbacks", "Pills", p => p
+                .Section("PillInput & callbacks", "Pills", p => p
                     .Intro("PillInput with WithSectionsPanel, OnPillAdded, OnPillRemoved. Add items; each gets a config panel.")
-                    .PillInput("Test Items", "test_items")
+                    .PillInput("Test items", "test_items")
                         .Hint("Add items (press Enter or Add). Each item gets a section with toggle and slider.")
                         .WithSectionsPanel((sections, tab, ctx) =>
                         {
@@ -284,20 +277,12 @@ public class CPHInline
                 .LogExistingSettings()
                 .Show();
 
-            WriteLog("Show() completed");
             WriteLog("=== Action completed - UI should now be visible ===");
         }
         catch (Exception ex)
         {
-            WriteLog("=== ERROR OCCURRED ===");
-            WriteLog($"Error Type: {ex.GetType().Name}");
-            WriteLog($"Error Message: {ex.Message}");
-            WriteLog($"Stack Trace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                WriteLog($"Inner Exception: {ex.InnerException.Message}");
-                WriteLog($"Inner Stack: {ex.InnerException.StackTrace}");
-            }
+            WriteLog($"=== ERROR: {ex.GetType().Name}: {ex.Message} ===");
+            WriteLog(ex.StackTrace ?? "");
         }
 
         return true;

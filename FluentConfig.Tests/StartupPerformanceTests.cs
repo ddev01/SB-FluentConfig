@@ -60,7 +60,7 @@ namespace FluentConfig.Tests
         }
 
         /// <summary>
-        /// Full UI creation benchmark — mirrors test_ui_action.cs but without Streamer.bot.
+        /// Full UI creation benchmark — mirrors examples/CompleteExample.cs but without Streamer.bot.
         /// Tests both with and without image download, and reports per-phase timings.
         ///
         /// This is THE primary performance test. Run it with:

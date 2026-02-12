@@ -8,30 +8,30 @@ namespace FluentConfig
     /// </summary>
     public class CallbackContext
     {
-        private readonly FluentConfig _sbui;
+        private readonly FluentConfig _config;
 
-        internal CallbackContext(FluentConfig sbui)
+        internal CallbackContext(FluentConfig config)
         {
-            _sbui = sbui ?? throw new ArgumentNullException(nameof(sbui));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
         }
 
         /// <summary>Gets a persisted setting value by key.</summary>
         public T GetValue<T>(string key)
         {
-            return _sbui.GetValue<T>(key);
+            return _config.GetValue<T>(key);
         }
 
         /// <summary>Removes the given keys from settings (e.g. when an alias/pill is removed). Call before or after removing UI.</summary>
         public void RemoveSettingsKeys(params string[] keys)
         {
-            _sbui.RemoveSettingsKeys(keys);
+            _config.RemoveSettingsKeys(keys);
         }
 
         /// <summary>Builds content into the given panel using the fluent PanelBuilder. Use for per-alias or per-section content.</summary>
         public void WithPanel(Panel panel, string tabName, Action<PanelBuilder> build)
         {
             if (panel == null || build == null) return;
-            _sbui.WithPanel(panel, () => build(new PanelBuilder(_sbui, panel, tabName ?? "")));
+            _config.WithPanel(panel, () => build(new PanelBuilder(_config, panel, tabName ?? "")));
         }
     }
 }

@@ -9,7 +9,7 @@ namespace FluentConfig.Helpers
 {
     /// <summary>
     /// Centralized validation and input handling. DRY methods for numeric parsing, display formatting,
-    /// input filtering, and validation across sbui elements.
+    /// input filtering, and validation across FluentConfig controls.
     /// </summary>
     public static class InputValidation
     {

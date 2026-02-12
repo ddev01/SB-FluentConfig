@@ -18,9 +18,11 @@ namespace FluentConfig
 
         /// <summary>
         /// Creates the root builder and underlying FluentConfig instance. Call Header/Section then Show().
-        /// Set plainWindow to true for faster startup at the cost of Mica backdrop, rounded corners,
-        /// and accent title bar (FluentWindow chrome). All controls inside are identical.
         /// </summary>
+        /// <param name="cph">Streamer.bot IInlineInvokeProxy (CPH). Required for loading/saving settings.</param>
+        /// <param name="title">Window title and settings key prefix (e.g. "My Extension").</param>
+        /// <param name="version">Display version for window title and storage (e.g. "1.0").</param>
+        /// <param name="plainWindow">True for faster startup without Mica/rounded corners; controls are identical.</param>
         public static FluentConfigUi Create(IInlineInvokeProxy cph, string title, string version, bool plainWindow = false)
         {
             var config = new FluentConfig(cph, title ?? "Settings", version, true, plainWindow);

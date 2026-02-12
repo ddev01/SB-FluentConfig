@@ -224,13 +224,28 @@ namespace FluentConfig
             _window.Closed += (s, e) =>
             {
                 if (_window?.WindowState == WindowState.Normal)
+                {
+                    PersistWindowSizeOnly(_window.Width, _window.Height);
                     FluentConfigWindowManager.InvokeWindowClosedCallback(_window.Width, _window.Height);
+                }
                 FluentConfigWindowManager.SetOpened(false);
                 LogInternal("FluentConfig UI has been closed.");
             };
 
             FluentConfigWindowManager.SetOpened(true);
             _perfTracer.BeginPhase("Post-InitializeUI");
+        }
+
+        /// <summary>
+        /// Persists only window size to settings and saves to CPH. Called on window close so size is always restored on next open, even when user exits without saving.
+        /// </summary>
+        private void PersistWindowSizeOnly(double width, double height)
+        {
+            if (_settingsManager == null || _cph == null || string.IsNullOrEmpty(_settingsKey)) return;
+            if (_existingSettings == null) _existingSettings = new JObject();
+            _existingSettings["WindowWidth"] = width;
+            _existingSettings["WindowHeight"] = height;
+            _settingsManager.Save(_existingSettings);
         }
 
         /// <summary>

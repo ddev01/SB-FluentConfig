@@ -1,7 +1,11 @@
 using System;
+using System.Diagnostics;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Navigation;
 using Newtonsoft.Json.Linq;
 using FluentConfig.Components;
 using Wpf.Ui.Controls;
@@ -74,8 +78,8 @@ namespace FluentConfig.Core
                 window = new Window
                 {
                     Title = _title,
-                    Width = 600,
-                    Height = 400,
+                    Width = 900,
+                    Height = 650,
                     WindowStartupLocation = WindowStartupLocation.CenterScreen,
                     Background = new SolidColorBrush(Color.FromRgb(0x1e, 0x1e, 0x2e))
                 };
@@ -85,8 +89,8 @@ namespace FluentConfig.Core
                 window = new FluentWindow
                 {
                     Title = _title,
-                    Width = 600,
-                    Height = 400,
+                    Width = 900,
+                    Height = 650,
                     WindowStartupLocation = WindowStartupLocation.CenterScreen
                 };
             }
@@ -232,13 +236,41 @@ namespace FluentConfig.Core
             return sidebar;
         }
 
-        private static StackPanel CreateFooter(Action onSave, Action onSaveAndExit, Action onReset, Action onExit)
+        private const string GithubRepoUrl = "https://github.com/ddev01/SB-FluentConfig";
+
+        private static Panel CreateFooter(Action onSave, Action onSaveAndExit, Action onReset, Action onExit)
         {
-            var footer = new StackPanel
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+            var link = new Hyperlink(new Run("GitHub"))
+            {
+                Foreground = new SolidColorBrush(Color.FromRgb(0x71, 0x4b, 0xfd)),
+                TextDecorations = null,
+                NavigateUri = new Uri(GithubRepoUrl)
+            };
+            link.RequestNavigate += (s, e) =>
+            {
+                try { Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true }); } catch { }
+                e.Handled = true;
+            };
+            var leftBlock = new System.Windows.Controls.TextBlock
+            {
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9c, 0x9c, 0xa8)),
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            leftBlock.Inlines.Add(new Run($"FluentConfig v{version} – "));
+            leftBlock.Inlines.Add(link);
+
+            var leftPanel = new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            leftPanel.Children.Add(leftBlock);
+
+            var buttonPanel = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(20, 12, 20, 20),
-                HorizontalAlignment = HorizontalAlignment.Left
+                HorizontalAlignment = HorizontalAlignment.Right
             };
             var saveBtn = new Wpf.Ui.Controls.Button { Content = "Save", Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(16, 8, 16, 8) };
             saveBtn.Click += (s, e) => onSave?.Invoke();
@@ -248,10 +280,22 @@ namespace FluentConfig.Core
             resetBtn.Click += (s, e) => onReset?.Invoke();
             var exitBtn = new Wpf.Ui.Controls.Button { Content = "Exit", Padding = new Thickness(16, 8, 16, 8) };
             exitBtn.Click += (s, e) => onExit?.Invoke();
-            footer.Children.Add(saveBtn);
-            footer.Children.Add(saveExitBtn);
-            footer.Children.Add(resetBtn);
-            footer.Children.Add(exitBtn);
+            buttonPanel.Children.Add(saveBtn);
+            buttonPanel.Children.Add(saveExitBtn);
+            buttonPanel.Children.Add(resetBtn);
+            buttonPanel.Children.Add(exitBtn);
+
+            var footer = new Grid
+            {
+                Margin = new Thickness(20, 12, 20, 20),
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Grid.SetColumn(leftPanel, 0);
+            Grid.SetColumn(buttonPanel, 1);
+            footer.Children.Add(leftPanel);
+            footer.Children.Add(buttonPanel);
             return footer;
         }
     }
