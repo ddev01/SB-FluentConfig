@@ -1,14 +1,14 @@
 // Streamer.bot C# Action Code
 // Copy and paste this into a new C# action in Streamer.bot
-// Tests Sbui fluent DSL: all controls, GetPendingValue, dialogs, Toast, Log, visibility, dropdown refresh,
+// Tests FluentConfig fluent DSL: all controls, GetPendingValue, dialogs, Toast, Log, visibility, dropdown refresh,
 // PillInput (WithSectionsPanel, OnPillAdded, OnPillRemoved), WithRepeatableRows, WithVisibility inverted,
 // IntegerInput, DurationInput, pair-value dropdown, WithExclusive multi-select.
 //
 // Required references (add by name for cross-system resolution):
-//   PresentationFramework, PresentationCore, WindowsBase, sbui.dll (path)
+//   PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll (path)
 // See docs/REFERENCES.md for details.
 
-using Sbui;
+using FluentConfig;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,18 +49,18 @@ public class CPHInline
     {
         try
         {
-            WriteLog("=== Sbui Full Test Action Started ===");
+            WriteLog("=== FluentConfig Full Test Action Started ===");
             WriteLog($"Application.Current is null: {Application.Current == null}");
 
-            Sbui.Sbui.SetLogCallback((msg) => WriteLog($"[Sbui] {msg}"));
+            FluentConfig.FluentConfig.SetLogCallback((msg) => WriteLog($"[FluentConfig] {msg}"));
 
-            if (Sbui.Sbui.AlreadyOpened("Sbui Full Test", "1.0"))
+            if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig Full Test", "1.0"))
             {
                 WriteLog("=== Action skipped - UI already open ===");
                 return true;
             }
 
-            WriteLog($"Sbui.GetVersion() = {Sbui.Sbui.GetVersion()}");
+            WriteLog($"FluentConfig.GetVersion() = {FluentConfig.FluentConfig.GetVersion()}");
 
             var options = new[] { "Option A", "Option B", "Option C" };
             var pillPanels = new Dictionary<string, Panel>();
@@ -78,10 +78,10 @@ public class CPHInline
                 );
             }
 
-            SbuiUi.Create(CPH, "Sbui Full Test", "1.0")
+            FluentConfigUi.Create(CPH, "FluentConfig Full Test", "1.0")
                 // .Header("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTYxAXPiJKEN56xb3g_LJzPaNVuOu2nW9a4VQ&s")
                 .Section("General Settings", "General", g => g
-                    .Intro("Test all Sbui controls. Use Save to persist; buttons below exercise dialogs and GetPendingValue.")
+                    .Intro("Test all FluentConfig controls. Use Save to persist; buttons below exercise dialogs and GetPendingValue.")
                     .Toggle("Enable Requirement", "custom_requirement_enabled")
                         .Hint("Turn this on to require a custom condition.")
                     .Textbox("Requirement Name", "custom_requirement_name")

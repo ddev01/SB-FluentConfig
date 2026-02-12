@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="FluentConfig/FluentConfig.csproj" Id="abfbfd3e-caf5-4c3e-90e5-e7dad5531259" />
+  <Project Path="FluentConfig.Tests/FluentConfig.Tests.csproj" />
+</Solution>

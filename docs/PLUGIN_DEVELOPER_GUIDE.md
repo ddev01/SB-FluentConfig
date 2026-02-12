@@ -1,17 +1,17 @@
-# Sbui Plugin Developer Guide
+# FluentConfig Plugin Developer Guide
 
-This guide explains how to build settings UIs for Streamer.bot extensions using Sbui.
+This guide explains how to build settings UIs for Streamer.bot extensions using FluentConfig.
 
 ---
 
 ## 0. C# Execute action references
 
-Sbui actions that use WPF types (Panel, StackPanel, ShowConfirmDialog, etc.) need framework assembly references. Add them **by name** so they resolve on any Windows system:
+FluentConfig actions that use WPF types (Panel, StackPanel, ShowConfirmDialog, etc.) need framework assembly references. Add them **by name** so they resolve on any Windows system:
 
 - **PresentationFramework**
 - **PresentationCore**
 - **WindowsBase**
-- **sbui** (path to your `sbui.dll` in Streamer.bot's `dlls/` folder)
+- **FluentConfig** (path to your `FluentConfig.dll` in Streamer.bot's `dlls/` folder)
 
 See **[REFERENCES.md](REFERENCES.md)** for full details and path fallbacks.
 
@@ -21,27 +21,27 @@ See **[REFERENCES.md](REFERENCES.md)** for full details and path fallbacks.
 
 Before creating the UI:
 
-1. **DLL check** — Ensure the Sbui DLL is available in your extension's dependencies (or Streamer.bot's `dlls/` folder).
-2. **Version check** — Use `Sbui.Sbui.GetVersion()` to verify the DLL version for compatibility.
-3. **Avoid duplicates** — Call `Sbui.Sbui.AlreadyOpened(title, version)` before creating a new Sbui instance to prevent duplicate windows.
+1. **DLL check** — Ensure the FluentConfig DLL is available in your extension's dependencies (or Streamer.bot's `dlls/` folder).
+2. **Version check** — Use `FluentConfig.FluentConfig.GetVersion()` to verify the DLL version for compatibility.
+3. **Avoid duplicates** — Call `FluentConfig.FluentConfig.AlreadyOpened(title, version)` before creating a new FluentConfig instance to prevent duplicate windows.
 
 ```csharp
-Sbui.Sbui.SetLogCallback(msg => CPH.LogInfo($"[Sbui] {msg}"));
+FluentConfig.FluentConfig.SetLogCallback(msg => CPH.LogInfo($"[FluentConfig] {msg}"));
 
-if (Sbui.Sbui.AlreadyOpened("My Extension", "1.0"))
+if (FluentConfig.FluentConfig.AlreadyOpened("My Extension", "1.0"))
     return true; // UI already open
 
-var version = Sbui.Sbui.GetVersion();
+var version = FluentConfig.FluentConfig.GetVersion();
 ```
 
 ---
 
-## 2. Minimal Sbui usage (Create, Section, Show)
+## 2. Minimal FluentConfig usage (Create, Section, Show)
 
-Use `SbuiUi.Create()` for the fluent DSL:
+Use `FluentConfigUi.Create()` for the fluent DSL:
 
 ```csharp
-SbuiUi.Create(CPH, "My Extension", "1.0")
+FluentConfigUi.Create(CPH, "My Extension", "1.0")
     .Section("General", "General", s => s
         .Intro("Configure your settings below.")
         .Toggle("Enable Feature", "enabled")
@@ -50,7 +50,7 @@ SbuiUi.Create(CPH, "My Extension", "1.0")
     .Show();
 ```
 
-- **Create(CPH, title, version)** — Creates the Sbui instance. `title` and `version` are used for the window title and settings storage key.
+- **Create(CPH, title, version)** — Creates the FluentConfig instance. `title` and `version` are used for the window title and settings storage key.
 - **Section(title, tabId, build)** — Adds a tab. The `build` action receives a `SectionBuilder` for fluent controls.
 - **Show()** — Displays the window.
 
@@ -64,12 +64,12 @@ When you need to read settings without showing the UI (e.g. in event handlers):
 
 ```csharp
 // Create without UI — only for reading settings
-var sbui = new Sbui.Sbui(CPH, "My Extension", "1.0", withUi: false);
+var config = new FluentConfig.FluentConfig(CPH, "My Extension", "1.0", withUi: false);
 
 // Load settings from CPH and read values
-int volume = sbui.GetValue<int>("volume");
-string username = sbui.GetValue<string>("username");
-bool enabled = sbui.GetValue<bool>("enabled");
+int volume = config.GetValue<int>("volume");
+string username = config.GetValue<string>("username");
+bool enabled = config.GetValue<bool>("enabled");
 ```
 
 Use `withUi: false` when you only need to read/write settings and never show a window. This avoids STA/UI initialization.
@@ -90,7 +90,7 @@ Each control has a `saveKey` that maps to a JSON path in the stored settings:
 - **Nested paths** — Use dot notation: `"parent.child"` or array: `"items[0].value"`.
 - **Repeatable rows** — `WithRepeatableRows("rows", ...)` uses `rows[0]`, `rows[1]`, etc.
 
-Settings are saved as JSON to Streamer.bot global variables (`Sbui_Settings_{extensionName}`).
+Settings are saved as JSON to Streamer.bot global variables (`FluentConfig_Settings_{extensionName}`).
 
 ---
 
@@ -156,8 +156,8 @@ See **[ELEMENTS.md](ELEMENTS.md)** for a complete reference of all controls, the
 Use `SetValue<T>(key, value)` to update settings and controls at runtime (e.g. after connection success):
 
 ```csharp
-sbui.SetValue("username", "new_user");
-sbui.SetValue("enabled", true);
+config.SetValue("username", "new_user");
+config.SetValue("enabled", true);
 ```
 
 When the window is open, the corresponding control is updated. Call `MarkDirty()` if you need the change persisted on next Save.

@@ -33,3 +33,4 @@ Thumbs.db
 .DS_Store
 .data/
 voice_alias_plugin_test.cs
+.cursor
