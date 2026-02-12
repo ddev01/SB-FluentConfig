@@ -1,6 +1,17 @@
 # C# Execute Action References
 
-When you create a C# Execute action that uses FluentConfig, add these assembly references so the code compiles on any Windows system.
+When you create a C# Execute action that uses FluentConfig, add these assembly references so the code compiles on any Windows system. For usage and controls, see [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md) and [ELEMENTS.md](ELEMENTS.md).
+
+---
+
+## Recommended: Import the Quick Start Action
+
+The easiest way to get started is to **import the FluentConfig Quick Start action**. It comes preconfigured with:
+
+1. **Execute C# Method subaction with Run on UI thread enabled** — FluentConfig uses WPF, which must run on the main UI thread. Only the **Execute C# Method** subaction lets you enable **Run on UI thread**; Execute C# Code does not, and will fail. This is critical.
+2. **Correct GAC assembly references** — Framework assemblies use GAC paths that work across .NET 4.7.2, 4.8, and 4.8.1. Hardcoded `v4.8` paths fail on systems with only 4.8.1.
+3. **DLL and version checks** — Skips opening if the UI is already open and verifies FluentConfig.dll before showing the window.
+4. **Minimal working script** — Edit the C# code to add your sections and controls.
 
 ---
 
@@ -25,17 +36,14 @@ These framework assemblies exist on any Windows system that can run Streamer.bot
 
 ## Reference by path (fallback)
 
-If your environment requires file paths, use the .NET Framework Reference Assemblies (standard on Windows 10/11):
+If your environment requires file paths, use **GAC paths** so references work across all .NET Framework 4.x versions (4.7.2, 4.8, 4.8.1). Hardcoded `v4.8` Reference Assemblies paths fail on systems that only have 4.8.1 installed.
 
 ```
-C:\Program Files\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\PresentationFramework.dll
-C:\Program Files\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\PresentationCore.dll
-C:\Program Files\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\WindowsBase.dll
-C:\Program Files\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.dll
-C:\Program Files\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Core.dll
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\mscorlib.dll
+C:\Windows\Microsoft.NET\assembly\GAC_MSIL\PresentationFramework\v4.0_4.0.0.0__31bf3856ad364e35\PresentationFramework.dll
+C:\Windows\Microsoft.NET\assembly\GAC_MSIL\WindowsBase\v4.0_4.0.0.0__31bf3856ad364e35\WindowsBase.dll
+C:\Windows\Microsoft.NET\assembly\GAC_64\PresentationCore\v4.0_4.0.0.0__31bf3856ad364e35\PresentationCore.dll
 ```
-
-Use `v4.7.2` or `v4.8.1` if `v4.8` is not present.
 
 **FluentConfig.dll:** point to your Streamer.bot installation, e.g.:
 
@@ -53,6 +61,12 @@ If your action only uses basic FluentConfig (no PillInput with `WithSectionsPane
 - **System** (implicit in most setups)
 
 When you see errors like `'Panel' could not be found` or `'MessageBoxResult' is defined in an assembly that is not referenced`, add **PresentationFramework**, **PresentationCore**, and **WindowsBase** as shown above.
+
+---
+
+## Execute C# Method vs Execute C# Code
+
+Use **Execute C# Method**, not Execute C# Code. Only Execute C# Method has the **Run on UI thread** option, which is required for WPF windows. Without it, the FluentConfig UI will not display correctly.
 
 ---
 

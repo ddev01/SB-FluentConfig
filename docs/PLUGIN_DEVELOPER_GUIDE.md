@@ -1,6 +1,6 @@
 # FluentConfig Plugin Developer Guide
 
-This guide explains how to build settings UIs for Streamer.bot extensions using FluentConfig.
+This guide explains how to build settings UIs for Streamer.bot extensions using FluentConfig. For a full control reference, see [ELEMENTS.md](ELEMENTS.md). For assembly references, see [REFERENCES.md](REFERENCES.md).
 
 ---
 
@@ -90,7 +90,7 @@ Each control has a `saveKey` that maps to a JSON path in the stored settings:
 - **Nested paths** — Use dot notation: `"parent.child"` or array: `"items[0].value"`.
 - **Repeatable rows** — `WithRepeatableRows("rows", ...)` uses `rows[0]`, `rows[1]`, etc.
 
-Settings are saved as JSON to Streamer.bot global variables (`FluentConfig_Settings_{extensionName}`).
+Settings are saved as JSON to Streamer.bot global variables (`FluentConfig_Settings_{extensionName}`). See [ELEMENTS.md](ELEMENTS.md) for the full nested keys table.
 
 ---
 

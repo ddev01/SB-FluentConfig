@@ -1,6 +1,6 @@
-# Sbui Elements Reference
+# FluentConfig Elements Reference
 
-Complete reference for all Sbui controls and their options.
+Complete reference for all FluentConfig controls and their options. For usage patterns and getting started, see [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md). For assembly references, see [REFERENCES.md](REFERENCES.md).
 
 ---
 
