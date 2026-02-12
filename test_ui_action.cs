@@ -3,6 +3,10 @@
 // Tests Sbui fluent DSL: all controls, GetPendingValue, dialogs, Toast, Log, visibility, dropdown refresh,
 // PillInput (WithSectionsPanel, OnPillAdded, OnPillRemoved), WithRepeatableRows, WithVisibility inverted,
 // IntegerInput, DurationInput, pair-value dropdown, WithExclusive multi-select.
+//
+// Required references (add by name for cross-system resolution):
+//   PresentationFramework, PresentationCore, WindowsBase, sbui.dll (path)
+// See docs/REFERENCES.md for details.
 
 using Sbui;
 using System;

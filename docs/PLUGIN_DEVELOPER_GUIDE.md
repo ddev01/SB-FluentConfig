@@ -4,6 +4,19 @@ This guide explains how to build settings UIs for Streamer.bot extensions using 
 
 ---
 
+## 0. C# Execute action references
+
+Sbui actions that use WPF types (Panel, StackPanel, ShowConfirmDialog, etc.) need framework assembly references. Add them **by name** so they resolve on any Windows system:
+
+- **PresentationFramework**
+- **PresentationCore**
+- **WindowsBase**
+- **sbui** (path to your `sbui.dll` in Streamer.bot's `dlls/` folder)
+
+See **[REFERENCES.md](REFERENCES.md)** for full details and path fallbacks.
+
+---
+
 ## 1. DLL check and version flow
 
 Before creating the UI:
