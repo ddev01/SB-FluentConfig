@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- Override StreamerBotPath if your Streamer.bot install is elsewhere -->
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
     <TargetFramework>net481</TargetFramework>
     <RootNamespace>FluentConfig.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
@@ -19,7 +21,7 @@
     <Reference Include="WindowsBase" />
     <Reference Include="System.Xaml" />
     <Reference Include="Streamer.bot.Plugin.Interface">
-      <HintPath>..\..\..\..\Desktop\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll</HintPath>
+      <HintPath>$(StreamerBotPath)\Streamer.bot.Plugin.Interface.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

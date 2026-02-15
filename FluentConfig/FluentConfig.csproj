@@ -30,6 +30,10 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- Override StreamerBotPath if your Streamer.bot install is elsewhere -->
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="ColorPicker, Version=3.4.2.2, Culture=neutral, PublicKeyToken=1c61eec504ce2276, processorArchitecture=MSIL">
       <HintPath>..\packages\PixiEditor.ColorPicker.3.4.2.2\lib\net451\ColorPicker.dll</HintPath>
@@ -46,11 +50,11 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="Streamer.bot.Common">
-      <HintPath>..\..\..\..\Desktop\Streamer.bot-x64-1.0.4\Streamer.bot.Common.dll</HintPath>
+      <HintPath>$(StreamerBotPath)\Streamer.bot.Common.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Streamer.bot.Plugin.Interface">
-      <HintPath>..\..\..\..\Desktop\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll</HintPath>
+      <HintPath>$(StreamerBotPath)\Streamer.bot.Plugin.Interface.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
