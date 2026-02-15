@@ -19,11 +19,14 @@ namespace FluentConfig
         private float _maxFloat = 100;
         private double _step = 1;
         private bool _withStepper;
+        private string _width;
 
         internal InputBuilder(IAddStrategy strategy, string tabName, string label, string key)
             : base(strategy, tabName, label, key) { }
 
         public override void Type(string value) { _type = value ?? "string"; }
+        public override void Width(string value) { _width = value; }
+        public override void Width(int value) { _width = value.ToString(); }
         public override void Default(string value) { _defaultString = value ?? ""; }
         public override void Default(int value) { _defaultInt = value; }
         public override void Default(double value) { _defaultDouble = value; _defaultFloat = (float)value; }
@@ -36,12 +39,27 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var inputType = InputValidation.ParseInputType(_type);
-            var el = new InputElement(
-                Label, HintText ?? "", TabName, fullKey,
-                inputType,
-                _defaultString, _defaultInt, _defaultDouble, _defaultFloat,
-                _minInt, _maxInt, _minDouble, _maxDouble, _minFloat, _maxFloat,
-                _step, _withStepper);
+            var el = new InputElement(new InputElementOptions
+            {
+                Title = Label,
+                Description = HintText ?? "",
+                TabName = TabName,
+                SaveKey = fullKey,
+                InputType = inputType,
+                DefaultString = _defaultString ?? "",
+                DefaultInt = _defaultInt,
+                DefaultDouble = _defaultDouble,
+                DefaultFloat = _defaultFloat,
+                MinInt = _minInt,
+                MaxInt = _maxInt,
+                MinDouble = _minDouble,
+                MaxDouble = _maxDouble,
+                MinFloat = _minFloat,
+                MaxFloat = _maxFloat,
+                Step = _step,
+                WithStepper = _withStepper,
+                Width = _width
+            });
             Strategy.Add(el, ShowWhenKey);
         }
     }

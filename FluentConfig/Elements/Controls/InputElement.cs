@@ -30,6 +30,7 @@ namespace FluentConfig.Elements
         public float MaxFloat { get; set; } = 100;
         public double Step { get; set; } = 1;
         public bool WithStepper { get; set; }
+        public string Width { get; set; }
         public string VisibilityKey { get; set; }
     }
 
@@ -51,6 +52,7 @@ namespace FluentConfig.Elements
         public float MaxFloat { get; set; }
         public double Step { get; set; }
         public bool WithStepper { get; set; }
+        public string WidthMode { get; set; }
 
         /// <summary>
         /// Construct from an options object (preferred).
@@ -75,6 +77,7 @@ namespace FluentConfig.Elements
             MaxFloat = opts.MaxFloat;
             Step = opts.Step;
             WithStepper = opts.WithStepper && (opts.InputType == InputValidation.InputType.Double || opts.InputType == InputValidation.InputType.Float);
+            WidthMode = opts.Width;
             VisibilityKey = opts.VisibilityKey;
         }
 
@@ -123,10 +126,27 @@ namespace FluentConfig.Elements
             {
                 Tag = tag,
                 Text = initialText,
-                Width = 80,
                 Margin = new Thickness(0, 4, 8, 0),
                 VerticalContentAlignment = VerticalAlignment.Center
             };
+            if (string.Equals(WidthMode, "full", StringComparison.OrdinalIgnoreCase))
+            {
+                if (InputType == InputValidation.InputType.String)
+                    tb.MinWidth = 200;
+            }
+            else if (!string.IsNullOrEmpty(WidthMode) && double.TryParse(WidthMode, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var w) && w > 0)
+            {
+                tb.Width = w;
+                tb.HorizontalAlignment = HorizontalAlignment.Left;
+                if (InputType == InputValidation.InputType.String)
+                    tb.MinWidth = Math.Min(200, w);
+            }
+            else
+            {
+                tb.Width = 80;
+                if (InputType == InputValidation.InputType.String)
+                    tb.MinWidth = 200;
+            }
 
             if (InputType != InputValidation.InputType.String)
             {
@@ -143,8 +163,6 @@ namespace FluentConfig.Elements
             }
             else
             {
-                if (InputType == InputValidation.InputType.String)
-                    tb.MinWidth = 200;
                 stack.Children.Add(tb);
             }
 
