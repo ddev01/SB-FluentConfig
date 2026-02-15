@@ -162,5 +162,17 @@ namespace FluentConfig.Core
             foreach (var kv in _controls)
                 yield return kv;
         }
+
+        /// <summary>
+        /// Removes all controls whose key equals the prefix or starts with prefix + ".".
+        /// Used when deleting repeatable rows so extracted settings no longer include orphaned controls.
+        /// </summary>
+        public void UnregisterKeysWithPrefix(string prefix)
+        {
+            if (string.IsNullOrEmpty(prefix)) return;
+            var toRemove = _controls.Keys.Where(k => k == prefix || k.StartsWith(prefix + ".")).ToList();
+            foreach (var k in toRemove)
+                _controls.Remove(k);
+        }
     }
 }

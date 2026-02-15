@@ -54,6 +54,10 @@ namespace FluentConfig
         internal ControlRegistry ControlRegistryInternal => _controlRegistry;
         internal JObject ExistingSettings => _existingSettings;
 
+        /// <summary>
+        /// Unregisters all controls for a repeatable row. Call when a row is deleted so BuildSettings no longer extracts orphaned values.
+        /// </summary>
+        internal void UnregisterRowControls(string saveKey, int rowIndex) => _controlRegistry.UnregisterKeysWithPrefix($"{saveKey}[{rowIndex}]");
         internal void EnsureExistingSettings() { if (_existingSettings == null) _existingSettings = new JObject(); }
         private readonly FluentConfigPanelContext _panelContext;
         private PerformanceTracer _perfTracer;

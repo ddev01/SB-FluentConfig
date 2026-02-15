@@ -504,6 +504,7 @@ namespace FluentConfig
                 container.Children.Remove(outerRow);
                 RenumberRows(container, saveKey);
                 DeleteRowData(saveKey, rowIndex);
+                _config.UnregisterRowControls(saveKey, rowIndex);
                 _config.MarkDirty();
             };
             DockPanel.SetDock(deleteBtn, Dock.Right);
