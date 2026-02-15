@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using FluentConfig.Elements;
 
 namespace FluentConfig
 {
@@ -31,6 +32,8 @@ namespace FluentConfig
         void MaxSelected(int n);
         void DefaultIndices(int[] indices);
         void Refresh(Func<string[]> callback);
+        void Refresh(Func<IRenderContext, string[]> callback);
+        void Refresh(string[] options);
         void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback);
         void Preset(string[] values);
         void AllowDuplicates(bool value);

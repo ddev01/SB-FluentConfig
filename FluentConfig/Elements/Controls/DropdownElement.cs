@@ -26,6 +26,8 @@ namespace FluentConfig.Elements
         public string[] Options { get; set; }
         public List<(string Value, string Display)> PairOptions { get; set; }
         public Func<string[]> RefreshCallback { get; set; }
+        public Func<IRenderContext, string[]> RefreshWithContextCallback { get; set; }
+        public string[] RefreshStaticOptions { get; set; }
         public Func<List<(string Value, string Display)>> RefreshPairCallback { get; set; }
         public int DefaultIndex { get; set; }
         public string DefaultByValue { get; set; }
@@ -41,6 +43,8 @@ namespace FluentConfig.Elements
             string[] options,
             List<(string Value, string Display)> pairOptions,
             Func<string[]> refreshCallback,
+            Func<IRenderContext, string[]> refreshWithContextCallback,
+            string[] refreshStaticOptions,
             Func<List<(string Value, string Display)>> refreshPairCallback,
             int defaultIndex,
             string defaultByValue,
@@ -55,6 +59,8 @@ namespace FluentConfig.Elements
             Options = options ?? Array.Empty<string>();
             PairOptions = pairOptions;
             RefreshCallback = refreshCallback;
+            RefreshWithContextCallback = refreshWithContextCallback;
+            RefreshStaticOptions = refreshStaticOptions;
             RefreshPairCallback = refreshPairCallback;
             DefaultIndex = defaultIndex;
             DefaultByValue = defaultByValue;
@@ -131,6 +137,8 @@ namespace FluentConfig.Elements
                 var key = SaveKey;
                 var valKey = ValueKey;
                 var refreshCb = RefreshCallback;
+                var refreshWithContextCb = RefreshWithContextCallback;
+                var refreshStatic = RefreshStaticOptions;
                 var refreshPairCb = RefreshPairCallback;
                 refreshBtn.Click += (s, e) =>
                 {
@@ -142,12 +150,25 @@ namespace FluentConfig.Elements
                             var selectedVal = (cb.SelectedItem as DropdownItem)?.Value;
                             context.UpdateDropdownWithPairValue(key, valKey, newPairs, selectedVal);
                         }
+                        else if (refreshWithContextCb != null)
+                        {
+                            var newOptions = refreshWithContextCb(context) ?? Array.Empty<string>();
+                            var idx = cb.SelectedIndex;
+                            if (idx < 0 || idx >= (newOptions?.Length ?? 0)) idx = 0;
+                            context.UpdateDropdown(key, newOptions ?? Array.Empty<string>(), idx);
+                        }
                         else if (refreshCb != null)
                         {
                             var newOptions = refreshCb() ?? Array.Empty<string>();
                             var idx = cb.SelectedIndex;
                             if (idx < 0 || idx >= (newOptions?.Length ?? 0)) idx = 0;
                             context.UpdateDropdown(key, newOptions ?? Array.Empty<string>(), idx);
+                        }
+                        else if (refreshStatic != null)
+                        {
+                            var idx = cb.SelectedIndex;
+                            if (idx < 0 || idx >= (refreshStatic.Length)) idx = 0;
+                            context.UpdateDropdown(key, refreshStatic, idx);
                         }
                     }
                     catch (Exception ex)

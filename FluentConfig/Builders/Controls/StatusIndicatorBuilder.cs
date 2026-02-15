@@ -48,6 +48,8 @@ namespace FluentConfig
         void IControlOptions.OptionsPairs(System.Collections.Generic.IList<(string display, string id)> pairs) { }
         void IControlOptions.DefaultIndex(int index) { }
         void IControlOptions.Refresh(Func<string[]> callback) { }
+        void IControlOptions.Refresh(Func<IRenderContext, string[]> callback) { }
+        void IControlOptions.Refresh(string[] options) { }
         void IControlOptions.RefreshPairs(Func<System.Collections.Generic.IList<(string display, string id)>> callback) { }
         void IControlOptions.WithPairValue(string displayKey, string idKey) { }
         void IControlOptions.Preset(string[] values) { }

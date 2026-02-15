@@ -116,6 +116,7 @@ namespace FluentConfig
         IDictionary<string, StackPanel> IRenderContext.DynamicTextboxPanels => _dynamicTextboxPanels;
         void IRenderContext.SetVisibilityOverridePanel(StackPanel panel) => _visibilityOverridePanel = panel;
         void IRenderContext.ClearVisibilityOverridePanel() => _visibilityOverridePanel = null;
+        T IRenderContext.GetPendingValue<T>(string key) => GetPendingValue<T>(key);
 
         /// <summary>
         /// Gets the panel for a tab. Use when adding content to a specific tab (e.g. for pill callback sections).

@@ -29,5 +29,7 @@ namespace FluentConfig.Elements
         void UpdateDropdownWithPairValue(string displayKey, string valueKey, System.Collections.Generic.IEnumerable<(string Value, string Display)> options, string selectedValue);
         /// <summary>For dynamic textbox lists; key -> panel that contains the list of textboxes.</summary>
         IDictionary<string, StackPanel> DynamicTextboxPanels { get; }
+        /// <summary>Gets the current value from a control by saveKey (live UI state, including unsaved changes).</summary>
+        T GetPendingValue<T>(string key);
     }
 }

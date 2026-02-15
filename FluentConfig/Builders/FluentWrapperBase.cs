@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using FluentConfig.Elements;
 
 namespace FluentConfig
 {
@@ -53,6 +54,8 @@ namespace FluentConfig
         public TWrapper MaxSelected(int n) => Option(o => o.MaxSelected(n));
         public TWrapper DefaultIndices(int[] indices) => Option(o => o.DefaultIndices(indices));
         public TWrapper Refresh(Func<string[]> callback) => Option(o => o.Refresh(callback));
+        public TWrapper Refresh(Func<IRenderContext, string[]> callback) => Option(o => o.Refresh(callback));
+        public TWrapper Refresh(string[] options) => Option(o => o.Refresh(options));
         public TWrapper Refresh(Func<IEnumerable<(string Value, string Display)>> callback) => Option(o => o.RefreshPairs(callback));
         public TWrapper Preset(string[] values) => Option(o => o.Preset(values));
         public TWrapper AllowDuplicates(bool value = true) => Option(o => o.AllowDuplicates(value));
