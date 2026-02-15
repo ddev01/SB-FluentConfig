@@ -19,5 +19,9 @@ namespace FluentConfig
         public SectionFluentWrapper Separator() { Host.FlushPending(); Host.Separator(); return Next(); }
         public SectionFluentWrapper WithVisibility(string toggleKey, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(toggleKey, build); return Next(); }
         public SectionFluentWrapper WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(toggleKey, inverted, build); return Next(); }
+        public SectionFluentWrapper Grid(int cols, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0) { Host.FlushPending(); Host.Grid(cols, build, gap, justify, align, padding); return Next(); }
+        public SectionFluentWrapper Grid(string[] colWidths, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0) { Host.FlushPending(); Host.Grid(colWidths, build, gap, justify, align, padding); return Next(); }
+        public SectionFluentWrapper Flex(Action<PanelBuilder> build, int gap = 16, bool wrap = false, string justify = null, string align = null, double padding = 0) { Host.FlushPending(); Host.Flex(build, gap, wrap, justify, align, padding); return Next(); }
+        public SectionFluentWrapper Div(Action<PanelBuilder> build) { Host.FlushPending(); Host.Div(build); return Next(); }
     }
 }

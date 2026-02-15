@@ -61,5 +61,69 @@ namespace FluentConfig
         {
             return WithVisibility(toggleKey, false, build);
         }
+
+        /// <summary>Adds a grid layout with the given number of columns.</summary>
+        public SectionBuilder Grid(int cols, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0)
+        {
+            FlushPending();
+            if (build != null)
+            {
+                var panel = _ui.GetTargetPanel(_tabName);
+                if (panel != null)
+                {
+                    var pb = new PanelBuilder(_ui, panel, _tabName);
+                    pb.Grid(cols, build, gap, justify, align, padding);
+                }
+            }
+            return this;
+        }
+
+        /// <summary>Adds a grid layout with custom column widths (e.g. "auto", "1*", "2*", "100").</summary>
+        public SectionBuilder Grid(string[] colWidths, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0)
+        {
+            FlushPending();
+            if (build != null)
+            {
+                var panel = _ui.GetTargetPanel(_tabName);
+                if (panel != null)
+                {
+                    var pb = new PanelBuilder(_ui, panel, _tabName);
+                    pb.Grid(colWidths, build, gap, justify, align, padding);
+                }
+            }
+            return this;
+        }
+
+        /// <summary>Adds a horizontal flex layout with optional gap between items.</summary>
+        public SectionBuilder Flex(Action<PanelBuilder> build, int gap = 16, bool wrap = false, string justify = null, string align = null, double padding = 0)
+        {
+            FlushPending();
+            if (build != null)
+            {
+                var panel = _ui.GetTargetPanel(_tabName);
+                if (panel != null)
+                {
+                    var pb = new PanelBuilder(_ui, panel, _tabName);
+                    pb.Flex(build, gap, wrap, justify, align, padding);
+                }
+            }
+            return this;
+        }
+
+        /// <summary>Groups controls into a single container (one grid cell or flex item when inside Grid/Flex).</summary>
+        public SectionBuilder Div(Action<PanelBuilder> build)
+        {
+            FlushPending();
+            if (build != null)
+            {
+                var panel = _ui.GetTargetPanel(_tabName);
+                if (panel != null)
+                {
+                    var pb = new PanelBuilder(_ui, panel, _tabName);
+                    pb.Div(build);
+                }
+            }
+            return this;
+        }
     }
 }

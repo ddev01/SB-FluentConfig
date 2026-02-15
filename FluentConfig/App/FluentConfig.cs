@@ -356,6 +356,61 @@ namespace FluentConfig
         }
 
         /// <summary>
+        /// Layout support: prepare a cell for the next element. Used by AddToLayoutStrategy.
+        /// </summary>
+        internal (Panel cellPanel, LayoutCellOptions options) PrepareLayoutCell()
+        {
+            return _panelContext.PrepareCell();
+        }
+
+        /// <summary>
+        /// Layout support: place a child in the current layout. Used by AddToLayoutStrategy.
+        /// </summary>
+        internal void PlaceLayoutChild(Panel child, LayoutCellOptions options)
+        {
+            _panelContext.PlaceLayoutChild(child, options);
+        }
+
+        /// <summary>
+        /// Layout support: set ColSpan for the next control. Used by ColSpan() option.
+        /// </summary>
+        internal void SetNextColSpan(int n)
+        {
+            _panelContext.SetNextColSpan(n);
+        }
+
+        internal void SetNextRowSpan(int n) => _panelContext.SetNextRowSpan(n);
+        internal void SetNextJustify(string value) => _panelContext.SetNextJustify(value);
+        internal void SetNextAlign(string value) => _panelContext.SetNextAlign(value);
+        internal void SetNextPadding(double value) => _panelContext.SetNextPadding(value);
+
+        /// <summary>
+        /// Layout support: push layout state (Grid/Flex). Used by Grid/Flex block methods.
+        /// </summary>
+        internal void PushLayout(ILayoutState state)
+        {
+            _panelContext.PushLayout(state);
+        }
+
+        /// <summary>
+        /// Layout support: pop layout state. Used by Grid/Flex block methods.
+        /// </summary>
+        internal void PopLayout()
+        {
+            _panelContext.PopLayout();
+        }
+
+        internal bool IsInLayout => _panelContext.IsInLayout;
+
+        /// <summary>
+        /// Gets the current target panel for adding content (considering panel stack).
+        /// </summary>
+        internal Panel GetTargetPanel(string tabName)
+        {
+            return _panelContext.GetTargetPanel(tabName);
+        }
+
+        /// <summary>
         /// Updates a dropdown with new options and selected index.
         /// </summary>
         public void UpdateDropdown(string key, string[] options, int selectedIndex)

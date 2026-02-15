@@ -25,6 +25,11 @@ namespace FluentConfig
 
         public override void Hint(string text) { HintText = text; }
         public override void ShowWhen(string key) { ShowWhenKey = key; }
+        public override void ColSpan(int n) { Strategy?.SetNextColSpan(n); }
+        public override void RowSpan(int n) { Strategy?.SetNextRowSpan(n); }
+        public override void Justify(string value) { Strategy?.SetNextJustify(value); }
+        public override void Align(string value) { Strategy?.SetNextAlign(value); }
+        public override void Padding(double value) { Strategy?.SetNextPadding(value); }
 
         public abstract void Add();
     }

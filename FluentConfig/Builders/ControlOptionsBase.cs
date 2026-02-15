@@ -46,5 +46,12 @@ namespace FluentConfig
         public virtual void OnPillAdded(Action<string, StackPanel, CallbackContext> build) { }
         public virtual void OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { }
         public virtual void Type(string value) { }
+        public virtual void Width(string value) { }
+        public virtual void Width(int value) { }
+        public virtual void ColSpan(int n) { }
+        public virtual void RowSpan(int n) { }
+        public virtual void Justify(string value) { }
+        public virtual void Align(string value) { }
+        public virtual void Padding(double value) { }
     }
 }

@@ -68,6 +68,13 @@ namespace FluentConfig
         void IControlOptions.OnPillAdded(Action<string, StackPanel, CallbackContext> build) { }
         void IControlOptions.OnPillRemoved(Action<string, StackPanel, CallbackContext> build) { }
         void IControlOptions.Type(string value) { }
+        void IControlOptions.Width(string value) { }
+        void IControlOptions.Width(int value) { }
+        void IControlOptions.ColSpan(int n) { }
+        void IControlOptions.RowSpan(int n) { }
+        void IControlOptions.Justify(string value) { }
+        void IControlOptions.Align(string value) { }
+        void IControlOptions.Padding(double value) { }
 
         public void Add()
         {

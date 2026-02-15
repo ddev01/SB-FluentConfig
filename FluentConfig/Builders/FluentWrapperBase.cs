@@ -69,6 +69,13 @@ namespace FluentConfig
         public TWrapper OnPillAdded(Action<string, StackPanel, CallbackContext> build) => Option(o => o.OnPillAdded(build));
         public TWrapper OnPillRemoved(Action<string, StackPanel, CallbackContext> build) => Option(o => o.OnPillRemoved(build));
         public TWrapper Type(string value) => Option(o => o.Type(value));
+        public TWrapper Width(string value) => Option(o => o.Width(value));
+        public TWrapper Width(int value) => Option(o => o.Width(value));
+        public TWrapper ColSpan(int n) => Option(o => o.ColSpan(n));
+        public TWrapper RowSpan(int n) => Option(o => o.RowSpan(n));
+        public TWrapper Justify(string value) => Option(o => o.Justify(value));
+        public TWrapper Align(string value) => Option(o => o.Align(value));
+        public TWrapper Padding(double value) => Option(o => o.Padding(value));
 
         // ── Control creation methods (shared across all wrappers) ──
 
