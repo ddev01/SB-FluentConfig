@@ -22,6 +22,7 @@ namespace FluentConfig
         public virtual void Password() { }
         public virtual void Multiline() { }
         public virtual void ShowWhen(string key) { }
+        public virtual void ShowWhen(string[] dependencyKeys, Func<IRenderContext, bool> predicate) { }
         public virtual void Options(string[] options) { }
         public virtual void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions) { }
         public virtual void WithPairValue(string valueKey) { }

@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Controls;
+using FluentConfig.Elements;
 
 namespace FluentConfig
 {
@@ -18,6 +19,8 @@ namespace FluentConfig
         public PanelFluentWrapper Intro(string text) { Host.FlushPending(); Host.Intro(text); return Next(); }
         public PanelFluentWrapper Separator() { Host.FlushPending(); Host.Separator(); return Next(); }
         public PanelFluentWrapper WithVisibility(string toggleKey, bool inverted, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(toggleKey, inverted, build); return Next(); }
+        public PanelFluentWrapper WithVisibility(string[] dependencyKeys, Func<IRenderContext, bool> predicate, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(dependencyKeys, predicate, build); return Next(); }
+        public PanelFluentWrapper WithVisibility(string[] dependencyKeys, Func<IRenderContext, bool> predicate, bool inverted, Action<PanelBuilder> build) { Host.FlushPending(); Host.WithVisibility(dependencyKeys, predicate, inverted, build); return Next(); }
         public PanelFluentWrapper WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow) { Host.FlushPending(); Host.WithRepeatableRows(saveKey, buildRow); return Next(); }
         public PanelFluentWrapper Grid(int cols, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0) { Host.FlushPending(); Host.Grid(cols, build, gap, justify, align, padding); return Next(); }
         public PanelFluentWrapper Grid(string[] colWidths, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0) { Host.FlushPending(); Host.Grid(colWidths, build, gap, justify, align, padding); return Next(); }

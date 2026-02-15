@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Controls;
+using FluentConfig.Core;
 using FluentConfig.Elements;
 
 namespace FluentConfig
@@ -16,7 +17,7 @@ namespace FluentConfig
         private string _buttonText;
         private Action<UiContext> _onClick;
         private Action<UiContext> _onLoadCheck;
-        private string _showWhenKey;
+        private VisibilityCondition _showWhenCondition;
 
         internal StatusIndicatorBuilder(IAddStrategy strategy, FluentConfig ui, string tabName, string label, string key)
         {
@@ -32,7 +33,7 @@ namespace FluentConfig
         public StatusIndicatorBuilder ButtonText(string text) { _buttonText = text; return this; }
         public StatusIndicatorBuilder OnClick(Action<UiContext> callback) { _onClick = callback; return this; }
         public StatusIndicatorBuilder OnLoadCheck(Action<UiContext> callback) { _onLoadCheck = callback; return this; }
-        public StatusIndicatorBuilder ShowWhen(string key) { _showWhenKey = key; return this; }
+        public StatusIndicatorBuilder ShowWhen(string key) { _showWhenCondition = VisibilityCondition.Toggle(key); return this; }
 
         void IControlOptions.Hint(string text) { _hint = text; }
         void IControlOptions.Default(bool value) { }
@@ -43,7 +44,8 @@ namespace FluentConfig
         void IControlOptions.Range(double min, double max) { }
         void IControlOptions.Step(double value) { }
         void IControlOptions.Password() { }
-        void IControlOptions.ShowWhen(string key) { _showWhenKey = key; }
+        void IControlOptions.ShowWhen(string key) { _showWhenCondition = VisibilityCondition.Toggle(key); }
+        void IControlOptions.ShowWhen(string[] dependencyKeys, Func<IRenderContext, bool> predicate) { _showWhenCondition = VisibilityCondition.FromPredicate(dependencyKeys, predicate); }
         void IControlOptions.Options(string[] options) { }
         void IControlOptions.OptionsPairs(System.Collections.Generic.IList<(string display, string id)> pairs) { }
         void IControlOptions.DefaultIndex(int index) { }
@@ -79,8 +81,8 @@ namespace FluentConfig
         public void Add()
         {
             var fullKey = _strategy.GetFullSaveKey(Key);
-            var el = new StatusIndicatorElement(Label, _hint ?? "", _tabName, fullKey, _initialStatus, _buttonText, _onClick, _onLoadCheck, _showWhenKey);
-            _strategy.Add(el, _showWhenKey);
+            var el = new StatusIndicatorElement(Label, _hint ?? "", _tabName, fullKey, _initialStatus, _buttonText, _onClick, _onLoadCheck, null);
+            _strategy.Add(el, _showWhenCondition);
         }
     }
 }

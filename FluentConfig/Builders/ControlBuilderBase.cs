@@ -1,4 +1,7 @@
 using System;
+using System.Linq;
+using FluentConfig.Core;
+using FluentConfig.Elements;
 
 namespace FluentConfig
 {
@@ -13,7 +16,7 @@ namespace FluentConfig
         internal readonly string Label;
         internal readonly string Key;
         protected string HintText;
-        protected string ShowWhenKey;
+        protected VisibilityCondition ShowWhenCondition;
 
         protected ControlBuilderBase(IAddStrategy strategy, string tabName, string label, string key)
         {
@@ -24,7 +27,8 @@ namespace FluentConfig
         }
 
         public override void Hint(string text) { HintText = text; }
-        public override void ShowWhen(string key) { ShowWhenKey = key; }
+        public override void ShowWhen(string key) { ShowWhenCondition = VisibilityCondition.Toggle(Strategy?.GetFullSaveKey(key) ?? key); }
+        public override void ShowWhen(string[] dependencyKeys, Func<IRenderContext, bool> predicate) { var resolved = dependencyKeys?.Select(k => Strategy?.GetFullSaveKey(k) ?? k).ToArray(); ShowWhenCondition = VisibilityCondition.FromPredicate(resolved, predicate); }
         public override void ColSpan(int n) { Strategy?.SetNextColSpan(n); }
         public override void RowSpan(int n) { Strategy?.SetNextRowSpan(n); }
         public override void Justify(string value) { Strategy?.SetNextJustify(value); }

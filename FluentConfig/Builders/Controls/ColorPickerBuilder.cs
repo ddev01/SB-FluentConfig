@@ -16,7 +16,7 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var el = new ColorPickerElement(Label, HintText ?? "", TabName, fullKey, _defaultColor ?? "#000000");
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

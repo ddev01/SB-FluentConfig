@@ -64,7 +64,7 @@ namespace FluentConfig
                 HasRefresh,
                 IsPairValue
             );
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

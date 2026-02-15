@@ -64,6 +64,22 @@ namespace FluentConfig
             return this;
         }
 
+        public PanelBuilder WithVisibility(string[] dependencyKeys, Func<IRenderContext, bool> predicate, Action<PanelBuilder> build)
+        {
+            FlushPending();
+            if (build != null && dependencyKeys != null && dependencyKeys.Length > 0 && predicate != null)
+                Ui.WithVisibility(dependencyKeys, predicate, TabName, false, build);
+            return this;
+        }
+
+        public PanelBuilder WithVisibility(string[] dependencyKeys, Func<IRenderContext, bool> predicate, bool inverted, Action<PanelBuilder> build)
+        {
+            FlushPending();
+            if (build != null && dependencyKeys != null && dependencyKeys.Length > 0 && predicate != null)
+                Ui.WithVisibility(dependencyKeys, predicate, TabName, inverted, build);
+            return this;
+        }
+
         public PanelBuilder WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow)
         {
             FlushPending();

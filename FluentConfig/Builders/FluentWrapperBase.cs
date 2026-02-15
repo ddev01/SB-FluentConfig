@@ -45,8 +45,11 @@ namespace FluentConfig
         public TWrapper Password() => Option(o => o.Password());
         public TWrapper Multiline() => Option(o => o.Multiline());
         public TWrapper ShowWhen(string key) => Option(o => o.ShowWhen(key));
+        public TWrapper ShowWhen(string[] dependencyKeys, Func<IRenderContext, bool> predicate) => Option(o => o.ShowWhen(dependencyKeys, predicate));
         public TWrapper Options(string[] options) => Option(o => o.Options(options));
         public TWrapper Options(IEnumerable<(string Value, string Display)> pairOptions) => Option(o => o.OptionsPairs(pairOptions));
+        /// <summary>Alias for Options with (Value, Display) pairs. Use .Options(tuples) or .OptionsPairs(tuples).</summary>
+        public TWrapper OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions) => Options(pairOptions);
         public TWrapper WithPairValue(string valueKey) => Option(o => o.WithPairValue(valueKey));
         public TWrapper DefaultByValue(string value) => Option(o => o.DefaultByValue(value));
         public TWrapper DefaultIndex(int index) => Option(o => o.DefaultIndex(index));

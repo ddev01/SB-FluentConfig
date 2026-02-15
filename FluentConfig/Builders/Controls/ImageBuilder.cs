@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Controls;
+using FluentConfig.Core;
 using FluentConfig.Elements;
 
 namespace FluentConfig
@@ -13,7 +14,7 @@ namespace FluentConfig
         private readonly string _tabName;
         private readonly string _imageUrl;
         private readonly double? _maxHeight;
-        private string _showWhenKey;
+        private VisibilityCondition _showWhenCondition;
 
         internal ImageBuilder(IAddStrategy strategy, string tabName, string imageUrl, double? maxHeight = null)
         {
@@ -32,7 +33,8 @@ namespace FluentConfig
         void IControlOptions.Range(double min, double max) { }
         void IControlOptions.Step(double value) { }
         void IControlOptions.Password() { }
-        void IControlOptions.ShowWhen(string key) { _showWhenKey = key; }
+        void IControlOptions.ShowWhen(string key) { _showWhenCondition = VisibilityCondition.Toggle(key); }
+        void IControlOptions.ShowWhen(string[] dependencyKeys, Func<IRenderContext, bool> predicate) { _showWhenCondition = VisibilityCondition.FromPredicate(dependencyKeys, predicate); }
         void IControlOptions.Options(string[] options) { }
         void IControlOptions.OptionsPairs(System.Collections.Generic.IList<(string display, string id)> pairs) { }
         void IControlOptions.DefaultIndex(int index) { }
@@ -67,8 +69,8 @@ namespace FluentConfig
 
         public void Add()
         {
-            var el = new ImageElement(_tabName, _imageUrl, _maxHeight, _showWhenKey);
-            _strategy.Add(el, _showWhenKey);
+            var el = new ImageElement(_tabName, _imageUrl, _maxHeight, null);
+            _strategy.Add(el, _showWhenCondition);
         }
     }
 }

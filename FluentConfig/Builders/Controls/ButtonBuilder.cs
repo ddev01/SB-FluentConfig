@@ -37,7 +37,7 @@ namespace FluentConfig
                 };
             }
             var el = new ClickableButtonElement(Label, HintText ?? "", _buttonText ?? "OK", _colorHex ?? "", TabName, callback);
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

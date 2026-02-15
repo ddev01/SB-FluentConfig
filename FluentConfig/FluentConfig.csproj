@@ -93,6 +93,7 @@
     <Compile Include="Core\SettingsManager.cs" />
     <Compile Include="Core\SettingsPathHelper.cs" />
     <Compile Include="Core\ControlRegistry.cs" />
+    <Compile Include="Core\VisibilityCondition.cs" />
     <Compile Include="Core\PerformanceTracer.cs" />
     <Compile Include="Core\SettingsSynchronizer.cs" />
     <Compile Include="Core\FluentConfigWindowManager.cs" />
@@ -122,6 +123,7 @@
     <Compile Include="Helpers\ProgressWindowHelper.cs" />
     <Compile Include="Helpers\ControlExtractionHelper.cs" />
     <Compile Include="Helpers\InputValidation.cs" />
+    <Compile Include="Helpers\ControlChangeNotifier.cs" />
     <Compile Include="Helpers\FluentConfigTags.cs" />
     <Compile Include="Helpers\VisualTreeHelper.cs" />
     <Compile Include="Interfaces\IProgressReporter.cs" />

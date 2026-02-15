@@ -18,7 +18,7 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var el = new DurationInputElement(Label, HintText ?? "", TabName, fullKey, _permanentOption, _defaultValue ?? "permanent");
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

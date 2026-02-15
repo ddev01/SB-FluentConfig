@@ -53,6 +53,7 @@ namespace FluentConfig
         internal TabManager TabManagerInternal => _tabManager;
         internal ControlRegistry ControlRegistryInternal => _controlRegistry;
         internal JObject ExistingSettings => _existingSettings;
+
         internal void EnsureExistingSettings() { if (_existingSettings == null) _existingSettings = new JObject(); }
         private readonly FluentConfigPanelContext _panelContext;
         private PerformanceTracer _perfTracer;
@@ -453,31 +454,54 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Wraps addContent in a visibility container when showWhenEnabled is set. Toggle must exist.
+        /// Wraps addContent in a visibility container when condition is set. Toggle-based: toggle must exist. Predicate-based: subscribes to dependency controls.
         /// </summary>
-        private void AddWithOptionalVisibility(string showWhenEnabled, string tabName, Action addContent)
+        private void AddWithOptionalVisibilityCondition(VisibilityCondition condition, string tabName, Action addContent)
         {
-            if (string.IsNullOrEmpty(showWhenEnabled))
+            if (condition == null)
             {
                 addContent();
                 return;
             }
-            var toggle = _controlRegistry.Get<ToggleSwitch>(showWhenEnabled);
-            if (toggle == null)
-                throw new InvalidOperationException($"Toggle '{showWhenEnabled}' must be added before showWhenEnabled reference");
+
             var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
-            container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+            if (condition.IsToggleBased)
+            {
+                var toggle = _controlRegistry.Get<ToggleSwitch>(condition.ToggleKey);
+                if (toggle == null)
+                    throw new InvalidOperationException($"Toggle '{condition.ToggleKey}' must be added before ShowWhen reference");
+                container.Visibility = toggle.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+                toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
+                toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                UpdateVisibilityFromPredicate(container, condition);
+                ControlChangeNotifier.Subscribe(_controlRegistry, condition.DependencyKeys, () => UpdateVisibilityFromPredicate(container, condition));
+            }
 
             var panel = (Panel)_panelContext.GetTargetPanel(tabName);
             _panelContext.PushPanel(container);
             addContent();
             _panelContext.PopPanel();
 
-            toggle.Checked += (s, e) => container.Visibility = Visibility.Visible;
-            toggle.Unchecked += (s, e) => container.Visibility = Visibility.Collapsed;
-
             if (panel != null)
                 panel.Children.Add(container);
+        }
+
+        private void UpdateVisibilityFromPredicate(StackPanel container, VisibilityCondition condition)
+        {
+            try
+            {
+                var visible = condition.Predicate(this);
+                container.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                LogInternal($"[FluentConfig] Visibility predicate error: {ex.Message}");
+                container.Visibility = Visibility.Collapsed;
+            }
         }
 
         /// <summary>
@@ -493,14 +517,14 @@ namespace FluentConfig
         /// Single code path: add an element to the given tab (or current panel when inside WithPanel). Used by fluent builders.
         /// Logs per-element timing when PerformanceTracer is active and render takes > 5ms.
         /// </summary>
-        internal void AddElement(string tabName, Elements.UIElement element, string showWhenKey = null)
+        internal void AddElement(string tabName, Elements.UIElement element, VisibilityCondition condition = null)
         {
             if (element == null) return;
             element.TabName = tabName ?? "";
-            if (!string.IsNullOrEmpty(showWhenKey))
+            if (condition != null)
             {
                 var sw1 = _perfTracer != null ? Stopwatch.StartNew() : null;
-                AddWithOptionalVisibility(showWhenKey, tabName, () => element.Render(this));
+                AddWithOptionalVisibilityCondition(condition, tabName, () => element.Render(this));
                 if (sw1 != null && sw1.ElapsedMilliseconds > 5)
                     LogInternal($"[PerfTrace]   └ {element.GetType().Name} (+visibility): {sw1.ElapsedMilliseconds}ms");
                 return;
@@ -518,6 +542,15 @@ namespace FluentConfig
         public void WithVisibility(string toggleSaveKey, string tabName, bool inverted, Action<PanelBuilder> build)
         {
             _panelContext.WithVisibility(toggleSaveKey, tabName, inverted, build);
+        }
+
+        /// <summary>
+        /// Visibility block driven by a predicate. Content is visible when predicate returns true (or false when inverted).
+        /// dependencyKeys are used to subscribe to control changes for re-evaluation.
+        /// </summary>
+        public void WithVisibility(string[] dependencyKeys, Func<Elements.IRenderContext, bool> predicate, string tabName, bool inverted, Action<PanelBuilder> build)
+        {
+            _panelContext.WithVisibility(dependencyKeys, predicate, tabName, inverted, build);
         }
 
         /// <summary>

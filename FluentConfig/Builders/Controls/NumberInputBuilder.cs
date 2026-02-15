@@ -28,7 +28,7 @@ namespace FluentConfig
                 "", 0, _defaultValue, (float)_defaultValue,
                 0, int.MaxValue, _min, _max, (float)_min, (float)_max,
                 _step, _withStepper);
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

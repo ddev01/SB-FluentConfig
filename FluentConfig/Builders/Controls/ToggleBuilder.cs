@@ -26,12 +26,12 @@ namespace FluentConfig
             {
                 var defaultIdx = _defaultIndices != null && _defaultIndices.Length > 0 ? _defaultIndices[0] : 0;
                 var el = new CompetingToggleSwitchesElement(Label, HintText ?? "", TabName, fullKey, _competingOptions, defaultIdx, _maxSelected, _defaultIndices);
-                Strategy.Add(el, ShowWhenKey);
+                Strategy.Add(el, ShowWhenCondition);
             }
             else
             {
                 var el = new ToggleSwitchElement(Label, HintText ?? "", TabName, fullKey, _defaultValue);
-                Strategy.Add(el, ShowWhenKey);
+                Strategy.Add(el, ShowWhenCondition);
             }
         }
     }

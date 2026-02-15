@@ -62,6 +62,24 @@ namespace FluentConfig
             return WithVisibility(toggleKey, false, build);
         }
 
+        /// <summary>Adds a block visible when the predicate returns true. Re-evaluates when any dependency control changes.</summary>
+        public SectionBuilder WithVisibility(string[] dependencyKeys, Func<Elements.IRenderContext, bool> predicate, Action<PanelBuilder> build)
+        {
+            FlushPending();
+            if (build != null && dependencyKeys != null && dependencyKeys.Length > 0 && predicate != null)
+                _ui.WithVisibility(dependencyKeys, predicate, _tabName, false, build);
+            return this;
+        }
+
+        /// <summary>Adds a block visible when the predicate returns true (or false when inverted).</summary>
+        public SectionBuilder WithVisibility(string[] dependencyKeys, Func<Elements.IRenderContext, bool> predicate, bool inverted, Action<PanelBuilder> build)
+        {
+            FlushPending();
+            if (build != null && dependencyKeys != null && dependencyKeys.Length > 0 && predicate != null)
+                _ui.WithVisibility(dependencyKeys, predicate, _tabName, inverted, build);
+            return this;
+        }
+
         /// <summary>Adds a grid layout with the given number of columns.</summary>
         public SectionBuilder Grid(int cols, Action<PanelBuilder> build, int gap = 16, string justify = null, string align = null, double padding = 0)
         {

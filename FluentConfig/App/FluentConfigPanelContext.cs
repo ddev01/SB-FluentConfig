@@ -5,6 +5,8 @@ using System.Windows;
 using System.Windows.Controls;
 using Newtonsoft.Json.Linq;
 using FluentConfig.Core;
+using FluentConfig.Elements;
+using FluentConfig.Helpers;
 using Wpf.Ui.Controls;
 
 namespace FluentConfig
@@ -383,6 +385,40 @@ namespace FluentConfig
 
             if (currentPanel != null)
                 currentPanel.Children.Add(container);
+        }
+
+        internal void WithVisibility(string[] dependencyKeys, Func<IRenderContext, bool> predicate, string tabName, bool inverted, Action<PanelBuilder> build)
+        {
+            if (build == null || dependencyKeys == null || dependencyKeys.Length == 0 || predicate == null) return;
+            var condition = VisibilityCondition.FromPredicate(dependencyKeys, predicate);
+            var container = new StackPanel { Margin = new Thickness(20, 0, 0, 0) };
+            UpdateVisibilityFromPredicate(container, condition, inverted);
+
+            var currentPanel = GetTargetPanel(tabName);
+            _panelContext.Push(container);
+            var pb = new PanelBuilder(_config, container, tabName);
+            build(pb);
+            pb.FlushPending();
+            _panelContext.Pop();
+
+            ControlChangeNotifier.Subscribe(_config.ControlRegistryInternal, dependencyKeys, () => UpdateVisibilityFromPredicate(container, condition, inverted));
+
+            if (currentPanel != null)
+                currentPanel.Children.Add(container);
+        }
+
+        private void UpdateVisibilityFromPredicate(StackPanel container, VisibilityCondition condition, bool inverted)
+        {
+            try
+            {
+                var visible = condition.Predicate(_config);
+                container.Visibility = (visible != inverted) ? Visibility.Visible : Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                FluentConfig.LogInternal($"[FluentConfig] Visibility predicate error: {ex.Message}");
+                container.Visibility = Visibility.Collapsed;
+            }
         }
 
         internal void WithRepeatableRows(string saveKey, string tabName, Action<PanelBuilder> buildRow)

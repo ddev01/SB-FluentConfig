@@ -20,7 +20,7 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var el = new TextboxElement(Label, HintText ?? "", TabName, fullKey, _defaultValue ?? "", _isPassword, _isMultiline);
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

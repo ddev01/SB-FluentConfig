@@ -19,7 +19,7 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var el = new SliderElement(Label, HintText ?? "", TabName, fullKey, _min, _max, _defaultValue);
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

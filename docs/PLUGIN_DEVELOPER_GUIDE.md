@@ -222,6 +222,50 @@ See [ELEMENTS.md](ELEMENTS.md) for the full layout option reference (ColSpan, Ro
 
 ---
 
+## 8. Visibility: ShowWhen and WithVisibility
+
+Controls and blocks can be shown or hidden based on conditions.
+
+**Toggle-based (simple):** Control or block is visible when a toggle is checked.
+
+```csharp
+.Toggle("TTS costs points", "tts_costs_points").Default(true)
+.NumberInput("Points cost", "default_voice_points_cost")
+    .ShowWhen("tts_costs_points")
+
+.WithVisibility("tts_costs_points", v => v
+    .Intro("Pricing options when TTS costs points.")
+    .NumberInput("Flat price", "flat_price").Default(100)
+)
+```
+
+**Predicate-based (multi-logic):** Control or block is visible when a predicate returns `true`. Use `ctx.GetPendingValue<T>(key)` to read control values. Re-evaluates when any dependency control changes.
+
+```csharp
+.Dropdown("Pricing mode", "pricing_mode")
+    .OptionsPairs(new[] { ("flat", "Flat only"), ("per_char", "Per character"), ("both", "Both") })
+    .WithPairValue("pricing_mode_value")
+    .DefaultByValue("flat")
+
+.NumberInput("Flat price", "default_voice_flat_price")
+    .ShowWhen(new[] { "pricing_mode_value" }, ctx =>
+        ctx.GetPendingValue<string>("pricing_mode_value") == "flat" ||
+        ctx.GetPendingValue<string>("pricing_mode_value") == "both")
+
+.WithVisibility(new[] { "enabled", "mode" }, ctx =>
+    ctx.GetPendingValue<bool>("enabled") && ctx.GetPendingValue<int>("mode") >= 1, v => v
+    .Intro("Advanced options.")
+    .Input("Setting", "advanced_setting")
+)
+```
+
+- **ShowWhen(key)** — Visible when the toggle is on.
+- **ShowWhen(dependencyKeys, predicate)** — Visible when predicate returns `true`. List all keys the predicate reads so visibility re-evaluates on change.
+- **WithVisibility(toggleKey, build)** — Block visible when toggle is on.
+- **WithVisibility(dependencyKeys, predicate, build)** — Block visible when predicate returns `true`.
+
+---
+
 ## Elements reference
 
 See **[ELEMENTS.md](ELEMENTS.md)** for a complete reference of all controls, their options, parameter types, defaults, and constraints. Use it when configuring any element without code examples.

@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Controls;
+using FluentConfig.Core;
 using FluentConfig.Elements;
 
 namespace FluentConfig
@@ -10,7 +11,7 @@ namespace FluentConfig
     public interface IAddStrategy
     {
         string GetFullSaveKey(string saveKey);
-        void Add(Elements.UIElement element, string showWhenKey);
+        void Add(Elements.UIElement element, VisibilityCondition condition);
         void SetNextColSpan(int n);
         void SetNextRowSpan(int n);
         void SetNextJustify(string value);
@@ -31,9 +32,9 @@ namespace FluentConfig
 
         public string GetFullSaveKey(string saveKey) => _ui.GetFullSaveKey(saveKey);
 
-        public void Add(Elements.UIElement element, string showWhenKey)
+        public void Add(Elements.UIElement element, VisibilityCondition condition)
         {
-            _ui.AddElement(_tabName, element, showWhenKey);
+            _ui.AddElement(_tabName, element, condition);
         }
 
         public void SetNextColSpan(int n) { }
@@ -58,9 +59,9 @@ namespace FluentConfig
 
         public string GetFullSaveKey(string saveKey) => _ui.GetFullSaveKey(saveKey);
 
-        public void Add(Elements.UIElement element, string showWhenKey)
+        public void Add(Elements.UIElement element, VisibilityCondition condition)
         {
-            _ui.WithPanel(_panel, () => _ui.AddElement(_tabName, element, showWhenKey));
+            _ui.WithPanel(_panel, () => _ui.AddElement(_tabName, element, condition));
         }
 
         public void SetNextColSpan(int n) { }
@@ -83,10 +84,10 @@ namespace FluentConfig
 
         public string GetFullSaveKey(string saveKey) => _ui.GetFullSaveKey(saveKey);
 
-        public void Add(Elements.UIElement element, string showWhenKey)
+        public void Add(Elements.UIElement element, VisibilityCondition condition)
         {
             var (cellPanel, options) = _ui.PrepareLayoutCell();
-            _ui.WithPanel(cellPanel, () => _ui.AddElement(_tabName, element, showWhenKey));
+            _ui.WithPanel(cellPanel, () => _ui.AddElement(_tabName, element, condition));
             _ui.PlaceLayoutChild(cellPanel, options);
         }
 

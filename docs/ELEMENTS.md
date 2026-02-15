@@ -13,6 +13,7 @@ These options apply across many controls. Type or behavior may vary per element.
 | **Hint** | `string` | Helper text below the label. |
 | **Default** | `bool` \| `string` \| `int` \| `double` | Initial value. Type depends on control. |
 | **ShowWhen** | `key` | Control visible only when toggle `key` is `true`. Toggle must exist earlier. |
+| **ShowWhen** | `string[] dependencyKeys`, `Func<IRenderContext, bool> predicate` | Control visible when predicate returns `true`. Re-evaluates when any dependency control changes. |
 
 ---
 
@@ -27,6 +28,8 @@ Available in `SectionBuilder` (inside `Section(...)`).
 | `Separator()` | — | Horizontal divider line. |
 | `WithVisibility(toggleKey, build)` | `string`, `Action<PanelBuilder>` | Block visible when toggle `toggleKey` is `true`. `build` receives `PanelBuilder` to add controls. |
 | `WithVisibility(toggleKey, inverted, build)` | `string`, `bool`, `Action<PanelBuilder>` | Same, but `inverted`: when `true`, block visible when toggle is `false`. |
+| `WithVisibility(dependencyKeys, predicate, build)` | `string[]`, `Func<IRenderContext, bool>`, `Action<PanelBuilder>` | Block visible when predicate returns `true`. Re-evaluates when any dependency control changes. |
+| `WithVisibility(dependencyKeys, predicate, inverted, build)` | `string[]`, `Func<IRenderContext, bool>`, `bool`, `Action<PanelBuilder>` | Same, but `inverted` when `true`. |
 
 ---
 
@@ -113,7 +116,10 @@ The `justify` and `align` parameters on `Grid` and `Flex` set the default alignm
 | Hint | `string` | — |
 | Default | `bool` | `false` |
 | ShowWhen | `key` | — |
+| ShowWhen | `string[] dependencyKeys`, `Func<IRenderContext, bool> predicate` | — |
 | **WithExclusive** | `string[]` | — |
+
+**ShowWhen(dependencyKeys, predicate)** — Control visible when predicate returns `true`. Use `ctx.GetPendingValue<T>(key)` in the predicate. Dependency keys must be listed so the UI knows when to re-evaluate.
 
 **WithExclusive(options)** — Renders multiple toggles; at most one (or N) can be true. Sub-options:
 

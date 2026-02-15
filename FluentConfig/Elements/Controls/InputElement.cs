@@ -144,6 +144,7 @@ namespace FluentConfig.Elements
             else
             {
                 tb.Width = 80;
+                tb.HorizontalAlignment = HorizontalAlignment.Left;
                 if (InputType == InputValidation.InputType.String)
                     tb.MinWidth = 200;
             }

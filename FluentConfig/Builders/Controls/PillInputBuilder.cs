@@ -36,7 +36,7 @@ namespace FluentConfig
                 onRemoved = (alias, sections) => _onPillRemovedCallback(alias, sections, ctx);
 
             var el = new PillInputElement(Label, HintText ?? "", TabName, fullKey, withSections, onAdded, onRemoved);
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

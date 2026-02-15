@@ -16,7 +16,7 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var el = new FilepathElement(Label, HintText ?? "", TabName, fullKey, _defaultPath ?? "");
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

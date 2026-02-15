@@ -60,7 +60,7 @@ namespace FluentConfig
                 WithStepper = _withStepper,
                 Width = _width
             });
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }

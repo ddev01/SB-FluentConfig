@@ -23,6 +23,7 @@ namespace FluentConfig
         void Password();
         void Multiline();
         void ShowWhen(string key);
+        void ShowWhen(string[] dependencyKeys, Func<IRenderContext, bool> predicate);
         void Options(string[] options);
         void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions);
         void WithPairValue(string valueKey);

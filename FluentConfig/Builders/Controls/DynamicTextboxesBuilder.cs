@@ -18,7 +18,7 @@ namespace FluentConfig
         {
             var fullKey = Strategy.GetFullSaveKey(Key);
             var el = new DynamicTextboxesElement(Label, HintText ?? "", TabName, fullKey, _presetValues, _allowDuplicates);
-            Strategy.Add(el, ShowWhenKey);
+            Strategy.Add(el, ShowWhenCondition);
         }
     }
 }
