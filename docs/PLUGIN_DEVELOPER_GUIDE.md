@@ -145,6 +145,83 @@ Settings are saved as JSON to Streamer.bot global variables (`FluentConfig_Setti
 
 ---
 
+## 7. Layout: Grid, Flex, Div
+
+FluentConfig provides Tailwind CSS-inspired layout controls for side-by-side and grouped layouts. Use `Grid` for multi-column layouts, `Flex` for horizontal rows with optional wrapping, and `Div` to group multiple controls into a single cell.
+
+**Basic Grid (equal columns):**
+```csharp
+.Grid(3, g => g
+    .Toggle("A", "a")
+    .Toggle("B", "b")
+    .Toggle("C", "c")
+)
+```
+
+**ColSpan (full-width control):**
+```csharp
+.Grid(3, g => g
+    .IntegerInput("Price", "price")
+    .IntegerInput("Qty", "qty")
+    .Toggle("Enabled", "enabled")
+    .Input("Notes", "notes")
+        .Type("string")
+        .Width("full")
+        .ColSpan(3)
+)
+```
+
+**Div (grouped columns):**
+```csharp
+.Grid(2, g => g
+    .Div(d => d
+        .Title("Left column")
+        .IntegerInput("Price", "left_price")
+        .DurationInput("Duration", "left_duration").WithPermanentOption(true)
+    )
+    .Div(d => d
+        .Title("Right column")
+        .Toggle("Enabled", "right_enabled")
+        .Button("Action").Text("Do thing").OnClick(ui => ui.Toast("Done"))
+    )
+)
+```
+
+**Custom column widths:**
+```csharp
+.Grid(new[] { "auto", "1*", "2*", "auto" }, g => g
+    .Toggle("Auto", "a")
+    .Input("Star 1", "b").Width("full")
+    .Input("Star 2", "c").Width("full")
+    .Toggle("Auto", "d")
+)
+```
+Column syntax: `"auto"` (content-sized), `"*"`/`"1*"` (1 fraction), `"2*"` (2 fractions), `"100"` (100px).
+
+**Per-cell alignment (Justify, Align):**
+```csharp
+.Grid(4, g => g
+    .IntegerInput("A", "a")
+    .IntegerInput("B", "b").Justify("right")
+    .IntegerInput("C", "c").Justify("center").Align("center")
+    .IntegerInput("D", "d")
+, gap: 8, padding: 4)
+```
+`Justify` = horizontal (left/right/center/stretch). `Align` = vertical (top/center/bottom/stretch).
+
+**Flex with wrap:**
+```csharp
+.Flex(f => f
+    .IntegerInput("X", "x")
+    .IntegerInput("Y", "y")
+    .IntegerInput("Z", "z")
+, wrap: true, align: "center")
+```
+
+See [ELEMENTS.md](ELEMENTS.md) for the full layout option reference (ColSpan, RowSpan, Padding, layout-level justify/align).
+
+---
+
 ## Elements reference
 
 See **[ELEMENTS.md](ELEMENTS.md)** for a complete reference of all controls, their options, parameter types, defaults, and constraints. Use it when configuring any element without code examples.

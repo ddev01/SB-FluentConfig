@@ -30,6 +30,59 @@ Available in `SectionBuilder` (inside `Section(...)`).
 
 ---
 
+## Layout (Tailwind-inspired)
+
+FluentConfig provides `Grid`, `Flex`, and `Div` for flexible layouts. Naming follows Tailwind CSS conventions where possible. Available on both `SectionBuilder` and `PanelBuilder` (inside WithVisibility, etc.).
+
+### Grid
+
+Multi-column layout. Children flow left-to-right, top-to-bottom.
+
+| Signature | Description |
+|-----------|-------------|
+| `Grid(int cols, build, gap?, justify?, align?, padding?)` | Equal columns. Default `gap`: 16. |
+| `Grid(string[] colWidths, build, gap?, justify?, align?, padding?)` | Custom column widths. |
+
+**Column width syntax:** `"auto"` (content-sized), `"*"` or `"1*"` (1 fraction), `"2*"` (2 fractions), `"100"` (100px).
+
+### Flex
+
+Horizontal row with gap between items. Optionally wraps to the next line.
+
+| Signature | Description |
+|-----------|-------------|
+| `Flex(build, gap?, wrap?, justify?, align?, padding?)` | Default `gap`: 16, `wrap`: false. |
+
+### Div
+
+Groups controls into a single layout cell. Use inside Grid or Flex to place multiple controls in one slot.
+
+| Signature | Description |
+|-----------|-------------|
+| `Div(build)` | Renders all controls in `build` as one cell when inside Grid/Flex. |
+
+### Layout-level defaults
+
+The `justify` and `align` parameters on `Grid` and `Flex` set the default alignment for all children. Per-control `Justify()` and `Align()` override these defaults.
+
+### Example
+
+```csharp
+.Grid(4, g => g
+    .IntegerInput("A", "a")
+    .IntegerInput("B", "b").Justify("right")
+    .IntegerInput("C", "c").Justify("center").Align("center")
+    .IntegerInput("D", "d").RowSpan(2)
+, gap: 8, justify: "center", padding: 4)
+.Flex(f => f
+    .IntegerInput("X", "x")
+    .IntegerInput("Y", "y")
+    .IntegerInput("Z", "z")
+, wrap: true, align: "center")
+```
+
+---
+
 ## Quick reference
 
 | Element | Stored type | Options |

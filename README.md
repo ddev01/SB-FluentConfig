@@ -17,7 +17,7 @@ FluentConfigUi.Create(CPH, "My Extension", "1.0")
     .Show();
 ```
 
-Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals, and you read them back at runtime with `GetValue<T>()`.
+Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals, and you read them back at runtime with `GetValue<T>()`. Use `Grid`, `Flex`, and `Div` for multi-column and horizontal layouts with Tailwind-inspired alignment.
 
 ## Quick Start
 
@@ -47,7 +47,7 @@ The solution is `SB-FluentConfig.slnx`, targeting .NET 4.8.1. Build outputs `Flu
 
 | Document | Contents |
 |----------|----------|
-| [docs/PLUGIN_DEVELOPER_GUIDE.md](docs/PLUGIN_DEVELOPER_GUIDE.md) | Integration guide: Create, Section, Show, GetValue, dropdowns, DurationInput |
+| [docs/PLUGIN_DEVELOPER_GUIDE.md](docs/PLUGIN_DEVELOPER_GUIDE.md) | Integration guide: Create, Section, Show, GetValue, dropdowns, DurationInput, layout |
 | [docs/ELEMENTS.md](docs/ELEMENTS.md) | Full control reference: all elements, options, and stored types |
 | [docs/REFERENCES.md](docs/REFERENCES.md) | Assembly reference setup for Streamer.bot C# actions |
 
@@ -60,3 +60,4 @@ The [examples/](examples/) folder contains ready-to-import Streamer.bot actions:
 | `SimpleExample.cs` | Minimal setup: toggle, textbox, slider |
 | `MediumExample.cs` | Dropdown, slider, button, `ShowWhen` visibility |
 | `CompleteExample.cs` | Every control in one action, for reference |
+| `LayoutTestExample.cs` | Grid, Flex, Div, ColSpan, RowSpan, Justify, Align, custom columns, wrap |
