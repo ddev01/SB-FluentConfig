@@ -15,6 +15,20 @@ import type { RpcClient } from '../rpc/client';
 
 export type ToastItem = { id: number; message: string };
 
+export type ConfirmDialogState = {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  resolve: (confirmed: boolean) => void;
+};
+
+export type PopupDialogState = {
+  title: string;
+  message: string;
+  resolve: () => void;
+};
+
 /** Shared app state (Svelte 5 runes module). */
 class AppStore {
   document = $state<UiDocument | null>(null);
@@ -26,6 +40,8 @@ class AppStore {
   toasts = $state<ToastItem[]>([]);
   saving = $state(false);
   saveMessage = $state<string | null>(null);
+  confirmDialog = $state<ConfirmDialogState | null>(null);
+  popupDialog = $state<PopupDialogState | null>(null);
 
   private rpc: RpcClient | null = null;
   private unsubSystem: (() => void) | null = null;
@@ -73,12 +89,12 @@ class AppStore {
           confirmText?: string;
           cancelText?: string;
         };
-        const confirmed = window.confirm(`${p.title}\n\n${p.message}`);
+        const confirmed = await this.openConfirm(p);
         return { confirmed };
       }
       if (method === RpcMethods.DialogPopup) {
         const p = params as { title: string; message: string };
-        window.alert(`${p.title}\n\n${p.message}`);
+        await this.openPopup(p);
         return { ok: true };
       }
       if (method === RpcMethods.Toast) {
@@ -90,8 +106,45 @@ class AppStore {
     });
   }
 
+  openConfirm(params: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+  }): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.confirmDialog?.resolve(false);
+      this.confirmDialog = { ...params, resolve };
+    });
+  }
+
+  resolveConfirm(confirmed: boolean): void {
+    const dialog = this.confirmDialog;
+    if (!dialog) return;
+    this.confirmDialog = null;
+    dialog.resolve(confirmed);
+  }
+
+  openPopup(params: { title: string; message: string }): Promise<void> {
+    return new Promise((resolve) => {
+      this.popupDialog?.resolve();
+      this.popupDialog = { ...params, resolve };
+    });
+  }
+
+  resolvePopup(): void {
+    const dialog = this.popupDialog;
+    if (!dialog) return;
+    this.popupDialog = null;
+    dialog.resolve();
+  }
+
   dispose(): void {
     this.disposed = true;
+    this.confirmDialog?.resolve(false);
+    this.confirmDialog = null;
+    this.popupDialog?.resolve();
+    this.popupDialog = null;
     this.unsubSystem?.();
     this.unsubSystem = null;
     this.rpc = null;
