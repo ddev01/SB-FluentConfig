@@ -23,6 +23,9 @@ namespace FluentConfig
         public static void SetWindowClosedCallback(Action<double, double> callback)
             => FluentConfigWindowManager.SetWindowClosedCallback(callback);
 
+        public static void SetWindowClosedCallback(Action<double, double, double, double> callback)
+            => FluentConfigWindowManager.SetWindowClosedCallback(callback);
+
         public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0")
             => FluentConfigWindowManager.AlreadyOpened(title, version, LogInternal);
 
@@ -50,6 +53,7 @@ namespace FluentConfig
 
         public static void SetLogCallback(Action<string> callback) => FluentConfigApp.SetLogCallback(callback);
         public static void SetWindowClosedCallback(Action<double, double> callback) => FluentConfigApp.SetWindowClosedCallback(callback);
+        public static void SetWindowClosedCallback(Action<double, double, double, double> callback) => FluentConfigApp.SetWindowClosedCallback(callback);
         public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0") => FluentConfigApp.AlreadyOpened(title, version);
         public static bool IsOpen => FluentConfigApp.IsOpen;
     }
@@ -83,6 +87,15 @@ namespace FluentConfig
         public FluentConfigUi Header(string imageUrl)
         {
             _session.SetHeader(imageUrl ?? "");
+            return this;
+        }
+
+        /// <summary>
+        /// Optional window icon (.ico path). Falls back to the embedded FluentConfig icon.
+        /// </summary>
+        public FluentConfigUi Icon(string iconPath)
+        {
+            _session.SetIconPath(iconPath);
             return this;
         }
 

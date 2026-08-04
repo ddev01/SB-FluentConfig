@@ -10,6 +10,7 @@ namespace FluentConfig.Core
         private static readonly object LockObj = new object();
         private static bool _anyWindowOpen;
         private static Action<double, double> _windowClosedCallback;
+        private static Action<double, double, double, double> _windowClosedGeometryCallback;
 
         /// <summary>
         /// Optional callback when window closes — receives (width, height) for persistence.
@@ -17,6 +18,14 @@ namespace FluentConfig.Core
         public static void SetWindowClosedCallback(Action<double, double> callback)
         {
             lock (LockObj) { _windowClosedCallback = callback; }
+        }
+
+        /// <summary>
+        /// Optional callback when window closes — receives (left, top, width, height).
+        /// </summary>
+        public static void SetWindowClosedCallback(Action<double, double, double, double> callback)
+        {
+            lock (LockObj) { _windowClosedGeometryCallback = callback; }
         }
 
         /// <summary>
@@ -42,11 +51,18 @@ namespace FluentConfig.Core
             lock (LockObj) { _anyWindowOpen = opened; }
         }
 
-        internal static void InvokeWindowClosedCallback(double width, double height)
+        internal static void InvokeWindowClosedCallback(double left, double top, double width, double height)
         {
-            Action<double, double> cb;
-            lock (LockObj) { cb = _windowClosedCallback; }
-            cb?.Invoke(width, height);
+            Action<double, double> sizeCb;
+            Action<double, double, double, double> geomCb;
+            lock (LockObj)
+            {
+                sizeCb = _windowClosedCallback;
+                geomCb = _windowClosedGeometryCallback;
+            }
+
+            sizeCb?.Invoke(width, height);
+            geomCb?.Invoke(left, top, width, height);
         }
     }
 }

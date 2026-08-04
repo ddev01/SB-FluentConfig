@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using FluentConfig.Core;
 using Xunit;
@@ -83,13 +84,39 @@ namespace FluentConfig.Tests
             });
             try
             {
-                FluentConfigWindowManager.InvokeWindowClosedCallback(800, 600);
+                FluentConfigWindowManager.InvokeWindowClosedCallback(10, 20, 800, 600);
                 Assert.Equal(800, receivedWidth);
                 Assert.Equal(600, receivedHeight);
             }
             finally
             {
-                FluentConfigWindowManager.SetWindowClosedCallback(null);
+                FluentConfigWindowManager.SetWindowClosedCallback((Action<double, double>)null);
+                FluentConfigWindowManager.SetOpened(false);
+            }
+        }
+
+        [Fact]
+        public void SetWindowClosedGeometryCallback_InvokesOnClose()
+        {
+            double left = 0, top = 0, width = 0, height = 0;
+            FluentConfigWindowManager.SetWindowClosedCallback((double l, double t, double w, double h) =>
+            {
+                left = l;
+                top = t;
+                width = w;
+                height = h;
+            });
+            try
+            {
+                FluentConfigWindowManager.InvokeWindowClosedCallback(10, 20, 800, 600);
+                Assert.Equal(10, left);
+                Assert.Equal(20, top);
+                Assert.Equal(800, width);
+                Assert.Equal(600, height);
+            }
+            finally
+            {
+                FluentConfigWindowManager.SetWindowClosedCallback((Action<double, double, double, double>)null);
                 FluentConfigWindowManager.SetOpened(false);
             }
         }
@@ -97,8 +124,9 @@ namespace FluentConfig.Tests
         [Fact]
         public void InvokeWindowClosedCallback_NullCallback_DoesNotThrow()
         {
-            FluentConfigWindowManager.SetWindowClosedCallback(null);
-            FluentConfigWindowManager.InvokeWindowClosedCallback(100, 100);
+            FluentConfigWindowManager.SetWindowClosedCallback((Action<double, double>)null);
+            FluentConfigWindowManager.SetWindowClosedCallback((Action<double, double, double, double>)null);
+            FluentConfigWindowManager.InvokeWindowClosedCallback(0, 0, 100, 100);
         }
 
         [Fact]

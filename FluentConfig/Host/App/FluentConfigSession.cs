@@ -34,6 +34,7 @@ namespace FluentConfig
         private JObject _latestValues;
         private long _nextRequestId = 1;
         private string _headerImageUrl;
+        private string _iconPath;
         private UpdateCheckResult _pendingUpdate;
         private string _updateTargetPath;
         private string _updateRepo;
@@ -58,6 +59,8 @@ namespace FluentConfig
         internal PerformanceTracer PerfTracer => _perfTracer;
 
         internal void SetHeader(string imageUrl) => _headerImageUrl = imageUrl;
+
+        internal void SetIconPath(string iconPath) => _iconPath = iconPath;
 
         internal void RegisterDeferredSection(string tabId, string title, Action<SectionBuilder> build)
         {
@@ -161,7 +164,9 @@ namespace FluentConfig
 
             _perfTracer.BeginPhase("Window.Create");
             FluentConfigWindowManager.SetOpened(true);
-            _window = new FluentConfigHostWindow(_title, _version);
+            var geometry = WindowGeometryStore.Load(_cph, _title);
+            var colorScheme = document?.ColorScheme ?? "dark";
+            _window = new FluentConfigHostWindow(_title, _version, geometry, _iconPath, colorScheme);
             _bridge = new HostBridge(_window, this);
             _window.Closed += OnWindowClosed;
 
@@ -255,7 +260,17 @@ namespace FluentConfig
         {
             FluentConfigWindowManager.SetOpened(false);
             if (_window != null)
-                FluentConfigWindowManager.InvokeWindowClosedCallback(_window.Width, _window.Height);
+            {
+                var geometry = WindowGeometryStore.FromWindow(_window);
+                if (geometry != null)
+                    WindowGeometryStore.Save(_cph, _title, geometry);
+
+                var bounds = _window.WindowState == WindowState.Maximized
+                    ? _window.RestoreBounds
+                    : new Rect(_window.Left, _window.Top, _window.Width, _window.Height);
+                FluentConfigWindowManager.InvokeWindowClosedCallback(
+                    bounds.Left, bounds.Top, bounds.Width, bounds.Height);
+            }
             _bridge = null;
             _window = null;
         }

@@ -4,6 +4,7 @@
     <RootNamespace>FluentConfig.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <LangVersion>latest</LangVersion>
+    <UseWPF>true</UseWPF>
     <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('F:\Stream\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll')">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
     <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll')">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
     <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>

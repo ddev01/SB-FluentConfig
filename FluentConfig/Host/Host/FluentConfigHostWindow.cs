@@ -1,9 +1,13 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using FluentConfig.Core;
+using FluentConfig.Native;
 using FluentConfig.Protocol;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -17,6 +21,7 @@ namespace FluentConfig
     {
         private readonly WebView2 _webView;
         private UiDocument _pendingBootstrap;
+        private readonly string _colorScheme;
 
         public event Action<string> WebMessageReceived;
         public event Action NavigationCompleted;
@@ -26,7 +31,12 @@ namespace FluentConfig
             WebView2AssemblyResolve.EnsureInitialized();
         }
 
-        public FluentConfigHostWindow(string title, string version)
+        public FluentConfigHostWindow(
+            string title,
+            string version,
+            WindowGeometryData geometry = null,
+            string iconPath = null,
+            string colorScheme = "dark")
         {
             Title = string.IsNullOrEmpty(version) ? title : $"{title} (v{version})";
             Width = 900;
@@ -34,6 +44,11 @@ namespace FluentConfig
             MinWidth = 480;
             MinHeight = 360;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            _colorScheme = colorScheme ?? "dark";
+
+            ApplyIcon(iconPath);
+            WindowGeometryStore.ApplyToWindow(this, geometry);
+            DwmTitleBar.Apply(this, _colorScheme);
 
             _webView = new WebView2
             {
@@ -49,6 +64,31 @@ namespace FluentConfig
             var doc = _pendingBootstrap;
             _pendingBootstrap = null;
             return doc;
+        }
+
+        private void ApplyIcon(string iconPath)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(iconPath) && File.Exists(iconPath))
+                {
+                    Icon = BitmapFrame.Create(new Uri(Path.GetFullPath(iconPath), UriKind.Absolute));
+                    return;
+                }
+            }
+            catch
+            {
+                // Fall through to embedded default.
+            }
+
+            try
+            {
+                Icon = BitmapFrame.Create(new Uri("pack://application:,,,/FluentConfig;component/Assets/FluentConfig.ico"));
+            }
+            catch
+            {
+                // No icon is acceptable.
+            }
         }
 
         /// <summary>
