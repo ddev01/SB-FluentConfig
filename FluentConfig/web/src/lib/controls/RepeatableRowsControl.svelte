@@ -1,9 +1,11 @@
 <script lang="ts">
   import type { RepeatableRowsNode, SchemaNode } from '../../protocol';
   import { cloneJson } from '../clone';
+  import { slideY } from '../motion';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
   import SchemaNodeView from './SchemaNodeView.svelte';
+  import TrashIcon from '../icons/TrashIcon.svelte';
 
   interface Props {
     node: RepeatableRowsNode;
@@ -94,17 +96,21 @@
 <FieldShell>
   <div class="space-y-3">
     {#each rows as _row, index (index)}
-      <div class="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
+      <div
+        class="rounded-fc-lg border border-fc-border bg-fc-elevated/40 px-3 py-2 transition-colors duration-150 hover:border-fc-border-strong"
+        transition:slideY={{ duration: 0.2, y: 6 }}
+      >
         <div class="mb-1 flex items-center justify-between">
-          <span class="text-xs font-medium uppercase tracking-wide text-zinc-500"
+          <span class="text-xs font-medium uppercase tracking-wide text-fc-text-subtle"
             >Row {index + 1}</span
           >
           <button
             type="button"
-            class="text-xs text-zinc-500 hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+            class="flex h-8 w-8 items-center justify-center rounded-fc text-fc-text-subtle transition-colors duration-150 hover:bg-fc-danger/15 hover:text-fc-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50"
+            aria-label={`Remove row ${index + 1}`}
             onclick={() => removeRow(index)}
           >
-            Remove
+            <TrashIcon class="h-5 w-5" />
           </button>
         </div>
         {#each node.rowSchema as child, ci (ci)}

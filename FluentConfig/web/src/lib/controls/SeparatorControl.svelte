@@ -8,4 +8,6 @@
   let { node: _node }: Props = $props();
 </script>
 
-<hr class="my-3 border-0 border-t border-zinc-800" />
+<hr
+  class="my-3 h-px border-0 bg-gradient-to-r from-transparent via-fc-border-strong to-transparent"
+/>

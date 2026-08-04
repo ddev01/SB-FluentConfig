@@ -4,6 +4,7 @@
   import type { DropdownRefreshResult } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
+  import SelectMenu from './SelectMenu.svelte';
 
   interface Props {
     node: DropdownNode;
@@ -32,9 +33,8 @@
     return node.options?.[0]?.value ?? '';
   });
 
-  function onChange(e: Event): void {
-    const t = e.currentTarget as HTMLSelectElement;
-    const opt = node.options?.find((o) => o.value === t.value);
+  function onChange(newValue: string): void {
+    const opt = node.options?.find((o) => o.value === newValue);
     if (!opt) return;
     if (node.valueSaveKey) {
       appStore.setValue(node.saveKey, opt.display);
@@ -62,16 +62,13 @@
 
 <FieldShell label={node.label} hint={node.hint} forId={fieldId}>
   <div class="flex gap-2">
-    <select
+    <SelectMenu
       id={fieldId}
-      class="fc-input"
       value={selectedValue}
+      options={node.options ?? []}
+      ariaLabel={node.label}
       onchange={onChange}
-    >
-      {#each node.options ?? [] as opt (opt.value)}
-        <option value={opt.value}>{opt.display}</option>
-      {/each}
-    </select>
+    />
     {#if node.refreshable}
       <button type="button" class="fc-btn" disabled={refreshing} onclick={refresh}>
         {refreshing ? '…' : 'Refresh'}

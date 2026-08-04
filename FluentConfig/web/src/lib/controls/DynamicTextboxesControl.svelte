@@ -2,6 +2,7 @@
   import type { DynamicTextboxesNode } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
+  import TrashIcon from '../icons/TrashIcon.svelte';
 
   interface Props {
     node: DynamicTextboxesNode;
@@ -55,11 +56,11 @@
         />
         <button
           type="button"
-          class="fc-btn text-zinc-500 hover:border-red-500/50 hover:text-red-500"
+          class="fc-btn flex h-10 w-10 shrink-0 items-center justify-center text-fc-text-subtle hover:border-fc-danger/50 hover:text-fc-danger"
           aria-label="Remove"
           onclick={() => remove(index)}
         >
-          ✕
+          <TrashIcon class="h-6 w-6" />
         </button>
       </li>
     {/each}

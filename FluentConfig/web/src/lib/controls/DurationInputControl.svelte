@@ -2,6 +2,7 @@
   import type { DurationInputNode } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
+  import SelectMenu from './SelectMenu.svelte';
 
   interface Props {
     node: DurationInputNode;
@@ -42,10 +43,10 @@
 <FieldShell label={node.label} hint={node.hint} forId={fieldId}>
   <div class="flex flex-wrap items-center gap-2">
     {#if node.permanentOption}
-      <label class="flex items-center gap-2 text-sm text-zinc-300">
+      <label class="flex items-center gap-2 text-sm text-fc-text-muted">
         <input
           type="checkbox"
-          class="rounded border-zinc-600 bg-zinc-900 text-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+          class="rounded-fc border-fc-border-strong bg-fc-surface text-fc-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
           checked={parsed.permanent}
           onchange={(e) => {
             const on = (e.currentTarget as HTMLInputElement).checked;
@@ -67,17 +68,14 @@
         if (!Number.isNaN(n)) write(n, parsed.unit, false);
       }}
     />
-    <select
-      class="fc-input w-auto"
-      disabled={parsed.permanent}
-      value={parsed.unit}
-      onchange={(e) => {
-        write(parsed.amount || 0, (e.currentTarget as HTMLSelectElement).value, false);
-      }}
-    >
-      {#each units as u (u.id)}
-        <option value={u.suffix}>{u.label}</option>
-      {/each}
-    </select>
+    <div class="w-32">
+      <SelectMenu
+        value={parsed.unit}
+        options={units.map((u) => ({ value: u.suffix, display: u.label }))}
+        disabled={parsed.permanent}
+        ariaLabel="Duration unit"
+        onchange={(unit) => write(parsed.amount || 0, unit, false)}
+      />
+    </div>
   </div>
 </FieldShell>

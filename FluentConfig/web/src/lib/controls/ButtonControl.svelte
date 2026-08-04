@@ -32,7 +32,7 @@
 <FieldShell label={node.label && node.text ? node.label : undefined} hint={node.hint}>
   <button
     type="button"
-    class="rounded-md px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+    class="rounded-fc px-4 py-2 text-sm font-semibold text-white transition-[filter] duration-150 hover:brightness-110 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
     style:background-color={node.color ?? '#3b82f6'}
     disabled={busy}
     onclick={click}

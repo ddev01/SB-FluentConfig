@@ -3,9 +3,11 @@
   import { RpcMethods } from '../../protocol';
   import type { PillChangedResult } from '../../protocol';
   import { cloneJson } from '../clone';
+  import { scaleIn } from '../motion';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
   import SchemaNodeView from './SchemaNodeView.svelte';
+  import TrashIcon from '../icons/TrashIcon.svelte';
 
   interface Props {
     node: PillInputNode;
@@ -102,37 +104,36 @@
     void sync('add', name);
   }
 
-  function remove(name: string): void {
-    void sync('remove', name);
+  async function removeSelected(): Promise<void> {
+    if (!selected || busy) return;
+    const name = selected;
+    const ok = await appStore.openConfirm({
+      title: 'Remove item',
+      message: `Remove “${name}” and its settings? This can’t be undone from here.`,
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+    });
+    if (!ok) return;
+    await sync('remove', name);
   }
 </script>
 
 <FieldShell label={node.label} hint={node.hint}>
-  <div class="flex flex-wrap gap-2">
+  <div class="flex flex-wrap gap-2" role="tablist" aria-label={node.label}>
     {#each names as name (name)}
-      <div
-        class="inline-flex items-center gap-1 rounded-full border pl-3 text-sm transition-colors
+      <button
+        type="button"
+        role="tab"
+        aria-selected={selected === name}
+        class="rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50
           {selected === name
-          ? 'border-sky-500 bg-sky-500/20 text-sky-800 dark:text-sky-100'
-          : 'border-zinc-300 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'}"
+          ? 'border-fc-accent bg-fc-accent/15 text-fc-accent'
+          : 'border-fc-border bg-fc-surface text-fc-text-muted hover:border-fc-border-strong hover:text-fc-text'}"
+        transition:scaleIn={{ duration: 0.16 }}
+        onclick={() => (selected = name)}
       >
-        <button
-          type="button"
-          class="py-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
-          onclick={() => (selected = name)}
-        >
-          {name}
-        </button>
-        <button
-          type="button"
-          class="rounded-full px-2 py-1 text-zinc-500 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
-          aria-label={`Remove ${name}`}
-          disabled={busy}
-          onclick={() => remove(name)}
-        >
-          ×
-        </button>
-      </div>
+        {name}
+      </button>
     {/each}
   </div>
 
@@ -153,10 +154,21 @@
     <button type="button" class="fc-btn" disabled={busy} onclick={add}>
       Add
     </button>
+    <button
+      type="button"
+      class="fc-btn flex items-center gap-2 text-fc-text-subtle hover:border-fc-danger/50 hover:text-fc-danger"
+      disabled={busy || !selected}
+      aria-label={selected ? `Remove ${selected}` : 'Remove selected item'}
+      title={selected ? `Remove “${selected}”` : 'Select an item to remove'}
+      onclick={() => void removeSelected()}
+    >
+      <TrashIcon class="h-4 w-4" />
+      <span class="hidden sm:inline">Remove</span>
+    </button>
   </div>
 
   {#if activeItem && activeItem.children.length > 0}
-    <div class="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2">
+    <div class="mt-3 rounded-fc-lg border border-fc-border bg-fc-elevated/50 px-3 py-2">
       {#each activeItem.children as child, i (child.type + String('id' in child ? child.id : i) + activeItem.name)}
         <SchemaNodeView node={child} />
       {/each}

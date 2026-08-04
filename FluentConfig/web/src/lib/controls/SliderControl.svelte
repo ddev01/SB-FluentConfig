@@ -25,13 +25,13 @@
     <input
       id={fieldId}
       type="range"
-      class="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+      class="h-2 w-full cursor-pointer appearance-none rounded-full bg-fc-elevated accent-fc-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
       min={node.min}
       max={node.max}
       value={value}
       oninput={onInput}
     />
-    <span class="w-14 shrink-0 text-right font-mono text-sm text-zinc-300 tabular-nums"
+    <span class="w-14 shrink-0 text-right font-mono text-sm text-fc-text-muted tabular-nums"
       >{value}</span
     >
   </div>

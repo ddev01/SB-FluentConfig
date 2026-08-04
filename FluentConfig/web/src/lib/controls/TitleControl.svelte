@@ -8,4 +8,4 @@
   let { node }: Props = $props();
 </script>
 
-<h3 class="pt-3 pb-1 text-base font-semibold text-zinc-100">{node.text}</h3>
+<h3 class="pt-3 pb-1 text-base font-semibold text-fc-text">{node.text}</h3>

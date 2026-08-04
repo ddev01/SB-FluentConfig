@@ -38,25 +38,25 @@
 </script>
 
 <div
-  class="my-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-50"
+  class="my-2 rounded-fc-lg border border-fc-warning/40 bg-fc-warning/10 px-4 py-3 text-sm text-fc-text"
   role="status"
 >
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div class="min-w-0 flex-1 space-y-1">
-      <p class="font-medium text-amber-100">
+      <p class="font-medium text-fc-warning">
         Update available: {node.currentVersion} → {node.latestVersion}
       </p>
       {#if node.repo}
-        <p class="text-xs text-amber-200/70">{node.repo}</p>
+        <p class="text-xs text-fc-text-subtle">{node.repo}</p>
       {/if}
       {#if node.releaseNotes}
-        <p class="text-amber-100/80">{node.releaseNotes}</p>
+        <p class="text-fc-text-muted">{node.releaseNotes}</p>
       {/if}
     </div>
     <div class="flex shrink-0 gap-2">
       <button
         type="button"
-        class="rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-zinc-950 hover:bg-amber-400 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+        class="rounded-fc bg-fc-warning px-3 py-1.5 text-sm font-semibold text-fc-bg transition-[filter] duration-150 hover:brightness-110 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
         disabled={busy}
         onclick={stage}
       >
@@ -65,7 +65,7 @@
       {#if node.dismissible !== false}
         <button
           type="button"
-          class="rounded-md border border-amber-500/40 px-3 py-1.5 text-sm text-amber-100 hover:bg-amber-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300"
+          class="rounded-fc border border-fc-warning/40 px-3 py-1.5 text-sm font-medium text-fc-text transition-colors duration-150 hover:bg-fc-warning/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50"
           onclick={dismiss}
         >
           Dismiss

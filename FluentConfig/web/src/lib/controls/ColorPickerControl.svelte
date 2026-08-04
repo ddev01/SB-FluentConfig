@@ -37,7 +37,7 @@
     <input
       id={fieldId}
       type="color"
-      class="h-9 w-12 cursor-pointer rounded border border-zinc-700 bg-zinc-900 p-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500"
+      class="h-9 w-12 cursor-pointer rounded-fc border border-fc-border bg-fc-surface p-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
       value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#000000'}
       oninput={onColor}
     />

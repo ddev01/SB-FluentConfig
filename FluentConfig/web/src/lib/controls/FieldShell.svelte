@@ -9,12 +9,12 @@
   let { label, hint, forId, children }: Props = $props();
 </script>
 
-<div class="flex flex-col gap-1.5 py-2">
+<div class="flex flex-col gap-1 py-2">
   {#if label}
     <label class="fc-label" for={forId}>{label}</label>
   {/if}
   {@render children()}
   {#if hint}
-    <p class="fc-hint">{hint}</p>
+    <p class="fc-hint mt-0.5">{hint}</p>
   {/if}
 </div>
