@@ -1,42 +1,43 @@
-# C# Execute Action References
+# C# Execute Action References (FluentConfig)
 
-When you create a C# Execute action that uses FluentConfig, add these assembly references so the code compiles on any Windows system. For usage and controls, see [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md) and [ELEMENTS.md](ELEMENTS.md).
+When you create a C# Execute action that uses FluentConfig, add these assembly references. The thin host is still WPF (one window + WebView2), so the framework refs below are required.
 
 ---
 
-## Recommended: Import the Quick Start Action
+## Critical: Run on UI thread
 
-The easiest way to get started is to **import the FluentConfig Quick Start action**. It comes preconfigured with:
+Use **Execute C# Method**, not Execute C# Code. Only Execute C# Method has **Run on UI thread**, which is required for WPF + WebView2. Without it, the window will not open correctly.
 
-1. **Execute C# Method subaction with Run on UI thread enabled** — FluentConfig uses WPF, which must run on the main UI thread. Only the **Execute C# Method** subaction lets you enable **Run on UI thread**; Execute C# Code does not, and will fail. This is critical.
-2. **Correct GAC assembly references** — Framework assemblies use GAC paths that work across .NET 4.7.2, 4.8, and 4.8.1. Hardcoded `v4.8` paths fail on systems with only 4.8.1.
-3. **DLL and version checks** — Skips opening if the UI is already open and verifies FluentConfig.dll before showing the window.
-4. **Minimal working script** — Edit the C# code to add your sections and controls.
+A common pattern is two sub-actions:
+
+1. **Execute C# Code** (optional / disabled) — compile-only or stub  
+2. **Execute C# Method** with **Run on UI thread** enabled — calls your `Execute()` / entry method
 
 ---
 
 ## Reference by name (recommended)
 
-If your environment resolves framework assemblies by name, add:
-
-| Assembly             | Purpose                                      |
-|----------------------|----------------------------------------------|
-| **PresentationFramework** | WPF: Application, Panel, StackPanel, MessageBoxResult |
-| **PresentationCore**       | WPF core types                              |
-| **WindowsBase**            | DispatcherObject, base WPF types            |
-| **System**                 | Core .NET (usually implicit)                |
-| **System.Core**            | LINQ, etc. (usually implicit)               |
+| Assembly | Purpose |
+|----------|---------|
+| **PresentationFramework** | WPF Application, Window, MessageBoxResult |
+| **PresentationCore** | WPF core types |
+| **WindowsBase** | DispatcherObject, base WPF types |
+| **System** / **System.Core** | Usually implicit |
 
 **Custom DLL (path required):**
+
 - **FluentConfig** — path to `FluentConfig.dll` in your Streamer.bot `dlls/` folder
 
-These framework assemblies exist on any Windows system that can run Streamer.bot. They resolve automatically when referenced by name.
+You do **not** need to add WebView2 assemblies as action references. Streamer.bot already
+loads its own WebView2 into the AppDomain; FluentConfig references those at compile time
+and does **not** deploy duplicate `Microsoft.Web.WebView2.*.dll` / `WebView2Loader.dll`
+into `dlls/` (doing so causes a version clash — see [../Host/PACKAGING.md](../Host/PACKAGING.md)).
 
 ---
 
 ## Reference by path (fallback)
 
-If your environment requires file paths, use **GAC paths** so references work across all .NET Framework 4.x versions (4.7.2, 4.8, 4.8.1). Hardcoded `v4.8` Reference Assemblies paths fail on systems that only have 4.8.1 installed.
+Use GAC paths so refs work across .NET Framework 4.7.2 / 4.8 / 4.8.1:
 
 ```
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\mscorlib.dll
@@ -45,31 +46,26 @@ C:\Windows\Microsoft.NET\assembly\GAC_MSIL\WindowsBase\v4.0_4.0.0.0__31bf3856ad3
 C:\Windows\Microsoft.NET\assembly\GAC_64\PresentationCore\v4.0_4.0.0.0__31bf3856ad364e35\PresentationCore.dll
 ```
 
-**FluentConfig.dll:** point to your Streamer.bot installation, e.g.:
-
-```
-C:\path\to\Streamer.bot\dlls\FluentConfig.dll
-```
+**FluentConfig.dll** — point at your install, e.g. a local Streamer.bot `dlls` folder (do not hardcode machine-specific paths into shared scripts).
 
 ---
 
-## Minimal set for simple FluentConfig usage
+## Deploy checklist
 
-If your action only uses basic FluentConfig (no PillInput with `WithSectionsPanel`, no `ShowConfirmDialog`, no `Application.Current`), you might only need:
+Copy into Streamer.bot `dlls/`:
 
-- **FluentConfig** (path to FluentConfig.dll)
-- **System** (implicit in most setups)
+- `FluentConfig.dll`
+- `Newtonsoft.Json.dll` (if not already available)
+- `FluentConfig.UpdaterHelper.exe` (only if using the updater)
 
-When you see errors like `'Panel' could not be found` or `'MessageBoxResult' is defined in an assembly that is not referenced`, add **PresentationFramework**, **PresentationCore**, and **WindowsBase** as shown above.
-
----
-
-## Execute C# Method vs Execute C# Code
-
-Use **Execute C# Method**, not Execute C# Code. Only Execute C# Method has the **Run on UI thread** option, which is required for WPF windows. Without it, the FluentConfig UI will not display correctly.
+Do **not** copy `Microsoft.Web.WebView2.*.dll` or `WebView2Loader.dll` into `dlls/` —
+Streamer.bot’s install root already provides them. The WebView2 **Evergreen runtime**
+must be installed on the OS (typical on modern Windows).
 
 ---
 
-## Streamer.bot "Find Refs"
+## DSL changes vs old FluentConfig (authors)
 
-Streamer.bot's **Find Refs** button can infer and add missing references from compile errors. Use it if you prefer automatic resolution over manual setup.
+- **PillInput:** use `.ItemTemplate(pb => …)` (or `.WithSectionsPanel(pb => …)` alias). Callbacks no longer receive `Panel` / `StackPanel`. Prefer `{name}` placeholders in nested saveKeys.
+- **WithVisibility:** prefer `.WithVisibility("key", build, inverted: true)` or `.WithVisibilityWhenOff("key", build)` instead of a bare positional bool in the middle.
+- **Updater:** `FluentConfigUi.Create(...).WithUpdateCheck("owner/repo", "1.0.0")` or call `FluentConfig.Updater.GitHubUpdater` directly from any extension.

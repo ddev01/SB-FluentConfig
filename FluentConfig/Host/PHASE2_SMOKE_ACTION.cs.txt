@@ -1,0 +1,76 @@
+// =============================================================================
+// FluentConfig Phase 2 smoke — Streamer.bot action script
+// =============================================================================
+// Paste into Execute C# Code (DISABLED), then Execute C# Method → CPHInline.Execute
+// with "Run on UI thread" ENABLED. See Host/SPIKE_MANUAL_STEPS.md for the pattern.
+//
+// Required refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig
+// (path to dlls\FluentConfig.dll). Prefer Release DLL for embedded Svelte bundle;
+// Debug DLL needs Vite at http://localhost:5173 (bun run dev in FluentConfig/web).
+// =============================================================================
+
+using FluentConfig;
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+public class CPHInline
+{
+    private const string Title = "FluentConfig Phase2 Smoke";
+    private const string Version = "0.2.0";
+
+    public bool Execute()
+    {
+        try
+        {
+            // Log PerfTrace + RPC into Streamer.bot's log panel.
+            FluentConfig.FluentConfig.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
+
+            if (FluentConfig.FluentConfig.AlreadyOpened(Title, Version))
+                return true;
+
+            FluentConfigUi.Create(CPH, Title, Version)
+                .Section("General", "general", s => s
+                    .Intro("Phase 2 smoke: toggle, textbox, dropdown (refresh), pill-input.")
+                    .Toggle("Enabled", "smoke_enabled")
+                        .Default(true)
+                        .Hint("Persisted as boolean.")
+                    .Textbox("Display name", "smoke_name")
+                        .Default("smoke-user")
+                        .Hint("Persisted as string.")
+                    .Dropdown("Channel reward", "smoke_reward_display")
+                        .WithPairValue("smoke_reward_id")
+                        .Options(FakeRewards())
+                        .Refresh(() => FakeRewards())
+                        .DefaultByValue("rew_2")
+                        .Hint("Refreshable fake rewards list.")
+                    .PillInput("Watch list", "smoke_pills")
+                        .Hint("Schema nested pills — no Panel.")
+                        .WithItemTemplate(item => item
+                            .Title("Item: {name}")
+                            .Toggle("Active", "{name}_active")
+                                .Default(true)
+                        )
+                )
+                .LogExistingSettings()
+                .Show();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError("FluentConfig Phase2 smoke FAILED: " + ex);
+            return false;
+        }
+    }
+
+    private static IEnumerable<(string Value, string Display)> FakeRewards()
+    {
+        return new[]
+        {
+            ("rew_1", "Reward Alpha"),
+            ("rew_2", "Reward Beta"),
+            ("rew_3", "Reward Gamma (refreshed)"),
+        };
+    }
+}

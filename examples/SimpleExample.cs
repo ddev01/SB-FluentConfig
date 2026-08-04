@@ -1,6 +1,7 @@
 // Streamer.bot C# action – minimal FluentConfig example.
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/REFERENCES.md for reference details.
+//
 
 using FluentConfig;
 

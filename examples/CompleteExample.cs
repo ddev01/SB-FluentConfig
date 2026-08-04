@@ -1,17 +1,18 @@
 // Streamer.bot C# action – complete FluentConfig example.
-// Demonstrates all controls: Toggle, Textbox, Slider, Button, Dropdown, PillInput, WithVisibility,
-// WithRepeatableRows, GetPendingValue, dialogs, Toast, Log, DurationInput, IntegerInput, ColorPicker, etc.
-// Copy into a new C# action to explore the full FluentConfig API.
+// Demonstrates all controls against the WebView2/schema host. Pill callbacks receive a fluent
+// sub-builder (schema nodes), never System.Windows.Controls.Panel. WithVisibility uses a named
+// inverted argument instead of a bare positional bool.
 //
-// Required references: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll (path).
-// See docs/REFERENCES.md for details.
+// Required references: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
+// See docs/REFERENCES.md.
+//
+//   - PillInput.WithItemTemplate / OnPillAdded / OnPillRemoved (sub-builder, no Panel)
+//   - WithVisibility(saveKey, inverted: true, …) or WithVisibilityWhenOff(…)
+//   - ShowProgressWindow / Toast / Popup / ShowConfirmDialog surfaces (may be RPC-backed)
 
 using FluentConfig;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Windows;
-using System.Windows.Controls;
 
 public class CPHInline
 {
@@ -36,7 +37,7 @@ public class CPHInline
         {
             try
             {
-                string backupPath = Path.Combine(Path.GetTempPath(), "streamerbot_ui_log.txt");
+                string backupPath = Path.Combine(Path.GetTempPath(), "fluentconfig_next_ui_log.txt");
                 File.AppendAllText(backupPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] {message} - Error: {ex.Message}{Environment.NewLine}");
             }
             catch { }
@@ -48,7 +49,7 @@ public class CPHInline
         try
         {
             WriteLog("=== FluentConfig Complete Example Started ===");
-            FluentConfig.FluentConfig.SetLogCallback((msg) => WriteLog($"[FluentConfig] {msg}"));
+            FluentConfig.FluentConfig.SetLogCallback(msg => WriteLog($"[FluentConfig] {msg}"));
 
             if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig Complete Example", "1.0"))
             {
@@ -57,24 +58,10 @@ public class CPHInline
             }
 
             var options = new[] { "Option A", "Option B", "Option C" };
-            var pillPanels = new Dictionary<string, Panel>();
-
-            void AddPillSection(Panel container, string itemName, CallbackContext ctx)
-            {
-                ctx.WithPanel(container, "Pills", pb => pb
-                    .Title($"Item: {itemName}")
-                    .Toggle("Enabled", itemName + "_enabled")
-                        .Hint("Enable this item.")
-                        .Default(true)
-                    .Slider("Value", itemName + "_value")
-                        .Range(0, 100)
-                        .Default(50)
-                );
-            }
 
             FluentConfigUi.Create(CPH, "FluentConfig Complete Example", "1.0")
                 .Section("General settings", "General", g => g
-                    .Intro("All FluentConfig controls. Use Save to persist; buttons exercise dialogs and GetPendingValue.")
+                    .Intro("All FluentConfig controls. Use Save to persist; buttons exercise dialogs and Pending values.")
                     .Toggle("Enable requirement", "custom_requirement_enabled")
                         .Hint("Turn this on to require a custom condition.")
                     .Textbox("Requirement name", "custom_requirement_name")
@@ -127,7 +114,7 @@ public class CPHInline
                         .ShowWhen("minpointsrequired")
                 )
                 .Section("Buttons & dialogs", "Buttons", b => b
-                    .Intro("Click buttons to test GetPendingValue, AddPopupWindow, ShowConfirmDialog, ShowProgressWindow, Toast, and Log.")
+                    .Intro("Click buttons to test Pending values, confirm, progress, Toast, and Log.")
                     .Button("Test GetPendingValue & popup")
                         .Hint("Reads multiple control types from General/Dropdowns and shows in a popup.")
                         .Text("Show values")
@@ -139,12 +126,11 @@ public class CPHInline
                             int sliderVal = ui.Pending<int>("custom_required_value");
                             bool enabled = ui.Pending<bool>("custom_requirement_enabled");
                             double rate = ui.Pending<double>("rate_value");
-                            int dropdownIdx = ui.Pending<int>("dropdown_choice");
                             string dropdownText = ui.Pending<string>("dropdown_choice");
                             string deviceId = ui.Pending<string>("device_id");
                             int maxRetries = ui.Pending<int>("max_retries");
                             string timeout = ui.Pending<string>("timeout");
-                            ui.Popup("GetPendingValue Test", $"Requirement: '{name}'\nFilepath: '{path}'\nRequired Value: {sliderVal}\nEnabled: {enabled}\nRate: {rate}\nDropdown: {dropdownIdx}='{dropdownText}'\nDevice ID (pair): '{deviceId}'\nMaxRetries: {maxRetries}\nTimeout: '{timeout}'");
+                            ui.Popup("Pending values", $"Requirement: '{name}'\nFilepath: '{path}'\nRequired Value: {sliderVal}\nEnabled: {enabled}\nRate: {rate}\nDropdown: '{dropdownText}'\nDevice ID (pair): '{deviceId}'\nMaxRetries: {maxRetries}\nTimeout: '{timeout}'");
                         })
                     .Button("Test confirm dialog")
                         .Hint("Shows Yes/No dialog and displays result in a popup.")
@@ -152,11 +138,11 @@ public class CPHInline
                         .Color("#31a8ff")
                         .OnClick(ui =>
                         {
-                            var result = ui.ShowConfirmDialog("Confirm Test", "Do you want to continue?", "Yes", "No");
-                            ui.Popup("Confirm Result", $"You chose: {result}");
+                            var confirmed = ui.ShowConfirmDialog("Confirm Test", "Do you want to continue?", "Yes", "No");
+                            ui.Popup("Confirm Result", $"Confirmed: {confirmed}");
                         })
                     .Button("Test progress window")
-                        .Hint("Shows progress window, simulates 10 steps, then closes.")
+                        .Hint("Shows progress, simulates 10 steps, then closes.")
                         .Text("Progress")
                         .Color("#1ba489")
                         .OnClick(ui =>
@@ -202,7 +188,7 @@ public class CPHInline
                         .DefaultByValue("id2")
                 )
                 .Section("Advanced controls", "Advanced", a => a
-                    .Intro("Exclusive toggles, dynamic textbox list, WithVisibility, WithRepeatableRows, inverted visibility.")
+                    .Intro("Exclusive toggles, dynamic textbox list, WithVisibility, WithRepeatableRows.")
                     .Toggle("Mode", "mode_index")
                         .Hint("Only one mode can be active (single-select).")
                         .WithExclusive(new[] { "Mode 1", "Mode 2", "Mode 3" })
@@ -234,7 +220,7 @@ public class CPHInline
                     )
                     .Toggle("Premium mode (inverted visibility)", "premium_mode")
                         .Hint("When ON, the block below is HIDDEN (inverted).")
-                    .WithVisibility("premium_mode", true, inner => inner
+                    .WithVisibilityWhenOff("premium_mode", inner => inner
                         .Intro("Visible only when Premium mode is OFF.")
                         .Textbox("Free tier setting", "free_tier_setting")
                             .Hint("This shows when premium_mode toggle is OFF.")
@@ -242,36 +228,26 @@ public class CPHInline
                     )
                 )
                 .Section("PillInput & callbacks", "Pills", p => p
-                    .Intro("PillInput with WithSectionsPanel, OnPillAdded, OnPillRemoved. Add items; each gets a config panel.")
+                    .Intro("PillInput with schema itemTemplate — no raw WPF Panel. See PROTOCOL.md.")
                     .PillInput("Test items", "test_items")
-                        .Hint("Add items (press Enter or Add). Each item gets a section with toggle and slider.")
-                        .WithSectionsPanel((sections, tab, ctx) =>
+                        .Hint("Add items (press Enter or Add). Each item gets nested toggle + slider.")
+                        .WithItemTemplate(item => item
+                            .Title("Item: {name}")
+                            .Toggle("Enabled", "{name}_enabled")
+                                .Hint("Enable this item.")
+                                .Default(true)
+                            .Slider("Value", "{name}_value")
+                                .Range(0, 100)
+                                .Default(50)
+                        )
+                        // OnPillAdded receives (itemName, ctx) — nested schema comes from ItemTemplate, never Panel.
+                        .OnPillAdded((itemName, ctx) =>
                         {
-                            tab.Children.Add(sections);
-                            var items = ctx.GetValue<string[]>("test_items") ?? Array.Empty<string>();
-                            foreach (var item in items)
-                            {
-                                var wrapper = new StackPanel();
-                                sections.Children.Add(wrapper);
-                                pillPanels[item] = wrapper;
-                                AddPillSection(wrapper, item, ctx);
-                            }
+                            // Optional host-side side effects when a pill is added.
                         })
-                        .OnPillAdded((item, sections, ctx) =>
+                        .OnPillRemoved((itemName, ctx) =>
                         {
-                            var wrapper = new StackPanel();
-                            sections.Children.Add(wrapper);
-                            pillPanels[item] = wrapper;
-                            AddPillSection(wrapper, item, ctx);
-                        })
-                        .OnPillRemoved((item, sections, ctx) =>
-                        {
-                            if (pillPanels.TryGetValue(item, out var wrapper))
-                            {
-                                sections.Children.Remove(wrapper);
-                                pillPanels.Remove(item);
-                                ctx.RemoveSettingsKeys(item + "_enabled", item + "_value");
-                            }
+                            ctx.RemoveSettingsKeys(itemName + "_enabled", itemName + "_value");
                         })
                 )
                 .LogExistingSettings()

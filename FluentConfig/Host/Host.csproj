@@ -1,0 +1,102 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net481</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>FluentConfig</RootNamespace>
+    <AssemblyName>FluentConfig</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+
+    <!--
+      Resolve Streamer.bot install for compile-time refs (Plugin.Interface + WebView2).
+      Override explicitly with:  dotnet build -p:StreamerBotPath=C:\path\to\Streamer.bot
+      Candidates are tried in order; first path that contains WebView2.Wpf.dll wins.
+    -->
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4\Microsoft.Web.WebView2.Wpf.dll')">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('F:\Stream\Streamer.bot-x64-1.0.4\Microsoft.Web.WebView2.Wpf.dll')">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe\Microsoft.Web.WebView2.Wpf.dll')">$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe</StreamerBotPath>
+    <!-- Last-resort default (may fail the build if the folder is absent) -->
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
+
+    <WebProjectDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\web'))</WebProjectDir>
+    <WebDistHtml>$(WebProjectDir)\dist\index.html</WebDistHtml>
+    <EmbedWebScript>$(MSBuildThisFileDirectory)scripts\EmbedWebHtml.ps1</EmbedWebScript>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentConfig.Tests" />
+    <InternalsVisibleTo Include="FluentConfig.SmokeHost" />
+  </ItemGroup>
+
+  <!-- Never compile a stray generated file if one lands in the project directory. -->
+  <ItemGroup>
+    <Compile Remove="EmbeddedHtml.Bundle.g.cs" />
+    <None Remove="EmbeddedHtml.Bundle.g.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+    <Reference Include="Streamer.bot.Plugin.Interface">
+      <HintPath>$(StreamerBotPath)\Streamer.bot.Plugin.Interface.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!--
+      Compile against Streamer.bot's own WebView2 assemblies (Private=False).
+      Do NOT NuGet-reference or copy-local WebView2 — SB already loads its copies into the
+      shared AppDomain; a different version in dlls/ causes FileLoadException.
+    -->
+    <Reference Include="Microsoft.Web.WebView2.Core">
+      <HintPath>$(StreamerBotPath)\Microsoft.Web.WebView2.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Web.WebView2.Wpf">
+      <HintPath>$(StreamerBotPath)\Microsoft.Web.WebView2.Wpf.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!--
+    Release: build the Vite single-file bundle and generate EmbeddedHtml.Bundle.g.cs so
+    NavigateToString(EmbeddedHtml.Content) has zero external file/network dependency.
+    Debug: skip (WebView2 navigates to http://localhost:5173). Fresh clones without
+    node_modules fail Release with a clear error; Debug builds still succeed.
+  -->
+  <Target Name="BuildWebBundle"
+          BeforeTargets="CoreCompile"
+          Condition="'$(Configuration)' == 'Release' AND '$(SkipWebBundle)' != 'true'">
+    <Error
+      Text="FluentConfig Release build: web/package.json not found at '$(WebProjectDir)'."
+      Condition="!Exists('$(WebProjectDir)\package.json')" />
+    <Exec Command="bun --version" WorkingDirectory="$(WebProjectDir)" IgnoreExitCode="true">
+      <Output TaskParameter="ExitCode" PropertyName="_BunVersionExit" />
+    </Exec>
+    <Error
+      Text="FluentConfig Release build requires Bun on PATH (bun --version failed). Install from https://bun.sh, then run 'bun install' in FluentConfig/web."
+      Condition="'$(_BunVersionExit)' != '0'" />
+    <Error
+      Text="FluentConfig Release build: web/node_modules is missing. Run 'bun install' in FluentConfig/web first."
+      Condition="!Exists('$(WebProjectDir)\node_modules')" />
+    <Message Importance="high" Text="==> Building web UI single-file bundle for Release embed..." />
+    <Exec Command="bun run build" WorkingDirectory="$(WebProjectDir)" />
+    <Error
+      Text="FluentConfig Release build: '$(WebDistHtml)' was not produced by 'bun run build'."
+      Condition="!Exists('$(WebDistHtml)')" />
+    <PropertyGroup>
+      <EmbeddedHtmlGenerated>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(IntermediateOutputPath)EmbeddedHtml.Bundle.g.cs'))</EmbeddedHtmlGenerated>
+    </PropertyGroup>
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(EmbeddedHtmlGenerated)'))" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(EmbedWebScript)&quot; -HtmlPath &quot;$(WebDistHtml)&quot; -OutPath &quot;$(EmbeddedHtmlGenerated)&quot;" />
+    <Error
+      Text="FluentConfig Release build: failed to generate '$(EmbeddedHtmlGenerated)'."
+      Condition="!Exists('$(EmbeddedHtmlGenerated)')" />
+    <ItemGroup>
+      <Compile Include="$(EmbeddedHtmlGenerated)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,48 @@
+// =============================================================================
+// FluentConfig WebView2 Phase 0 spike — Streamer.bot action script
+// =============================================================================
+// Paste this into an Execute C# Code sub-action, then DISABLE that sub-action.
+// Add a second Execute C# Method sub-action that calls CPHInline.Execute,
+// with "Run on UI thread" ENABLED. See README.md (two-subaction pattern).
+//
+// Required assembly references (see docs/REFERENCES.md):
+//   - PresentationFramework  (by name, or GAC path)
+//   - PresentationCore       (by name, or GAC path)
+//   - WindowsBase            (by name, or GAC path)
+//   - FluentConfig           (path to dlls\FluentConfig.dll under your Streamer.bot install)
+//
+// GAC path fallbacks (if referencing by path):
+//   C:\Windows\Microsoft.NET\assembly\GAC_MSIL\PresentationFramework\v4.0_4.0.0.0__31bf3856ad364e35\PresentationFramework.dll
+//   C:\Windows\Microsoft.NET\assembly\GAC_MSIL\WindowsBase\v4.0_4.0.0.0__31bf3856ad364e35\WindowsBase.dll
+//   C:\Windows\Microsoft.NET\assembly\GAC_64\PresentationCore\v4.0_4.0.0.0__31bf3856ad364e35\PresentationCore.dll
+//
+// FluentConfig.dll for a winget install of Streamer.bot typically lives at:
+//   %LocalAppData%\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe\dlls\FluentConfig.dll
+// =============================================================================
+
+using FluentConfig;
+using System;
+
+public class CPHInline
+{
+    public bool Execute()
+    {
+        try
+        {
+            if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig WebView2 Spike", "0.1"))
+                return true;
+
+            FluentConfigUi.Create(CPH, "FluentConfig WebView2 Spike", "0.1")
+                .Section("Spike", "spike", s => s
+                    .Intro("FluentConfig WebView2 host is running."))
+                .Show();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError("FluentConfig WebView2 spike FAILED: " + ex);
+            return false;
+        }
+    }
+}

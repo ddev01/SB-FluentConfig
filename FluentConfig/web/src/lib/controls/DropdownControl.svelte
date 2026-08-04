@@ -1,0 +1,81 @@
+<script lang="ts">
+  import type { DropdownNode } from '../../protocol';
+  import { RpcMethods } from '../../protocol';
+  import type { DropdownRefreshResult } from '../../protocol';
+  import { appStore } from '../../store/app.svelte';
+  import FieldShell from './FieldShell.svelte';
+
+  interface Props {
+    node: DropdownNode;
+  }
+
+  let { node }: Props = $props();
+  const fieldId = $derived(node.id ?? node.saveKey);
+
+  let refreshing = $state(false);
+
+  let selectedValue = $derived.by(() => {
+    if (node.valueSaveKey) {
+      const pair = appStore.getValue(node.valueSaveKey);
+      if (pair != null && pair !== '') return String(pair);
+    }
+    const display = appStore.getValue(node.saveKey);
+    if (display != null && display !== '') {
+      const match = node.options?.find((o) => o.display === display || o.value === display);
+      if (match) return match.value;
+      return String(display);
+    }
+    if (node.defaultByValue) return node.defaultByValue;
+    if (node.defaultIndex !== undefined && node.options?.[node.defaultIndex]) {
+      return node.options[node.defaultIndex]!.value;
+    }
+    return node.options?.[0]?.value ?? '';
+  });
+
+  function onChange(e: Event): void {
+    const t = e.currentTarget as HTMLSelectElement;
+    const opt = node.options?.find((o) => o.value === t.value);
+    if (!opt) return;
+    if (node.valueSaveKey) {
+      appStore.setValue(node.saveKey, opt.display);
+      appStore.setValue(node.valueSaveKey, opt.value);
+    } else {
+      appStore.setValue(node.saveKey, opt.value);
+    }
+  }
+
+  async function refresh(): Promise<void> {
+    refreshing = true;
+    try {
+      const result = await appStore.client().request<DropdownRefreshResult>(
+        RpcMethods.DropdownRefresh,
+        { saveKey: node.saveKey },
+      );
+      appStore.patchDropdownOptions(node.saveKey, result.options);
+    } catch (err) {
+      appStore.pushToast(err instanceof Error ? err.message : 'Refresh failed');
+    } finally {
+      refreshing = false;
+    }
+  }
+</script>
+
+<FieldShell label={node.label} hint={node.hint} forId={fieldId}>
+  <div class="flex gap-2">
+    <select
+      id={fieldId}
+      class="fc-input"
+      value={selectedValue}
+      onchange={onChange}
+    >
+      {#each node.options ?? [] as opt (opt.value)}
+        <option value={opt.value}>{opt.display}</option>
+      {/each}
+    </select>
+    {#if node.refreshable}
+      <button type="button" class="fc-btn" disabled={refreshing} onclick={refresh}>
+        {refreshing ? '…' : 'Refresh'}
+      </button>
+    {/if}
+  </div>
+</FieldShell>

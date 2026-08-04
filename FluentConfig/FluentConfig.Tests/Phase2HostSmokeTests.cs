@@ -1,0 +1,336 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using FluentConfig;
+using FluentConfig.Core;
+using FluentConfig.Protocol;
+using FluentConfig.Updater;
+using Moq;
+using Newtonsoft.Json.Linq;
+using Streamer.bot.Plugin.Interface;
+using Xunit;
+
+namespace FluentConfig.Tests
+{
+    /// <summary>
+    /// Phase 2 host-side smoke: schema build, save RPC, dropdown.refresh, without Streamer.bot GUI.
+    /// </summary>
+    public class Phase2HostSmokeTests
+    {
+        [Fact]
+        public void Schema_Build_IncludesToggleTextboxDropdownPill()
+        {
+            var cph = CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Smoke", "0.2.0");
+            ui.Section("General", "general", s => s
+                .Toggle("Enabled", "smoke_enabled").Default(true)
+                .Textbox("Display name", "smoke_name").Default("smoke-user")
+                .Dropdown("Channel reward", "smoke_reward_display")
+                    .WithPairValue("smoke_reward_id")
+                    .Options(new[] { ("rew_1", "Reward Alpha"), ("rew_2", "Reward Beta") })
+                    .Refresh(() => new[] { ("rew_1", "Reward Alpha"), ("rew_2", "Reward Beta"), ("rew_3", "Reward Gamma") })
+                    .DefaultByValue("rew_2")
+                .PillInput("Watch list", "smoke_pills")
+                    .WithItemTemplate(item => item
+                        .Title("Item: {name}")
+                        .Toggle("Active", "{name}_active").Default(true)
+                    )
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            Assert.Equal("Phase2 Smoke", doc.Title);
+            Assert.Single(doc.Sections);
+            var types = FlattenTypes(doc.Sections[0].Children).ToList();
+            Assert.Contains("toggle", types);
+            Assert.Contains("textbox", types);
+            Assert.Contains("dropdown", types);
+            Assert.Contains("pill-input", types);
+
+            var json = ProtocolJson.Serialize(doc);
+            Assert.DoesNotContain("System.Windows.Controls.Panel", json);
+            Assert.Contains("smoke_enabled", json);
+            Assert.Contains("itemTemplate", json);
+        }
+
+        [Fact]
+        public void SaveRpc_PersistsValues_ViaMockCph()
+        {
+            var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+            var cph = CreateMockCph(store);
+            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Persist", "0.2.0");
+            ui.Section("G", "g", s => s.Toggle("Enabled", "smoke_enabled").Textbox("Name", "smoke_name"));
+
+            ui.Session.BuildDocumentForTests();
+
+            var values = new JObject
+            {
+                ["smoke_enabled"] = false,
+                ["smoke_name"] = "after-edit",
+            };
+            var req = ProtocolJson.Serialize(WireMessage.Request(1, RpcMethods.Save, new SaveParams { Values = values }));
+            ui.Session.HandleWebMessage(req);
+
+            var settings = ui.Session.GetSettingsForTests();
+            Assert.Equal(false, settings["smoke_enabled"]?.Value<bool>());
+            Assert.Equal("after-edit", settings["smoke_name"]?.ToString());
+
+            var key = store.Keys.FirstOrDefault(k => k.Contains("Phase2 Persist"));
+            Assert.False(string.IsNullOrEmpty(key));
+            var persisted = JObject.Parse(store[key]);
+            Assert.Equal("after-edit", persisted["smoke_name"]?.ToString());
+        }
+
+        [Fact]
+        public void DropdownRefresh_ReturnsFakeRewards()
+        {
+            var cph = CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Dropdown", "0.2.0");
+            ui.Section("G", "g", s => s
+                .Dropdown("Reward", "smoke_reward_display")
+                    .Options(new[] { ("rew_1", "A") })
+                    .Refresh(() => new[] { ("rew_1", "A"), ("rew_2", "B"), ("rew_3", "C") })
+            );
+
+            ui.Session.BuildDocumentForTests();
+
+            // Refresh is registered during schema flush; invoke the stored callback directly.
+            var refreshField = typeof(FluentConfigSession).GetField("_dropdownRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(refreshField);
+            var map = (Dictionary<string, Func<IList<DropdownOption>>>)refreshField.GetValue(ui.Session);
+            Assert.True(map.ContainsKey("smoke_reward_display"));
+            var options = map["smoke_reward_display"]();
+            Assert.Equal(3, options.Count);
+            Assert.Equal("rew_3", options[2].Value);
+        }
+
+        [Fact]
+        public void WithVisibilityWhenOff_EmitsInvertedCondition()
+        {
+            var cph = CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Vis", "0.2.0");
+            ui.Section("G", "g", s => s
+                .Toggle("Premium", "premium_mode")
+                .WithVisibilityWhenOff("premium_mode", inner => inner
+                    .Textbox("Free", "free_tier")
+                )
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            var json = ProtocolJson.Serialize(doc);
+            Assert.Contains("\"inverted\":true", json.Replace(" ", ""));
+            Assert.Contains("free_tier", json);
+        }
+
+        private static IEnumerable<string> FlattenTypes(IEnumerable<SchemaNode> nodes)
+        {
+            if (nodes == null) yield break;
+            foreach (var n in nodes)
+            {
+                yield return n.Type;
+                if (n is GroupNode g)
+                {
+                    foreach (var c in FlattenTypes(g.Children))
+                        yield return c;
+                }
+            }
+        }
+
+        internal static Mock<IInlineInvokeProxy> CreateMockCph(ConcurrentDictionary<string, string> store = null)
+        {
+            store = store ?? new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+            var mock = new Mock<IInlineInvokeProxy>(MockBehavior.Loose);
+            mock.Setup(c => c.GetGlobalVar<string>(It.IsAny<string>(), It.IsAny<bool>()))
+                .Returns((string name, bool persisted) =>
+                {
+                    store.TryGetValue(name, out var v);
+                    return v;
+                });
+            mock.Setup(c => c.SetGlobalVar(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<bool>()))
+                .Callback((string name, object value, bool persisted) =>
+                {
+                    store[name] = value?.ToString() ?? "";
+                });
+            return mock;
+        }
+    }
+
+    /// <summary>
+    /// Updater end-to-end against a local HttpListener mock (no production hosts).
+    /// </summary>
+    public class UpdaterFlowTests : IDisposable
+    {
+        private readonly HttpListener _listener;
+        private readonly string _baseUrl;
+        private readonly string _tempDir;
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private byte[] _assetBytes;
+        private string _assetPath;
+
+        public UpdaterFlowTests()
+        {
+            _tempDir = Path.Combine(Path.GetTempPath(), "FluentConfigUpdaterTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_tempDir);
+            _assetPath = Path.Combine(_tempDir, "ExampleExtension.dll");
+            _assetBytes = new byte[] { 0x4D, 0x5A, 0x90, 0x00, 0x01, 0x02, 0x03, 0x04 }; // tiny fake PE header-ish
+
+            _listener = new HttpListener();
+            // Port 0 is not supported by HttpListener prefixes; pick a free port.
+            var port = GetFreePort();
+            _baseUrl = "http://127.0.0.1:" + port;
+            _listener.Prefixes.Add(_baseUrl + "/");
+            _listener.Start();
+            Task.Run(() => ListenLoop(_cts.Token));
+
+            GitHubUpdater.SetApiBaseUrl(_baseUrl);
+            GitHubUpdater.SetHttpClient(new HttpClient { BaseAddress = new Uri(_baseUrl) });
+        }
+
+        public void Dispose()
+        {
+            _cts.Cancel();
+            try { _listener.Stop(); } catch { /* ignore */ }
+            _listener.Close();
+            GitHubUpdater.SetApiBaseUrl(null);
+            GitHubUpdater.SetHttpClient(null);
+            try { Directory.Delete(_tempDir, true); } catch { /* ignore */ }
+        }
+
+        [Fact]
+        public void CheckForUpdate_EnsureInstalled_StageUpdate_SwapHelper()
+        {
+            var check = GitHubUpdater.CheckForUpdate("example-org/example-extension", "1.0.0");
+            Assert.NotNull(check);
+            Assert.True(check.UpdateAvailable);
+            Assert.Equal("1.1.0", check.LatestVersion);
+            Assert.Contains("/download/", check.DownloadUrl);
+
+            var installPath = Path.Combine(_tempDir, "fresh", "ExampleExtension.dll");
+            Assert.False(File.Exists(installPath));
+            Assert.True(GitHubUpdater.EnsureInstalled(installPath, "example-org/example-extension"));
+            Assert.True(File.Exists(installPath));
+            Assert.Equal(_assetBytes, File.ReadAllBytes(installPath));
+
+            // Live file present + locked scenario: stage beside target
+            var livePath = Path.Combine(_tempDir, "live", "ExampleExtension.dll");
+            Directory.CreateDirectory(Path.GetDirectoryName(livePath));
+            File.WriteAllBytes(livePath, new byte[] { 0x00, 0x00 });
+            var staged = GitHubUpdater.StageUpdate(check.DownloadUrl, livePath);
+            Assert.Equal(livePath + ".update", staged);
+            Assert.True(File.Exists(staged));
+            Assert.Equal(_assetBytes, File.ReadAllBytes(staged));
+
+            // Run UpdaterHelper swap without relaunch (no Streamer.bot process name match needed —
+            // helper waits for process exit; use a fake process name that is not running).
+            var helperProj = Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "UpdaterHelper", "UpdaterHelper.csproj"));
+            Assert.True(File.Exists(helperProj), "UpdaterHelper.csproj missing at " + helperProj);
+
+            var build = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"build \"{helperProj}\" -c Debug",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            });
+            build.WaitForExit(120000);
+            Assert.Equal(0, build.ExitCode);
+
+            var helperExe = Path.GetFullPath(Path.Combine(
+                Path.GetDirectoryName(helperProj), "bin", "Debug", "net481", "FluentConfig.UpdaterHelper.exe"));
+            Assert.True(File.Exists(helperExe), "Helper exe missing: " + helperExe);
+
+            var swap = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = helperExe,
+                Arguments = $"\"{livePath}\" \"NoSuchProcess_FluentConfigTest.exe\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            });
+            var exited = swap.WaitForExit(30000);
+            Assert.True(exited, "UpdaterHelper did not exit in time");
+            Assert.Equal(0, swap.ExitCode);
+
+            Assert.False(File.Exists(staged), "staged .update should be moved away");
+            Assert.True(File.Exists(livePath));
+            Assert.Equal(_assetBytes, File.ReadAllBytes(livePath));
+        }
+
+        private async Task ListenLoop(CancellationToken ct)
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                HttpListenerContext ctx;
+                try { ctx = await _listener.GetContextAsync().ConfigureAwait(false); }
+                catch { break; }
+
+                try
+                {
+                    var path = ctx.Request.Url.AbsolutePath.TrimEnd('/');
+                    if (path.EndsWith("/repos/example-org/example-extension/releases/latest", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var downloadUrl = _baseUrl + "/download/ExampleExtension.dll";
+                        var body = new JObject
+                        {
+                            ["tag_name"] = "v1.1.0",
+                            ["body"] = "Test release notes",
+                            ["assets"] = new JArray
+                            {
+                                new JObject
+                                {
+                                    ["name"] = "ExampleExtension.dll",
+                                    ["browser_download_url"] = downloadUrl,
+                                }
+                            }
+                        }.ToString();
+                        WriteResponse(ctx, 200, "application/json", body);
+                    }
+                    else if (path.EndsWith("/download/ExampleExtension.dll", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ctx.Response.StatusCode = 200;
+                        ctx.Response.ContentType = "application/octet-stream";
+                        ctx.Response.OutputStream.Write(_assetBytes, 0, _assetBytes.Length);
+                        ctx.Response.Close();
+                    }
+                    else
+                    {
+                        WriteResponse(ctx, 404, "text/plain", "not found: " + path);
+                    }
+                }
+                catch
+                {
+                    try { ctx.Response.Abort(); } catch { /* ignore */ }
+                }
+            }
+        }
+
+        private static void WriteResponse(HttpListenerContext ctx, int status, string contentType, string body)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(body ?? "");
+            ctx.Response.StatusCode = status;
+            ctx.Response.ContentType = contentType;
+            ctx.Response.ContentLength64 = bytes.Length;
+            ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
+            ctx.Response.Close();
+        }
+
+        private static int GetFreePort()
+        {
+            var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            listener.Stop();
+            return port;
+        }
+    }
+}

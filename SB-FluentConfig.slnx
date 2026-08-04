@@ -1,4 +1,6 @@
 <Solution>
-  <Project Path="FluentConfig/FluentConfig.csproj" Id="abfbfd3e-caf5-4c3e-90e5-e7dad5531259" />
-  <Project Path="FluentConfig.Tests/FluentConfig.Tests.csproj" />
+  <Project Path="FluentConfig/Host/Host.csproj" Id="abfbfd3e-caf5-4c3e-90e5-e7dad5531259" />
+  <Project Path="FluentConfig/FluentConfig.Tests/FluentConfig.Tests.csproj" />
+  <Project Path="FluentConfig/UpdaterHelper/UpdaterHelper.csproj" />
+  <Project Path="FluentConfig/SmokeHost/SmokeHost.csproj" />
 </Solution>

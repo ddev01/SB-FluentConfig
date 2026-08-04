@@ -2,9 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build FluentConfig",
+      "label": "Build FluentConfig (Debug)",
       "type": "shell",
-      "command": "Stop-Process -Name 'Streamer.bot' -Force -ErrorAction SilentlyContinue; dotnet build '${workspaceFolder}/FluentConfig/FluentConfig.csproj' -c Debug -p:OutputPath='C:\\Users\\main\\Desktop\\Streamer.bot-x64-1.0.4\\dlls\\'; Start-Process 'C:\\Users\\main\\Desktop\\Streamer.bot-x64-1.0.4\\Streamer.bot.exe'",
+      "command": "dotnet build '${workspaceFolder}/FluentConfig/Host/Host.csproj' -c Debug",
       "windows": {
         "options": {
           "shell": {
@@ -20,7 +20,23 @@
     {
       "label": "Build FluentConfig (Release)",
       "type": "shell",
-      "command": "Stop-Process -Name 'Streamer.bot' -Force -ErrorAction SilentlyContinue; dotnet build '${workspaceFolder}/FluentConfig/FluentConfig.csproj' -c Release -p:OutputPath='C:\\Users\\main\\Desktop\\Streamer.bot-x64-1.0.4\\dlls\\'; Start-Process 'C:\\Users\\main\\Desktop\\Streamer.bot-x64-1.0.4\\Streamer.bot.exe'",
+      "command": "dotnet build '${workspaceFolder}/FluentConfig/Host/Host.csproj' -c Release",
+      "windows": {
+        "options": {
+          "shell": {
+            "executable": "powershell.exe",
+            "args": ["-NoProfile", "-Command"]
+          }
+        }
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Redeploy FluentConfig",
+      "type": "shell",
+      "command": "& '${workspaceFolder}/FluentConfig/scripts/Redeploy.ps1' -Configuration Debug",
       "windows": {
         "options": {
           "shell": {

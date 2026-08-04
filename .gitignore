@@ -25,6 +25,16 @@ project.fragment.lock.json
 *.userosscache
 *.sln.docstates
 
+# Web UI (Bun / Vite)
+FluentConfig/web/node_modules/
+FluentConfig/web/dist/
+# Bun's lockfile (bun.lock / legacy bun.lockb) is kept tracked for reproducible installs
+
+# Generated Release embed (lives under obj/ when built correctly; ignore stray copies)
+FluentConfig/Host/EmbeddedHtml.Bundle.g.cs
+FluentConfig/SmokeHost/*.settings.json
+FluentConfig/SmokeHost/*.log
+
 # Misc
 *.log
 *.cache
@@ -34,3 +44,4 @@ Thumbs.db
 .data/
 voice_alias_plugin_test.cs
 .cursor
+decompile/
