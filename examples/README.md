@@ -7,6 +7,7 @@ Use **Execute C# Method** with **Run on UI thread** enabled. Assembly refs: see 
 |------|-------------|
 | **SimpleExample.cs** | Minimal: toggle, textbox, slider. |
 | **MediumExample.cs** | Dropdown, slider, button, `ShowWhen`. |
+| **DevPreviewExample.cs** | Mirrors `localhost:5173` mock document (General / Inputs / Lists) for in-Streamer.bot comparison. |
 | **CompleteExample.cs** | Full control surface with Pill / `WithVisibility` APIs (schema sub-builders — no raw WPF `Panel`). |
 | **UpdaterExample.cs** | Third-party extension author using `CheckForUpdate` / `EnsureInstalled` / stage-and-swap. |
 
