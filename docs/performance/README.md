@@ -2,6 +2,8 @@
 
 Archive of **Release + PerfTrace** cold/warm open timings so future runs can be compared against known-good numbers.
 
+Baseline reports are keyed by **git commit** (short SHA in the filename; full SHA and subject in the report), not by date alone.
+
 ## How to remeasure
 
 1. **Redeploy** the host with PerfTrace enabled:
@@ -31,6 +33,8 @@ Archive of **Release + PerfTrace** cold/warm open timings so future runs can be 
 
 See [`FluentConfig/scripts/perf-benchmark/README.md`](../../FluentConfig/scripts/perf-benchmark/README.md) for cold vs warm procedure and environment variables.
 
+After a run you trust, archive under `baselines/<short-sha>-minimal.md` / `<short-sha>-complete.md` for the commit you measured (tip of the perf work tree).
+
 ## Phase vs mark
 
 Milestones in `FluentConfig_PerfLast` are tagged `kind: "phase"` or `kind: "mark"`:
@@ -44,10 +48,12 @@ Example: `script-start` at 1567 ms (mark) means the web bundle began executing 1
 
 ## Archived baselines
 
-| Date | Variant | Action name | Cold `totalMs` | Warm `totalMs` | Report |
-|------|---------|-------------|----------------|----------------|--------|
-| 2026-08-05 | Minimal | `FluentConfig Perf Benchmark` | 1615 | 284 | [2026-08-05-minimal.md](baselines/2026-08-05-minimal.md) |
-| 2026-08-05 | Complete | `FluentConfig Perf Complete` | 1670 | 276 | [2026-08-05-complete.md](baselines/2026-08-05-complete.md) |
+| Commit | Subject | Variant | Action name | Cold `totalMs` | Warm `totalMs` | Report |
+|--------|---------|---------|-------------|----------------|----------------|--------|
+| `9472226` | docs: deferred updates and perf measurement guide | Minimal | `FluentConfig Perf Benchmark` | 1615 | 284 | [9472226-minimal.md](baselines/9472226-minimal.md) |
+| `9472226` | docs: deferred updates and perf measurement guide | Complete | `FluentConfig Perf Complete` | 1670 | 276 | [9472226-complete.md](baselines/9472226-complete.md) |
+
+Full SHA: `9472226070f6d6348ae3d0fc45e000aaebd449d2` (tree at end of perf work on 2026-08-05).
 
 **Metadata (both runs):** Streamer.bot 1.0.4, Release + PerfTrace (`FC_PERF_TRACE`), local Windows machine.
 
@@ -68,6 +74,7 @@ Host copies are the live paste targets; `docs/performance/actions/` snapshots ar
 ## Comparing results
 
 - Compare **same action** (minimal vs complete are not interchangeable).
+- Compare against the **same commit** (or re-baseline after intentional perf changes).
 - Use **Release + PerfTrace** only. Debug builds and Vite dev-server loads produce invalid timings.
 - `totalMs` is wall-clock to `web-ready` (end-to-end open).
 - Large regressions in `Schema.Build` or `Window.Create` on warm runs often indicate a host or bundling change, not network.
