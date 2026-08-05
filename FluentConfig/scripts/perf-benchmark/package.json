@@ -1,0 +1,17 @@
+{
+  "name": "fluentconfig-perf-benchmark",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cold/warm FluentConfig open timing via Streamer.bot Client WebSocket",
+  "type": "module",
+  "scripts": {
+    "bench": "node benchmark.mjs",
+    "start": "node benchmark.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

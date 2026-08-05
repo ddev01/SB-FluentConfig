@@ -1,0 +1,48 @@
+// =============================================================================
+// FluentConfig Perf Benchmark — Streamer.bot action script
+// =============================================================================
+// Paste into Execute C# Code (DISABLED / compile-only), then add Execute C# Method
+// → CPHInline.Execute with **Run on UI thread** ENABLED.
+//
+// Why UI thread: FluentConfig opens a WPF + WebView2 window. Without
+// "Run on UI thread", ShowOrFocus will fail or hang. See docs/REFERENCES.md.
+//
+// Required refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig
+// (path to dlls\FluentConfig.dll). Use Release + PerfTrace DLL for valid timings:
+//   .\FluentConfig\scripts\Redeploy.ps1 -Configuration Release -PerfTrace
+//
+// Action name (must match harness default): FluentConfig Perf Benchmark
+// Harness: FluentConfig/scripts/perf-benchmark/
+// =============================================================================
+
+using FluentConfig;
+using System;
+
+public class CPHInline
+{
+    private const string Title = "FluentConfig Perf Benchmark";
+    private const string Version = "1.0";
+
+    public bool Execute()
+    {
+        try
+        {
+            FluentConfig.FluentConfig.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
+
+            // Wall-clock marker before ShowOrFocus (pairs with FluentConfig_PerfLast).
+            CPH.LogInfo("[MENU] trigger " + Title);
+
+            FluentConfigUi.ShowOrFocus(CPH, Title, Version, ui => ui
+                .Section("Benchmark", "benchmark", s => s
+                    .Intro("Minimal FluentConfig surface for cold/warm open timing. Close this window between harness runs."))
+            );
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError("FluentConfig Perf Benchmark FAILED: " + ex);
+            return false;
+        }
+    }
+}
