@@ -18,6 +18,8 @@ namespace FluentConfig.Updater
         public string ReleaseNotes { get; set; }
         public string DownloadUrl { get; set; }
         public string TagName { get; set; }
+        /// <summary>GitHub release html_url (used by notify-only extension update notices).</summary>
+        public string ReleasePageUrl { get; set; }
     }
 
     /// <summary>
@@ -137,6 +139,108 @@ namespace FluentConfig.Updater
                 ReleaseNotes = notes,
                 DownloadUrl = downloadUrl,
                 TagName = tag,
+                ReleasePageUrl = json.Value<string>("html_url"),
+            };
+        }
+
+        /// <summary>
+        /// Lists <c>/repos/{repo}/releases</c> (paginated), filters tags starting with
+        /// <c>{tagPrefix}-v</c> (e.g. <c>spotify-v1.2.3</c>), and picks the highest semver.
+        /// Notify-only — no asset download URL required. Returns null on network/parse failure.
+        /// </summary>
+        /// <param name="repo">owner/name</param>
+        /// <param name="tagPrefix">Extension tag prefix without trailing <c>-v</c> (e.g. <c>spotify</c>)</param>
+        /// <param name="currentVersion">SemVer-ish string (leading v stripped)</param>
+        public static UpdateCheckResult CheckForTaggedRelease(string repo, string tagPrefix, string currentVersion)
+        {
+            if (string.IsNullOrWhiteSpace(repo))
+                throw new ArgumentException("repo is required (owner/name).", nameof(repo));
+            if (string.IsNullOrWhiteSpace(tagPrefix))
+                throw new ArgumentException("tagPrefix is required.", nameof(tagPrefix));
+
+            var prefix = tagPrefix.Trim().TrimEnd('-') + "-v";
+            var current = StripV(currentVersion ?? "");
+
+            string bestTag = null;
+            string bestVersion = null;
+            string bestNotes = null;
+            string bestHtmlUrl = null;
+
+            try
+            {
+                for (int page = 1; page <= 10; page++)
+                {
+                    var url = ApiBaseUrl + "/repos/" + repo.Trim()
+                              + "/releases?per_page=100&page=" + page;
+                    string body;
+                    try
+                    {
+                        body = Http.GetStringAsync(url).GetAwaiter().GetResult();
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+
+                    JArray releases;
+                    try { releases = JArray.Parse(body); }
+                    catch { return null; }
+
+                    if (releases.Count == 0)
+                        break;
+
+                    foreach (var item in releases)
+                    {
+                        if (!(item is JObject release)) continue;
+                        var tag = release.Value<string>("tag_name") ?? "";
+                        if (!tag.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        var version = StripV(tag.Substring(prefix.Length));
+                        if (string.IsNullOrEmpty(version))
+                            continue;
+
+                        if (bestVersion == null || IsNewer(version, bestVersion))
+                        {
+                            bestTag = tag;
+                            bestVersion = version;
+                            bestNotes = release.Value<string>("body");
+                            bestHtmlUrl = release.Value<string>("html_url");
+                        }
+                    }
+
+                    if (releases.Count < 100)
+                        break;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(bestVersion))
+            {
+                return new UpdateCheckResult
+                {
+                    UpdateAvailable = false,
+                    CurrentVersion = current,
+                    LatestVersion = current,
+                };
+            }
+
+            var available = !string.IsNullOrEmpty(current)
+                            && !VersionsEqual(current, bestVersion)
+                            && IsNewer(bestVersion, current);
+
+            return new UpdateCheckResult
+            {
+                UpdateAvailable = available,
+                CurrentVersion = current,
+                LatestVersion = bestVersion,
+                ReleaseNotes = bestNotes,
+                TagName = bestTag,
+                ReleasePageUrl = bestHtmlUrl,
+                DownloadUrl = null,
             };
         }
 
@@ -192,6 +296,12 @@ namespace FluentConfig.Updater
             File.WriteAllBytes(path, bytes);
         }
 
+        /// <summary>
+        /// Picks a single downloadable asset URL from a GitHub release JSON object.
+        /// Self-update only (expects one primary .dll asset). Prefer a .dll
+        /// <c>browser_download_url</c>; otherwise the first asset URL, else <c>zipball_url</c>.
+        /// Not used by <see cref="CheckForTaggedRelease"/> (notify-only / no download).
+        /// </summary>
         private static string PickAssetUrl(JObject release)
         {
             var assets = release["assets"] as JArray;
