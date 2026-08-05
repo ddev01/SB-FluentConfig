@@ -9,6 +9,10 @@
 .PARAMETER Configuration
   Build configuration (Debug or Release). Defaults to Debug.
 
+.PARAMETER PerfTrace
+  Force-enable FC_PERF_TRACE (-p:FluentConfigPerfTrace=true) regardless of Configuration.
+  Useful for troubleshooting a Release build without switching to the Vite dev server.
+
 .PARAMETER Watch
   If set, watches Host\**\*.cs for changes and re-runs the rebuild+redeploy loop automatically
   (debounced ~1.5s) instead of running once and exiting. Ctrl+C to stop.
@@ -21,6 +25,8 @@
 .EXAMPLE
   .\Redeploy.ps1 -Configuration Release
 .EXAMPLE
+  .\Redeploy.ps1 -Configuration Release -PerfTrace
+.EXAMPLE
   .\Redeploy.ps1 -Watch
 .EXAMPLE
   .\Redeploy.ps1 -WhatIf
@@ -29,6 +35,7 @@ param(
     [string]$StreamerBotPath,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Debug',
+    [switch]$PerfTrace,
     [switch]$Watch,
     [switch]$WhatIf
 )
@@ -75,13 +82,20 @@ function Invoke-RedeployOnce {
         }
     }
 
+    $buildArgs = @(
+        'build', $hostProj,
+        '-c', $Configuration,
+        "-p:StreamerBotPath=$sbPath"
+    )
+    if ($PerfTrace) { $buildArgs += '-p:FluentConfigPerfTrace=true' }
+
     if ($WhatIf) {
-        Write-Host "WhatIf: would build $hostProj -c $Configuration" -ForegroundColor DarkYellow
+        Write-Host ("WhatIf: would run: dotnet " + ($buildArgs -join ' ')) -ForegroundColor DarkYellow
         Write-Host "WhatIf: would copy FluentConfig.dll (+ Newtonsoft.Json.dll if present) -> $dllsPath" -ForegroundColor DarkYellow
     }
     else {
-        Write-Host "==> Building ($Configuration)..." -ForegroundColor Cyan
-        dotnet build $hostProj -c $Configuration -p:StreamerBotPath="$sbPath" | Write-Host
+        Write-Host "==> Building ($Configuration)$(if ($PerfTrace) { ' + PerfTrace' })..." -ForegroundColor Cyan
+        & dotnet @buildArgs | Write-Host
         if ($LASTEXITCODE -ne 0) { throw "Build failed with exit code $LASTEXITCODE" }
 
         $outDir = Join-Path $repoRoot "Host\bin\$Configuration\net481"
