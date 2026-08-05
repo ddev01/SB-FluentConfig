@@ -159,7 +159,8 @@ namespace FluentConfig
             timer.Start();
             Dispatcher.PushFrame(frame);
 
-            _pending.TryRemove(id, out _);
+            if (_pending.TryRemove(id, out _))
+                tcs.TrySetResult(null);
             if (tcs.Task.Status == TaskStatus.RanToCompletion)
                 return tcs.Task.Result;
             return null;

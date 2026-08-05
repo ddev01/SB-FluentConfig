@@ -38,6 +38,36 @@ namespace FluentConfig.Core
         /// Returns true if a window with this title is already open (and focuses it).
         /// Call before creating a new window.
         /// </summary>
+        /// <summary>
+        /// Focus an existing window for <paramref name="title"/>, or reserve the title slot for a new one.
+        /// Returns false when an existing window was focused (caller should not Create/Show).
+        /// Returns true when the title was reserved (caller must Register the real window, or Unregister on failure).
+        /// </summary>
+        internal static bool TryBeginOpen(string title, string version, Action<string> log)
+        {
+            lock (LockObj)
+            {
+                if (!string.IsNullOrEmpty(title) && OpenWindows.TryGetValue(title, out var window) && window != null)
+                {
+                    log?.Invoke($"UI ({title} (v{version})) already open, focusing...");
+                    try
+                    {
+                        FocusWindow(window);
+                        return false;
+                    }
+                    catch
+                    {
+                        OpenWindows.Remove(title);
+                        log?.Invoke($"UI ({title}) focus failed; clearing stale window entry.");
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(title))
+                    OpenWindows[title] = null; // placeholder reservation
+                return true;
+            }
+        }
+
         public static bool AlreadyOpened(string title, string version, Action<string> log)
         {
             lock (LockObj)
@@ -49,12 +79,15 @@ namespace FluentConfig.Core
                 try
                 {
                     FocusWindow(window);
+                    return true;
                 }
                 catch
                 {
-                    // Focus is best-effort; still report already-open so callers skip Create.
+                    // Stale / disposed window — drop registry entry so caller can open a fresh one.
+                    OpenWindows.Remove(title);
+                    log?.Invoke($"UI ({title}) focus failed; clearing stale window entry.");
+                    return false;
                 }
-                return true;
             }
         }
 
@@ -91,15 +124,6 @@ namespace FluentConfig.Core
                 var windows = OpenWindows.Values.Where(w => w != null).ToArray();
                 OpenWindows.Clear();
                 return windows;
-            }
-        }
-
-        /// <summary>Snapshot of currently open windows without clearing.</summary>
-        internal static Window[] SnapshotWindows()
-        {
-            lock (LockObj)
-            {
-                return OpenWindows.Values.Where(w => w != null).ToArray();
             }
         }
 

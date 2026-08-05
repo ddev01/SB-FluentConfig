@@ -398,8 +398,25 @@ namespace FluentConfig
             lock (SharedEnvLock)
             {
                 if (_sharedEnvironmentTask != null)
-                    return _sharedEnvironmentTask;
+                {
+                    if (_sharedEnvironmentTask.IsFaulted || _sharedEnvironmentTask.IsCanceled)
+                        _sharedEnvironmentTask = null;
+                    else
+                        return _sharedEnvironmentTask;
+                }
                 _sharedEnvironmentTask = CoreWebView2Environment.CreateAsync();
+                // If CreateAsync faults, clear the cache so a later window can retry.
+                _sharedEnvironmentTask.ContinueWith(t =>
+                {
+                    if (t.IsFaulted || t.IsCanceled)
+                    {
+                        lock (SharedEnvLock)
+                        {
+                            if (ReferenceEquals(_sharedEnvironmentTask, t))
+                                _sharedEnvironmentTask = null;
+                        }
+                    }
+                }, TaskContinuationOptions.ExecuteSynchronously);
                 return _sharedEnvironmentTask;
             }
         }

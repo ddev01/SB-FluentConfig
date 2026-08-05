@@ -105,14 +105,22 @@ namespace FluentConfig
             Action<FluentConfigUi> build,
             string iconPath = null)
         {
-            if (FluentConfigApp.AlreadyOpened(title, version))
+            if (!FluentConfigWindowManager.TryBeginOpen(title, version, FluentConfigApp.LogInternal))
                 return;
 
-            var ui = Create(cph, title, version);
-            if (!string.IsNullOrEmpty(iconPath))
-                ui.Icon(iconPath);
-            build?.Invoke(ui);
-            ui.Show();
+            try
+            {
+                var ui = Create(cph, title, version);
+                if (!string.IsNullOrEmpty(iconPath))
+                    ui.Icon(iconPath);
+                build?.Invoke(ui);
+                ui.Show();
+            }
+            catch
+            {
+                FluentConfigWindowManager.Unregister(title);
+                throw;
+            }
         }
 
         /// <summary>
@@ -121,6 +129,16 @@ namespace FluentConfig
         public FluentConfigUi Icon(string iconPath)
         {
             _session.SetIconPath(iconPath);
+            return this;
+        }
+
+        /// <summary>
+        /// Override the footer repo / docs URL for this UI (defaults to the build-time
+        /// <c>FluentConfigRepoUrl</c> property, else <c>https://example.test/fluentconfig</c>).
+        /// </summary>
+        public FluentConfigUi RepoUrl(string repoUrl)
+        {
+            _session.SetRepoUrl(repoUrl);
             return this;
         }
 
