@@ -34,7 +34,9 @@ public class CPHInline
         }
 
         var ui = FluentConfigUi.Create(CPH, ExtensionTitle, ExtensionVersion)
-            .WithUpdateCheck(GitHubRepo, ExtensionVersion, targetPath)
+            // Notify-only banner for tag-prefix releases (third-party extensions).
+            // For FluentConfig.dll self-update use .WithUpdateCheck(repo, version) instead.
+            .WithExtensionUpdateNotice(GitHubRepo, "example", ExtensionVersion)
             .Section("General", "General", s => s
                 .Intro("Example third-party extension settings. Update checks use FluentConfig's shared updater.")
                 .Toggle("Enable feature", "enabled")

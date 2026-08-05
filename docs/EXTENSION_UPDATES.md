@@ -14,9 +14,9 @@ FluentConfigUi.ShowOrFocus(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui =
 );
 ```
 
-- Uses GitHub `releases/latest` (one cheap fetch per open).
+- Uses GitHub `releases/latest` (one cheap fetch **after** the window is shown — never blocks open).
 - Targets **only** `FluentConfig.dll` — the path is hardcoded inside the host; callers cannot override it.
-- When an update is available, the UI shows an update notice in **`self`** mode. The user can stage the download; after Streamer.bot exits, `FluentConfig.UpdaterHelper.exe` swaps the staged file into place and relaunches.
+- When an update is available, the UI shows an update notice in **`self`** mode (via `update.available`). The user can stage the download; after Streamer.bot exits, `FluentConfig.UpdaterHelper.exe` swaps the staged file into place and relaunches.
 
 This path is for the FluentConfig framework itself, not for third-party extensions.
 

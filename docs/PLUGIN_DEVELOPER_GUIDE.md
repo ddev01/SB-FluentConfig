@@ -82,6 +82,18 @@ FluentConfig.FluentConfig.SetWindowClosedCallback((width, height) => { /* legacy
 FluentConfig.FluentConfig.SetWindowClosedCallback((left, top, width, height) => { /* full geometry */ });
 ```
 
+## Performance measurement
+
+For cold/warm open timing with a Release host built with `FC_PERF_TRACE`:
+
+1. Redeploy: `FluentConfig/scripts/Redeploy.ps1 -Configuration Release -PerfTrace`
+2. Paste an action template (Run on UI thread): minimal [`PERF_BENCHMARK_ACTION.cs.txt`](../FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt) or worst-case [`PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) — select via `PERF_ACTION_NAME` in the harness.
+3. Run the Node harness in [`FluentConfig/scripts/perf-benchmark/`](../FluentConfig/scripts/perf-benchmark/) — it drives Streamer.bot via Client WebSocket `DoAction` and reads the CPH global `FluentConfig_PerfLast` written on `web-ready`.
+
+See that folder’s README for cold (SB restart) vs warm (close window, no restart) procedure.
+
+Archived Release+PerfTrace baselines: [docs/performance/](performance/).
+
 ## References
 
 See [REFERENCES.md](REFERENCES.md) for assembly refs and Run on UI thread.
