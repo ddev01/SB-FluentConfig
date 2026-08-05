@@ -138,8 +138,19 @@ namespace FluentConfig.SmokeHost
         {
             var sb = Environment.GetEnvironmentVariable("STREAMER_BOT_PATH");
             if (string.IsNullOrWhiteSpace(sb))
-                sb = @"F:\Stream\Streamer.bot-x64-1.0.4";
-            if (!Directory.Exists(sb)) return;
+            {
+                var desktop = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    "Desktop",
+                    "Streamer.bot-x64-1.0.4");
+                var winget = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "WinGet", "Packages",
+                    "streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe");
+                if (Directory.Exists(desktop)) sb = desktop;
+                else if (Directory.Exists(winget)) sb = winget;
+            }
+            if (string.IsNullOrWhiteSpace(sb) || !Directory.Exists(sb)) return;
 
             AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
             {

@@ -49,9 +49,11 @@ function Resolve-StreamerBotPath {
     if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
     $candidates = @(
         "$env:USERPROFILE\Desktop\Streamer.bot-x64-1.0.4",
-        "F:\Stream\Streamer.bot-x64-1.0.4",
         "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe"
     )
+    if ($env:STREAMER_BOT_PATH) {
+        $candidates = @($env:STREAMER_BOT_PATH) + $candidates
+    }
     foreach ($c in $candidates) {
         if (Test-Path (Join-Path $c 'Microsoft.Web.WebView2.Wpf.dll')) { return $c }
     }

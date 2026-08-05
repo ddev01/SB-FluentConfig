@@ -5,9 +5,10 @@
     <IsPackable>false</IsPackable>
     <LangVersion>latest</LangVersion>
     <UseWPF>true</UseWPF>
-    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('F:\Stream\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll')">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and '$(STREAMER_BOT_PATH)' != ''">$(STREAMER_BOT_PATH)</StreamerBotPath>
     <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4\Streamer.bot.Plugin.Interface.dll')">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
-    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe\Streamer.bot.Plugin.Interface.dll')">$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
   </PropertyGroup>
 
   <ItemGroup>

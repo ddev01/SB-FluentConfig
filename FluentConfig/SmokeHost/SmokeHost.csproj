@@ -7,8 +7,10 @@
     <Nullable>disable</Nullable>
     <RootNamespace>FluentConfig.SmokeHost</RootNamespace>
     <AssemblyName>FluentConfig.SmokeHost</AssemblyName>
-    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('F:\Stream\Streamer.bot-x64-1.0.4\Microsoft.Web.WebView2.Wpf.dll')">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
-    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and '$(STREAMER_BOT_PATH)' != ''">$(STREAMER_BOT_PATH)</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4\Microsoft.Web.WebView2.Wpf.dll')">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe\Microsoft.Web.WebView2.Wpf.dll')">$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe</StreamerBotPath>
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Host\Host.csproj" />

@@ -18,12 +18,19 @@
     <DefineConstants Condition="'$(FluentConfigPerfTrace)' == 'true'">$(DefineConstants);FC_PERF_TRACE</DefineConstants>
 
     <!--
+      Footer / docs link injected into every UiDocument. Override with:
+        dotnet build -p:FluentConfigRepoUrl=https://example.test/your-fork
+      Default is a generic placeholder (privacy: no real org/repo as committed default).
+    -->
+    <FluentConfigRepoUrl Condition="'$(FluentConfigRepoUrl)' == ''">https://example.test/fluentconfig</FluentConfigRepoUrl>
+
+    <!--
       Resolve Streamer.bot install for compile-time refs (Plugin.Interface + WebView2).
       Override explicitly with:  dotnet build -p:StreamerBotPath=C:\path\to\Streamer.bot
-      Candidates are tried in order; first path that contains WebView2.Wpf.dll wins.
+      Or set env STREAMER_BOT_PATH. Candidates: env → Desktop portable → WinGet LOCALAPPDATA.
     -->
+    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and '$(STREAMER_BOT_PATH)' != ''">$(STREAMER_BOT_PATH)</StreamerBotPath>
     <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4\Microsoft.Web.WebView2.Wpf.dll')">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
-    <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('F:\Stream\Streamer.bot-x64-1.0.4\Microsoft.Web.WebView2.Wpf.dll')">F:\Stream\Streamer.bot-x64-1.0.4</StreamerBotPath>
     <StreamerBotPath Condition="'$(StreamerBotPath)' == '' and Exists('$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe\Microsoft.Web.WebView2.Wpf.dll')">$(LOCALAPPDATA)\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe</StreamerBotPath>
     <!-- Last-resort default (may fail the build if the folder is absent) -->
     <StreamerBotPath Condition="'$(StreamerBotPath)' == ''">$(USERPROFILE)\Desktop\Streamer.bot-x64-1.0.4</StreamerBotPath>
@@ -72,6 +79,21 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+
+  <!--
+    Emit FluentConfigBuildInfo.RepoUrl from -p:FluentConfigRepoUrl (default: generic placeholder).
+  -->
+  <Target Name="GenerateFluentConfigBuildInfo" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_FcBuildInfoPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(IntermediateOutputPath)FluentConfigBuildInfo.g.cs'))</_FcBuildInfoPath>
+      <_FcBuildInfoScript>$(MSBuildThisFileDirectory)scripts\GenerateBuildInfo.ps1</_FcBuildInfoScript>
+    </PropertyGroup>
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(_FcBuildInfoPath)'))" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(_FcBuildInfoScript)&quot; -OutPath &quot;$(_FcBuildInfoPath)&quot; -RepoUrl &quot;$(FluentConfigRepoUrl)&quot;" />
+    <ItemGroup>
+      <Compile Include="$(_FcBuildInfoPath)" />
+    </ItemGroup>
+  </Target>
 
   <!--
     Release: build the Vite single-file bundle and generate EmbeddedHtml.Bundle.g.cs so

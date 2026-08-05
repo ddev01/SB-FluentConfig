@@ -25,13 +25,17 @@ So FluentConfig compiles against Streamer.bot’s own WebView2 assemblies
 **Why not Costura / single-file packers:** unnecessary now — the managed dependency
 footprint is essentially Newtonsoft only — and risky around native WebView2 loading.
 
-**Build-time path:** `Host.csproj` resolves `$(StreamerBotPath)` via `Exists(...)`
-fallbacks (Desktop portable → `F:\Stream\Streamer.bot-x64-1.0.4` → WinGet package
-under `%LOCALAPPDATA%`). Override when needed:
+**Build-time path:** `Host.csproj` resolves `$(StreamerBotPath)` via env `STREAMER_BOT_PATH`,
+then Desktop portable / WinGet `%LOCALAPPDATA%` fallbacks. Override when needed:
 
 ```powershell
 dotnet build -p:StreamerBotPath=C:\path\to\Streamer.bot
+# or
+$env:STREAMER_BOT_PATH = 'C:\path\to\Streamer.bot'
 ```
+
+**Footer repo URL:** override the generic placeholder with
+`-p:FluentConfigRepoUrl=https://example.test/your-fork` or `FluentConfigUi.RepoUrl(...)`.
 
 **Runtime resilience:** `WebView2AssemblyResolve` hooks `AppDomain.AssemblyResolve` so
 if Streamer.bot later ships a different WebView2 version than we compiled against, we
