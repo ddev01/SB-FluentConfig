@@ -89,10 +89,3 @@ export interface SchemaPatchPayload {
   nodeId?: string;
   node: SchemaNode;
 }
-
-/** Typed bootstrap event. */
-export interface BootstrapEvent {
-  kind: 'event';
-  event: 'bootstrap';
-  payload: UiDocument;
-}

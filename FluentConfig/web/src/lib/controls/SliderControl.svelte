@@ -10,13 +10,20 @@
   let { node }: Props = $props();
   const fieldId = $derived(node.id ?? node.saveKey);
 
+  function clamp(n: number): number {
+    let v = n;
+    if (node.min !== undefined) v = Math.max(node.min, v);
+    if (node.max !== undefined) v = Math.min(node.max, v);
+    return v;
+  }
+
   let value = $derived(
-    Number(appStore.getValue(node.saveKey) ?? node.defaultValue ?? node.min),
+    clamp(Number(appStore.getValue(node.saveKey) ?? node.defaultValue ?? node.min ?? 0)),
   );
 
   function onInput(e: Event): void {
     const t = e.currentTarget as HTMLInputElement;
-    appStore.setValue(node.saveKey, Number(t.value));
+    appStore.setValue(node.saveKey, clamp(Number(t.value)));
   }
 </script>
 

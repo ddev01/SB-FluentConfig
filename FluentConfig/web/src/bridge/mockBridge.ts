@@ -181,9 +181,8 @@ export class MockWebView implements ChromeWebView {
       case RpcMethods.PillChanged: {
         const p = params as {
           saveKey: string;
-          action: 'add' | 'remove' | 'rename';
+          action: 'add' | 'remove';
           name: string;
-          previousName?: string;
           items: string[];
         };
         const node = this.findPillNode(p.saveKey);
@@ -208,10 +207,6 @@ export class MockWebView implements ChromeWebView {
 
       case RpcMethods.UpdateDismiss:
         this.dismissedUpdate = true;
-        return { ok: true };
-
-      case RpcMethods.Log:
-        console.info('[mock host log]', (params as { message?: string })?.message);
         return { ok: true };
 
       case RpcMethods.Toast:

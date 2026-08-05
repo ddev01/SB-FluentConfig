@@ -46,7 +46,7 @@
 
 <FieldShell label={node.label} hint={node.hint}>
   <ul class="space-y-2">
-    {#each items as item, index (index)}
+    {#each items as item, index (`${index}:${item}`)}
       <li class="flex gap-2">
         <input
           type="text"

@@ -18,7 +18,7 @@ const INLINE_RE =
   /(\*\*(.+?)\*\*|`([^`]+)`|\{(#[0-9A-Fa-f]{6})\|([^}]*)\}|\[([^\]]+)\]\(([^)]+)\))/g;
 
 /** Parse inline markup within a single line (already block-split). */
-export function parseInline(text: string): string {
+function parseInline(text: string): string {
   let out = '';
   let last = 0;
   INLINE_RE.lastIndex = 0;

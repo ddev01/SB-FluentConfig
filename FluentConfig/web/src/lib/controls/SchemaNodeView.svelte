@@ -29,6 +29,36 @@
 
   // Read values so visibility re-evaluates reactively when settings change.
   let visible = $derived(isVisible(node.visibility, appStore.values));
+
+  $effect(() => {
+    if (
+      import.meta.env.DEV &&
+      visible &&
+      node &&
+      ![
+        'toggle',
+        'textbox',
+        'slider',
+        'number-input',
+        'dropdown',
+        'color-picker',
+        'duration-input',
+        'filepath',
+        'pill-input',
+        'dynamic-textboxes',
+        'repeatable-rows',
+        'button',
+        'description',
+        'title',
+        'separator',
+        'update-notice',
+        'connection-status',
+        'group',
+      ].includes(node.type)
+    ) {
+      console.warn('[FluentConfig] unrecognized schema node type:', node.type, node);
+    }
+  });
 </script>
 
 {#if visible}
@@ -68,5 +98,13 @@
     <ConnectionStatusControl {node} />
   {:else if node.type === 'group'}
     <GroupControl {node} />
+  {:else}
+    {@const unknownType = (node as { type: string }).type}
+    <div
+      class="my-2 rounded-fc border border-dashed border-fc-warning/50 bg-fc-warning/10 px-3 py-2 text-sm text-fc-warning"
+      role="status"
+    >
+      Unsupported control type: {unknownType}
+    </div>
   {/if}
 {/if}

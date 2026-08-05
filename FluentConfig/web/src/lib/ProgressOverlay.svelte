@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { appStore } from '../store/app.svelte';
   import { fadeIn, scaleIn } from './motion';
 
@@ -11,7 +12,38 @@
     }
     return 0;
   });
+
+  let panelEl = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    if (p) {
+      void tick().then(() => panelEl?.focus());
+    }
+  });
+
+  function onKeydown(e: KeyboardEvent): void {
+    if (!p || e.key !== 'Tab' || !panelEl) return;
+    const focusable = panelEl.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) {
+      e.preventDefault();
+      panelEl.focus();
+      return;
+    }
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 {#if p}
   {@const progress = p}
@@ -23,7 +55,9 @@
     transition:fadeIn={{ duration: 0.15 }}
   >
     <div
+      bind:this={panelEl}
       class="fc-card w-full max-w-sm bg-fc-elevated/90 p-5 shadow-fc-glow"
+      tabindex="-1"
       transition:scaleIn={{ duration: 0.18 }}
     >
       <h2 id="progress-title" class="text-base font-semibold text-fc-text">

@@ -11,7 +11,7 @@ import type {
 import { PushEventNames, RpcMethods } from '../protocol';
 import { cloneJson } from '../lib/clone';
 import { deepEqual, diffEntries as computeDiffEntries, type DiffEntry } from '../lib/diff';
-import { applyPathMap, deepMerge, getPath, setPath } from '../lib/paths';
+import { applyPathMap, deepMerge, deletePath, getPath, setPath } from '../lib/paths';
 import { bindPerf, mark, unbindPerf } from '../lib/perf';
 import { applyColorScheme, watchSystemScheme } from '../lib/theme';
 import type { RpcClient } from '../rpc/client';
@@ -251,6 +251,13 @@ class AppStore {
     this.values = next;
   }
 
+  /** Remove a top-level or nested key from the live values blob. */
+  deleteValue(saveKey: string): void {
+    const next = cloneJson(this.values) as SettingsValues;
+    deletePath(next, saveKey);
+    this.values = next;
+  }
+
   /** Replace options on a dropdown node in the live document. */
   patchDropdownOptions(saveKey: string, options: { value: string; display: string }[]): void {
     if (!this.document) return;
@@ -366,6 +373,12 @@ class AppStore {
     if (patch.paths) applyPathMap(next, patch.paths);
     if (patch.values) deepMerge(next, patch.values as SettingsValues);
     this.values = next;
+    // Host-pushed patches are authoritative — mirror into savedValues so the form
+    // does not appear dirty without a user edit.
+    const saved = cloneJson(this.savedValues) as SettingsValues;
+    if (patch.paths) applyPathMap(saved, patch.paths);
+    if (patch.values) deepMerge(saved, patch.values as SettingsValues);
+    this.savedValues = saved;
   }
 
   private applyUpdateAvailable(payload: UpdateAvailablePayload): void {

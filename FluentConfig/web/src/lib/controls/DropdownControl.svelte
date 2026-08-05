@@ -52,6 +52,24 @@
         { saveKey: node.saveKey },
       );
       appStore.patchDropdownOptions(node.saveKey, result.options);
+
+      // If the current selection is no longer in the options list, clear it.
+      const opts = result.options ?? [];
+      const stillValid = opts.some(
+        (o) => o.value === selectedValue || o.display === selectedValue,
+      );
+      if (!stillValid && opts.length > 0) {
+        const first = opts[0]!;
+        if (node.valueSaveKey) {
+          appStore.setValue(node.saveKey, first.display);
+          appStore.setValue(node.valueSaveKey, first.value);
+        } else {
+          appStore.setValue(node.saveKey, first.value);
+        }
+      } else if (!stillValid) {
+        appStore.setValue(node.saveKey, '');
+        if (node.valueSaveKey) appStore.setValue(node.valueSaveKey, '');
+      }
     } catch (err) {
       appStore.pushToast(err instanceof Error ? err.message : 'Refresh failed');
     } finally {

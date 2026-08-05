@@ -5,7 +5,7 @@
 
 const SEGMENT = /([^[.\]]+)|\[(\d+)\]/g;
 
-export function splitPath(path: string): Array<string | number> {
+function splitPath(path: string): Array<string | number> {
   const parts: Array<string | number> = [];
   for (const match of path.matchAll(SEGMENT)) {
     if (match[1] !== undefined) parts.push(match[1]);
@@ -42,6 +42,36 @@ export function setPath(root: Record<string, unknown>, path: string, value: unkn
 
   const last = parts[parts.length - 1]!;
   cur[last as string] = value;
+}
+
+/** Delete a value at path (splices array indices; removes object keys). */
+export function deletePath(root: Record<string, unknown>, path: string): void {
+  const parts = splitPath(path);
+  if (parts.length === 0) return;
+
+  if (parts.length === 1) {
+    const key = parts[0]!;
+    if (typeof key === 'number' && Array.isArray(root)) {
+      if (key >= 0 && key < root.length) root.splice(key, 1);
+    } else {
+      delete root[key as string];
+    }
+    return;
+  }
+
+  let cur: unknown = root;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (cur == null || typeof cur !== 'object') return;
+    cur = (cur as Record<string | number, unknown>)[parts[i]! as string];
+  }
+  if (cur == null || typeof cur !== 'object') return;
+
+  const last = parts[parts.length - 1]!;
+  if (typeof last === 'number' && Array.isArray(cur)) {
+    if (last >= 0 && last < cur.length) cur.splice(last, 1);
+  } else {
+    delete (cur as Record<string, unknown>)[last as string];
+  }
 }
 
 /** Shallow path map into a deep object (values.patch.paths). */

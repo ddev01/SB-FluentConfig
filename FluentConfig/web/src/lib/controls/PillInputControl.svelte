@@ -2,7 +2,6 @@
   import type { PillInputNode, PillItemSchema, SchemaNode } from '../../protocol';
   import { RpcMethods } from '../../protocol';
   import type { PillChangedResult } from '../../protocol';
-  import { cloneJson } from '../clone';
   import { scaleIn } from '../motion';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
@@ -51,20 +50,16 @@
   }
 
   async function sync(
-    action: 'add' | 'remove' | 'rename',
+    action: 'add' | 'remove',
     name: string,
-    previousName?: string,
   ): Promise<void> {
     busy = true;
+    const previousItems = [...names];
     try {
       const items =
         action === 'add'
           ? [...names, name]
-          : action === 'remove'
-            ? names.filter((n) => n !== name)
-            : names.map((n) => (n === previousName ? name : n));
-
-      appStore.setValue(node.saveKey, items);
+          : names.filter((n) => n !== name);
 
       const result = await appStore.client().request<PillChangedResult>(
         RpcMethods.PillChanged,
@@ -72,25 +67,26 @@
           saveKey: node.saveKey,
           action,
           name,
-          previousName,
           items,
         },
       );
+
+      // Apply local mutation only after RPC success.
+      appStore.setValue(node.saveKey, items);
 
       if (result.items) {
         appStore.patchPillItems(node.saveKey, result.items);
       }
       if (result.removedKeys) {
         for (const key of result.removedKeys) {
-          const next = cloneJson(appStore.values);
-          delete next[key];
-          appStore.values = next;
+          appStore.deleteValue(key);
         }
       }
 
       if (action === 'add') selected = name;
       if (action === 'remove') selected = items[0] ?? null;
     } catch (err) {
+      appStore.setValue(node.saveKey, previousItems);
       appStore.pushToast(err instanceof Error ? err.message : 'Pill update failed');
     } finally {
       busy = false;

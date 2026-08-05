@@ -13,7 +13,6 @@ export const RpcMethods = {
   PillChanged: 'pill.changed',
   UpdateStage: 'update.stage',
   UpdateDismiss: 'update.dismiss',
-  Log: 'log',
   DialogConfirm: 'dialog.confirm',
   DialogPopup: 'dialog.popup',
   Toast: 'toast.show',
@@ -56,9 +55,8 @@ export interface FilepathBrowseResult {
 
 export interface PillChangedParams {
   saveKey: string;
-  action: 'add' | 'remove' | 'rename';
+  action: 'add' | 'remove';
   name: string;
-  previousName?: string;
   items: string[];
 }
 
@@ -74,10 +72,6 @@ export interface UpdateStageParams {
 
 export interface UpdateDismissParams {
   noticeId?: string;
-}
-
-export interface LogParams {
-  message: string;
 }
 
 export interface ConfirmParams {

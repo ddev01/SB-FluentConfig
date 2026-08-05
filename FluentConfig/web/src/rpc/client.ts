@@ -28,6 +28,18 @@ function parseMessage(data: unknown): WireMessage | null {
   return null;
 }
 
+export class RpcTimeoutError extends Error {
+  readonly method: string;
+  readonly timeoutMs: number;
+
+  constructor(method: string, timeoutMs: number) {
+    super(`RPC timeout after ${timeoutMs}ms: ${method}`);
+    this.name = 'RpcTimeoutError';
+    this.method = method;
+    this.timeoutMs = timeoutMs;
+  }
+}
+
 /**
  * Correlation-ID RPC + push-event subscriptions over `window.chrome.webview`
  * (or a mock with the same interface).
@@ -39,11 +51,14 @@ export class RpcClient {
     {
       resolve: (value: unknown) => void;
       reject: (reason: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
     }
   >();
   private readonly eventHandlers = new Map<string, Set<EventHandler>>();
   private incomingRequestHandler: IncomingRequestHandler | null = null;
   private readonly onMessage: (event: { data: unknown }) => void;
+  /** Default request timeout (ms). Override per-call via <c>request(..., { timeoutMs })</c>. */
+  defaultTimeoutMs = 60_000;
 
   constructor(private readonly bridge: ChromeWebView) {
     this.onMessage = (event) => this.handleRaw(event.data);
@@ -52,7 +67,8 @@ export class RpcClient {
 
   dispose(): void {
     this.bridge.removeEventListener('message', this.onMessage);
-    for (const { reject } of this.pending.values()) {
+    for (const { reject, timer } of this.pending.values()) {
+      clearTimeout(timer);
       reject(new Error('RpcClient disposed'));
     }
     this.pending.clear();
@@ -64,8 +80,13 @@ export class RpcClient {
     this.incomingRequestHandler = handler;
   }
 
-  request<T = unknown>(method: string, params?: unknown): Promise<T> {
+  request<T = unknown>(
+    method: string,
+    params?: unknown,
+    options?: { timeoutMs?: number },
+  ): Promise<T> {
     const id = this.nextId++;
+    const timeoutMs = options?.timeoutMs ?? this.defaultTimeoutMs;
     const msg: RpcRequest = {
       kind: WireKinds.Request,
       id,
@@ -74,9 +95,17 @@ export class RpcClient {
     };
 
     return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const entry = this.pending.get(id);
+        if (!entry) return;
+        this.pending.delete(id);
+        entry.reject(new RpcTimeoutError(method, timeoutMs));
+      }, timeoutMs);
+
       this.pending.set(id, {
         resolve: (v) => resolve(v as T),
         reject,
+        timer,
       });
       this.post(msg);
     });
@@ -124,6 +153,7 @@ export class RpcClient {
     const entry = this.pending.get(msg.id);
     if (!entry) return;
     this.pending.delete(msg.id);
+    clearTimeout(entry.timer);
     if (msg.error) {
       entry.reject(new Error(`${msg.error.code}: ${msg.error.message}`));
     } else {
