@@ -76,8 +76,12 @@ export interface UpdateAvailablePayload {
   currentVersion: string;
   latestVersion: string;
   releaseNotes?: string;
-  downloadUrl: string;
+  downloadUrl?: string;
   repo?: string;
+  /** Default `'self'` for back-compat. */
+  mode?: 'self' | 'notify';
+  /** Release HTML page; used when `mode === 'notify'`. */
+  releasePageUrl?: string;
 }
 
 export interface SchemaPatchPayload {

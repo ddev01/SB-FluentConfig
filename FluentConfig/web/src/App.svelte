@@ -12,6 +12,7 @@
   import { applyColorScheme } from './lib/theme';
   import { fadeIn, slideY } from './lib/motion';
   import NetworkBackground from './lib/NetworkBackground.svelte';
+  import { mark } from './lib/perf';
 
   // Dark default before bootstrap arrives (WebView2 / mock both send colorScheme).
   applyColorScheme('dark');
@@ -20,6 +21,7 @@
   let tablistEl = $state<HTMLElement | null>(null);
 
   onMount(() => {
+    mark('svelte-mount');
     const bridge = getBridge();
     rpc = new RpcClient(bridge);
     appStore.bind(rpc, isMockBridge());

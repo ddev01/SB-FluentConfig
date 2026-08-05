@@ -12,6 +12,7 @@ import { PushEventNames, RpcMethods } from '../protocol';
 import { cloneJson } from '../lib/clone';
 import { deepEqual, diffEntries as computeDiffEntries, type DiffEntry } from '../lib/diff';
 import { applyPathMap, deepMerge, getPath, setPath } from '../lib/paths';
+import { bindPerf, mark, unbindPerf } from '../lib/perf';
 import { applyColorScheme, watchSystemScheme } from '../lib/theme';
 import type { RpcClient } from '../rpc/client';
 
@@ -53,7 +54,6 @@ class AppStore {
   confirmDialog = $state<ConfirmDialogState | null>(null);
   popupDialog = $state<PopupDialogState | null>(null);
   discardDialog = $state<DiscardDialogState | null>(null);
-  private webReadyMarked = false;
 
   private rpc: RpcClient | null = null;
   private unsubSystem: (() => void) | null = null;
@@ -67,6 +67,8 @@ class AppStore {
   bind(rpc: RpcClient, usingMock: boolean): void {
     this.rpc = rpc;
     this.usingMock = usingMock;
+    bindPerf(rpc);
+    mark('rpc-bound');
 
     rpc.on(PushEventNames.Bootstrap, (payload) => {
       this.applyBootstrap(payload as UiDocument);
@@ -185,11 +187,7 @@ class AppStore {
 
   /** Mark first paint complete for host perf tracing (once). */
   markWebReady(): void {
-    if (this.webReadyMarked || !this.rpc) return;
-    this.webReadyMarked = true;
-    void this.rpc.request(RpcMethods.PerfMark, { name: 'web-ready' }).catch(() => {
-      /* fire-and-forget */
-    });
+    mark('web-ready');
   }
 
   diffEntries(): DiffEntry[] {
@@ -239,6 +237,7 @@ class AppStore {
     this.discardDialog = null;
     this.unsubSystem?.();
     this.unsubSystem = null;
+    unbindPerf();
     this.rpc = null;
   }
 
@@ -348,6 +347,7 @@ class AppStore {
 
   private applyBootstrap(doc: UiDocument): void {
     if (this.disposed) return;
+    mark('bootstrap-received');
     this.document = doc;
     const vals = cloneJson(doc.values) as SettingsValues;
     this.values = vals;
@@ -357,7 +357,7 @@ class AppStore {
     this.unsubSystem?.();
     applyColorScheme(doc.colorScheme);
     this.unsubSystem = watchSystemScheme(doc.colorScheme);
-    // Defer until after first paint so host perf.Web.Ready is meaningful.
+    // Defer until after first paint so web-ready is meaningful.
     requestAnimationFrame(() => this.markWebReady());
   }
 
@@ -377,9 +377,11 @@ class AppStore {
       currentVersion: payload.currentVersion,
       latestVersion: payload.latestVersion,
       releaseNotes: payload.releaseNotes,
-      downloadUrl: payload.downloadUrl,
+      downloadUrl: payload.downloadUrl ?? '',
       repo: payload.repo,
       dismissible: true,
+      mode: payload.mode ?? 'self',
+      releasePageUrl: payload.releasePageUrl,
     };
     const first = doc.sections[0];
     if (first) {

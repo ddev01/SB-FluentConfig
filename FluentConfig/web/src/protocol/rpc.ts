@@ -23,7 +23,7 @@ export const RpcMethods = {
   WindowClose: 'window.close',
   /** Web→Host fire-and-forget: open external URL in the OS browser. */
   ShellOpenUrl: 'shell.openUrl',
-  /** Web→Host fire-and-forget: perf phase mark (e.g. web-ready). */
+  /** Web→Host fire-and-forget: perf mark; only web-ready closes the host summary. */
   PerfMark: 'perf.mark',
 } as const;
 
