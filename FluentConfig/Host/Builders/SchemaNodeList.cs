@@ -10,8 +10,14 @@ namespace FluentConfig
     public sealed class SchemaNodeList
     {
         private readonly List<SchemaNode> _nodes = new List<SchemaNode>();
+        private readonly HashSet<string> _saveKeys = new HashSet<string>(StringComparer.Ordinal);
 
-        public IReadOnlyList<SchemaNode> Nodes => _nodes;
+        /// <summary>Reserves a saveKey for uniqueness within this list. Returns false if already used.</summary>
+        public bool TryReserveSaveKey(string saveKey)
+        {
+            if (string.IsNullOrEmpty(saveKey)) return true;
+            return _saveKeys.Add(saveKey);
+        }
 
         public void Add(SchemaNode node)
         {

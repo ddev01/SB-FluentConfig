@@ -21,7 +21,10 @@ namespace FluentConfig
 
         protected TWrapper Option(Action<IControlOptions> apply)
         {
-            if (PendingOptions != null && apply != null) apply(PendingOptions);
+            if (PendingOptions == null)
+                throw new InvalidOperationException(
+                    "No pending control to apply options to. Call a control method (e.g. .Toggle) before option methods, or avoid chaining options after structural calls like Intro/Separator.");
+            apply?.Invoke(PendingOptions);
             return (TWrapper)this;
         }
 
@@ -50,7 +53,6 @@ namespace FluentConfig
         public TWrapper Refresh(Func<IEnumerable<(string Value, string Display)>> callback) => Option(o => o.RefreshPairs(callback));
         public TWrapper Preset(string[] values) => Option(o => o.Preset(values));
         public TWrapper AllowDuplicates(bool value = true) => Option(o => o.AllowDuplicates(value));
-        public TWrapper ToggleDefault(bool value) => Option(o => o.ToggleDefault(value));
         public TWrapper Color(string hex) => Option(o => o.Color(hex));
         public TWrapper Text(string caption) => Option(o => o.Text(caption));
         public TWrapper OnClick(Action<UiContext> callback) => Option(o => o.OnClick(callback));
@@ -64,13 +66,11 @@ namespace FluentConfig
         public TWrapper WithSectionsPanel(Action<PanelBuilder> build) => ItemTemplate(build);
         public TWrapper OnPillAdded(Action<string, CallbackContext> callback) => Option(o => o.OnPillAdded(callback));
         public TWrapper OnPillRemoved(Action<string, CallbackContext> callback) => Option(o => o.OnPillRemoved(callback));
-        public TWrapper Type(string value) => Option(o => o.Type(value));
 
         public TWrapper Toggle(string label, string key) => Control(h => h.Toggle(label, key));
         public TWrapper Textbox(string label, string key) => Control(h => h.Textbox(label, key));
         public TWrapper Slider(string label, string key) => Control(h => h.Slider(label, key));
         public TWrapper Button(string label) => Control(h => h.Button(label));
-        public TWrapper Input(string label, string key) => Control(h => h.Input(label, key));
         public TWrapper IntegerInput(string label, string key) => Control(h => h.IntegerInput(label, key));
         public TWrapper DurationInput(string label, string key) => Control(h => h.DurationInput(label, key));
         public TWrapper Filepath(string label, string key) => Control(h => h.Filepath(label, key));

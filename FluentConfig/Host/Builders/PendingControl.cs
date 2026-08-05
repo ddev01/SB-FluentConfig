@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 using FluentConfig.Protocol;
 
 namespace FluentConfig
@@ -8,7 +8,7 @@ namespace FluentConfig
     /// <summary>
     /// Mutable pending control; flushed into a <see cref="SchemaNode"/> when the next control starts.
     /// </summary>
-    public sealed class PendingControl : IControlOptions
+    public sealed partial class PendingControl : IControlOptions
     {
         private enum Kind
         {
@@ -75,19 +75,38 @@ namespace FluentConfig
             _target = target;
         }
 
-        public void BeginToggle(string label, string key) { Reset(Kind.Toggle, label, key); }
-        public void BeginTextbox(string label, string key) { Reset(Kind.Textbox, label, key); }
-        public void BeginSlider(string label, string key) { Reset(Kind.Slider, label, key); }
-        public void BeginButton(string label) { Reset(Kind.Button, label, null); _buttonId = "btn_" + Guid.NewGuid().ToString("N").Substring(0, 8); }
-        public void BeginNumberInput(string label, string key) { Reset(Kind.NumberInput, label, key); _valueType = "double"; }
-        public void BeginIntegerInput(string label, string key) { Reset(Kind.IntegerInput, label, key); _valueType = "int"; }
-        public void BeginInput(string label, string key) { Reset(Kind.NumberInput, label, key); _valueType = "string"; }
-        public void BeginDurationInput(string label, string key) { Reset(Kind.DurationInput, label, key); }
-        public void BeginFilepath(string label, string key) { Reset(Kind.Filepath, label, key); }
-        public void BeginColorPicker(string label, string key) { Reset(Kind.ColorPicker, label, key); }
-        public void BeginDropdown(string label, string key) { Reset(Kind.Dropdown, label, key); }
-        public void BeginDynamicTextboxes(string label, string key) { Reset(Kind.DynamicTextboxes, label, key); }
-        public void BeginPillInput(string label, string key) { Reset(Kind.PillInput, label, key); }
+        public void BeginToggle(string label, string key) { Reset(Kind.Toggle, label, RequireSaveKey(key)); }
+        public void BeginTextbox(string label, string key) { Reset(Kind.Textbox, label, RequireSaveKey(key)); }
+        public void BeginSlider(string label, string key) { Reset(Kind.Slider, label, RequireSaveKey(key)); }
+        public void BeginButton(string label) { Reset(Kind.Button, label, null); _buttonId = StableButtonId(label); }
+        public void BeginNumberInput(string label, string key) { Reset(Kind.NumberInput, label, RequireSaveKey(key)); _valueType = "double"; }
+        public void BeginIntegerInput(string label, string key) { Reset(Kind.IntegerInput, label, RequireSaveKey(key)); _valueType = "int"; }
+        public void BeginDurationInput(string label, string key) { Reset(Kind.DurationInput, label, RequireSaveKey(key)); }
+        public void BeginFilepath(string label, string key) { Reset(Kind.Filepath, label, RequireSaveKey(key)); }
+        public void BeginColorPicker(string label, string key) { Reset(Kind.ColorPicker, label, RequireSaveKey(key)); }
+        public void BeginDropdown(string label, string key) { Reset(Kind.Dropdown, label, RequireSaveKey(key)); }
+        public void BeginDynamicTextboxes(string label, string key) { Reset(Kind.DynamicTextboxes, label, RequireSaveKey(key)); }
+        public void BeginPillInput(string label, string key) { Reset(Kind.PillInput, label, RequireSaveKey(key)); }
+
+        private static string RequireSaveKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("saveKey is required (non-null, non-empty).", nameof(key));
+            return key.Trim();
+        }
+
+        private static string StableButtonId(string label)
+        {
+            var slug = string.IsNullOrWhiteSpace(label) ? "button" : label.Trim().ToLowerInvariant();
+            var sb = new StringBuilder("btn_");
+            foreach (var ch in slug)
+            {
+                if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+                else if (ch == ' ' || ch == '-' || ch == '_') sb.Append('_');
+            }
+            if (sb.Length <= 4) sb.Append("action");
+            return sb.ToString();
+        }
 
         private void Reset(Kind kind, string label, string key)
         {
@@ -135,6 +154,13 @@ namespace FluentConfig
         public void Flush()
         {
             if (_kind == Kind.None) return;
+            if (_kind != Kind.Button && string.IsNullOrWhiteSpace(_saveKey))
+                throw new InvalidOperationException($"Control '{_label}' ({_kind}) requires a non-empty saveKey.");
+            if (_kind != Kind.Button && !_target.TryReserveSaveKey(_saveKey))
+                throw new InvalidOperationException($"Duplicate saveKey '{_saveKey}' within the same section/panel.");
+            if (_kind == Kind.Toggle && _exclusiveOptions != null && _exclusiveOptions.Length > 0 && _defaultBool.HasValue)
+                throw new InvalidOperationException(
+                    "Cannot combine .Default(bool) with .WithExclusive(...). Use .DefaultIndex / .DefaultIndices instead.");
             var node = BuildNode();
             if (node != null)
             {
@@ -153,244 +179,6 @@ namespace FluentConfig
         }
 
         private static string _saveKeyPath(string key) => key ?? "";
-
-        private SchemaNode BuildNode()
-        {
-            switch (_kind)
-            {
-                case Kind.Toggle:
-                    return BuildToggle();
-                case Kind.Textbox:
-                    return new TextboxNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        DefaultValue = _defaultString,
-                        Password = _password,
-                        Multiline = _multiline,
-                    };
-                case Kind.Slider:
-                    return new SliderNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        Min = _rangeMinInt ?? 0,
-                        Max = _rangeMaxInt ?? 100,
-                        DefaultValue = _defaultInt,
-                    };
-                case Kind.Button:
-                    var btn = new ButtonNode
-                    {
-                        Id = _buttonId,
-                        Label = _label,
-                        Hint = _hint,
-                        Text = _buttonText ?? "OK",
-                        Color = _colorHex,
-                    };
-                    if (_onClick != null)
-                        _session.RegisterButtonClick(_buttonId, _onClick);
-                    return btn;
-                case Kind.NumberInput:
-                case Kind.IntegerInput:
-                    return new NumberInputNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        ValueType = _valueType ?? "double",
-                        Min = _rangeMinDbl ?? _rangeMinInt,
-                        Max = _rangeMaxDbl ?? _rangeMaxInt,
-                        Step = _step,
-                        DefaultValue = (object)_defaultDouble ?? _defaultInt ?? (object)_defaultString,
-                        Stepper = _stepper,
-                    };
-                case Kind.DurationInput:
-                    return new DurationInputNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        DefaultValue = _defaultString,
-                        PermanentOption = _permanentOption,
-                    };
-                case Kind.Filepath:
-                    return new FilepathNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        DefaultValue = _defaultString,
-                    };
-                case Kind.ColorPicker:
-                    return new ColorPickerNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        DefaultValue = _defaultString,
-                    };
-                case Kind.Dropdown:
-                    return BuildDropdown();
-                case Kind.DynamicTextboxes:
-                    return new DynamicTextboxesNode
-                    {
-                        Id = _saveKey,
-                        Label = _label,
-                        SaveKey = _saveKey,
-                        Hint = _hint,
-                        Preset = _preset,
-                        AllowDuplicates = _allowDuplicates,
-                    };
-                case Kind.PillInput:
-                    return BuildPill();
-                default:
-                    return null;
-            }
-        }
-
-        private ToggleNode BuildToggle()
-        {
-            var node = new ToggleNode
-            {
-                Id = _saveKey,
-                Label = _label,
-                SaveKey = _saveKey,
-                Hint = _hint,
-            };
-            if (_exclusiveOptions != null && _exclusiveOptions.Length > 0)
-            {
-                node.Exclusive = new ExclusiveToggleOptions
-                {
-                    Options = _exclusiveOptions,
-                    MaxSelected = _maxSelected,
-                    DefaultIndex = _defaultIndices != null && _defaultIndices.Length == 1 ? _defaultIndices[0] : (int?)null,
-                    DefaultIndices = _defaultIndices,
-                };
-            }
-            else
-            {
-                node.DefaultValue = _defaultBool;
-            }
-            return node;
-        }
-
-        private DropdownNode BuildDropdown()
-        {
-            IList<DropdownOption> opts = null;
-            if (_pairOptions != null)
-            {
-                opts = _pairOptions.Select(p => new DropdownOption { Value = p.Value, Display = p.Display }).ToList();
-            }
-            else if (_options != null)
-            {
-                opts = _options.Select(o => new DropdownOption { Value = o, Display = o }).ToList();
-            }
-
-            var node = new DropdownNode
-            {
-                Id = _saveKey,
-                Label = _label,
-                SaveKey = _saveKey,
-                Hint = _hint,
-                Options = opts,
-                ValueSaveKey = _valueKey,
-                Refreshable = _refresh != null || _refreshPairs != null,
-                DefaultIndex = _defaultIndex,
-                DefaultByValue = _defaultByValue,
-            };
-
-            if (_refresh != null || _refreshPairs != null)
-            {
-                _session.RegisterDropdownRefresh(_saveKey, () =>
-                {
-                    if (_refreshPairs != null)
-                    {
-                        return _refreshPairs()?.Select(p => new DropdownOption { Value = p.Value, Display = p.Display }).ToList()
-                               ?? (IList<DropdownOption>)Array.Empty<DropdownOption>();
-                    }
-                    var arr = _refresh?.Invoke() ?? Array.Empty<string>();
-                    return arr.Select(o => new DropdownOption { Value = o, Display = o }).ToList();
-                });
-            }
-
-            return node;
-        }
-
-        private PillInputNode BuildPill()
-        {
-            IList<SchemaNode> template = null;
-            if (_itemTemplate != null)
-            {
-                var list = new SchemaNodeList();
-                var pb = new PanelBuilder(_session, list);
-                _itemTemplate(pb);
-                pb.FlushPending();
-                template = list.ToList();
-            }
-
-            var node = new PillInputNode
-            {
-                Id = _saveKey,
-                Label = _label,
-                SaveKey = _saveKey,
-                Hint = _hint,
-                ItemTemplate = template,
-            };
-
-            _session.RegisterPillCallbacks(_saveKey, template, _onPillAdded, _onPillRemoved);
-            return node;
-        }
-
-        // ── IControlOptions ──
-
-        public void Hint(string text) => _hint = text;
-        public void Default(bool value) => _defaultBool = value;
-        public void Default(string value) => _defaultString = value;
-        public void Default(int value) => _defaultInt = value;
-        public void Default(double value) => _defaultDouble = value;
-        public void Range(int min, int max) { _rangeMinInt = min; _rangeMaxInt = max; }
-        public void Range(double min, double max) { _rangeMinDbl = min; _rangeMaxDbl = max; }
-        public void Step(double value) => _step = value;
-        public void Password() => _password = true;
-        public void Multiline() => _multiline = true;
-        public void ShowWhen(string key) => _showWhenKey = key;
-        public void Options(string[] options) { _options = options; _pairOptions = null; }
-        public void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions)
-        {
-            _pairOptions = pairOptions?.ToList();
-            _options = _pairOptions?.Select(p => p.Display).ToArray();
-        }
-        public void WithPairValue(string valueKey) => _valueKey = valueKey;
-        public void DefaultByValue(string value) => _defaultByValue = value;
-        public void DefaultIndex(int index) { _defaultIndex = index; _defaultIndices = new[] { index }; }
-        public void WithExclusive(string[] options) => _exclusiveOptions = options ?? Array.Empty<string>();
-        public void MaxSelected(int n) => _maxSelected = Math.Max(1, n);
-        public void DefaultIndices(int[] indices) => _defaultIndices = indices;
-        public void Refresh(Func<string[]> callback) { _refresh = callback; _refreshPairs = null; }
-        public void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback)
-        {
-            _refresh = null;
-            _refreshPairs = callback;
-        }
-        public void Preset(string[] values) => _preset = values;
-        public void AllowDuplicates(bool value) => _allowDuplicates = value;
-        public void ToggleDefault(bool value) => _defaultBool = value;
-        public void Color(string hex) => _colorHex = hex;
-        public void Text(string caption) => _buttonText = caption;
-        public void OnClick(Action<UiContext> callback) => _onClick = callback;
-        public void WithPermanentOption(bool value) => _permanentOption = value;
-        public void WithStepper(bool value = true) => _stepper = value;
-        public void ItemTemplate(Action<PanelBuilder> build) => _itemTemplate = build;
-        public void OnPillAdded(Action<string, CallbackContext> callback) => _onPillAdded = callback;
-        public void OnPillRemoved(Action<string, CallbackContext> callback) => _onPillRemoved = callback;
-        public void Type(string value) => _valueType = value;
     }
 }
+

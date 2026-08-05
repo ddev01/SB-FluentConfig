@@ -63,7 +63,9 @@ namespace FluentConfig.Core
                 var nextIsIndex = i + 1 < parts.Length && int.TryParse(parts[i + 1], out _);
                 if (int.TryParse(part, out int index))
                 {
-                    if (!(current is JArray arr)) return;
+                    if (!(current is JArray arr))
+                        throw new InvalidOperationException(
+                            $"Settings path type mismatch at '{part}' in '{path}': expected array.");
                     while (arr.Count <= index) arr.Add(new JObject());
                     current = arr[index];
                 }
@@ -71,20 +73,41 @@ namespace FluentConfig.Core
                 {
                     if (obj[part] == null)
                         obj[part] = nextIsIndex ? (JToken)new JArray() : new JObject();
+                    else if (nextIsIndex && !(obj[part] is JArray))
+                        throw new InvalidOperationException(
+                            $"Settings path type mismatch at '{part}' in '{path}': expected array.");
+                    else if (!nextIsIndex && obj[part] != null && !(obj[part] is JObject) && i < parts.Length - 1)
+                        throw new InvalidOperationException(
+                            $"Settings path type mismatch at '{part}' in '{path}': expected object.");
+                    // If existing token is wrong type for nesting, fail clearly.
+                    if (!(obj[part] is JObject) && !(obj[part] is JArray) && i < parts.Length - 1)
+                        throw new InvalidOperationException(
+                            $"Settings path type mismatch at '{part}' in '{path}': cannot nest into {obj[part]?.Type}.");
                     current = obj[part];
                 }
-                else return;
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"Settings path type mismatch in '{path}': cannot navigate into {current?.Type}.");
+                }
             }
             var last = parts[parts.Length - 1];
             if (int.TryParse(last, out int lastIdx))
             {
-                if (!(current is JArray arr)) return;
+                if (!(current is JArray arr))
+                    throw new InvalidOperationException(
+                        $"Settings path type mismatch writing '{path}': expected array.");
                 while (arr.Count <= lastIdx) arr.Add(null);
                 arr[lastIdx] = value;
             }
             else if (current is JObject obj)
             {
                 obj[last] = value;
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Settings path type mismatch writing '{path}': parent is {current?.Type}.");
             }
         }
 
@@ -125,7 +148,7 @@ namespace FluentConfig.Core
             if (int.TryParse(last, out int lastIdx))
             {
                 if (current is JArray arr && lastIdx >= 0 && lastIdx < arr.Count)
-                    arr[lastIdx] = null;
+                    arr.RemoveAt(lastIdx);
             }
             else if (current is JObject obj)
             {

@@ -18,8 +18,6 @@ namespace FluentConfig
             _pendingValues = pendingValues;
         }
 
-        internal void SetPendingValues(JObject values) => _pendingValues = values;
-
         /// <summary>Gets the current value of a control by saveKey (from the latest values snapshot).</summary>
         public T Pending<T>(string key)
         {

@@ -30,9 +30,6 @@ namespace FluentConfig.Protocol
         /// <summary>User dismissed the update-notice banner. Params: <see cref="UpdateDismissParams"/>.</summary>
         public const string UpdateDismiss = "update.dismiss";
 
-        /// <summary>Forward a log line to the host log callback. Params: <see cref="LogParams"/>.</summary>
-        public const string Log = "log";
-
         /// <summary>
         /// In-app Exit button asks the host to close. Params: <see cref="WindowCloseParams"/>.
         /// When <c>alreadyConfirmed</c> is true, host skips the <see cref="WindowCloseRequested"/> round-trip.
@@ -116,15 +113,12 @@ namespace FluentConfig.Protocol
         [JsonProperty("saveKey")]
         public string SaveKey { get; set; }
 
-        /// <summary>"add" | "remove" | "rename"</summary>
+        /// <summary>"add" | "remove"</summary>
         [JsonProperty("action")]
         public string Action { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; }
-
-        [JsonProperty("previousName")]
-        public string PreviousName { get; set; }
 
         /// <summary>Full current pill name list after the change.</summary>
         [JsonProperty("items")]
@@ -155,12 +149,6 @@ namespace FluentConfig.Protocol
     {
         [JsonProperty("noticeId")]
         public string NoticeId { get; set; }
-    }
-
-    public sealed class LogParams
-    {
-        [JsonProperty("message")]
-        public string Message { get; set; }
     }
 
     public sealed class ConfirmParams

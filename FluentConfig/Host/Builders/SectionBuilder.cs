@@ -63,25 +63,7 @@ namespace FluentConfig
         /// </summary>
         public SectionBuilder WithVisibility(string toggleKey, Action<PanelBuilder> build, bool inverted = false)
         {
-            FlushPending();
-            if (build == null) return this;
-
-            var list = new SchemaNodeList();
-            var pb = new PanelBuilder(Session, list);
-            build(pb);
-            pb.FlushPending();
-
-            Nodes.Add(new GroupNode
-            {
-                Id = "vis_" + (toggleKey ?? "group"),
-                Visibility = new VisibilityCondition
-                {
-                    SaveKey = toggleKey,
-                    EqualsValue = true,
-                    Inverted = inverted,
-                },
-                Children = list.ToList(),
-            });
+            SchemaBuilderHelpers.AddVisibilityGroup(Session, Nodes, FlushPending, toggleKey, build, inverted);
             return this;
         }
 
@@ -92,20 +74,7 @@ namespace FluentConfig
         /// <summary>Adds a repeatable-rows control with a relative row schema.</summary>
         public SectionBuilder WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow)
         {
-            FlushPending();
-            if (buildRow == null) return this;
-
-            var list = new SchemaNodeList();
-            var pb = new PanelBuilder(Session, list);
-            buildRow(pb);
-            pb.FlushPending();
-
-            Nodes.Add(new RepeatableRowsNode
-            {
-                Id = saveKey,
-                SaveKey = saveKey,
-                RowSchema = list.ToList(),
-            });
+            SchemaBuilderHelpers.AddRepeatableRows(Session, Nodes, FlushPending, saveKey, buildRow);
             return this;
         }
 

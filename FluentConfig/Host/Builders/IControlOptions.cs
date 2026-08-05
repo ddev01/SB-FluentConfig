@@ -32,7 +32,6 @@ namespace FluentConfig
         void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback);
         void Preset(string[] values);
         void AllowDuplicates(bool value);
-        void ToggleDefault(bool value);
         void Color(string hex);
         void Text(string caption);
         void OnClick(Action<UiContext> callback);
@@ -47,6 +46,5 @@ namespace FluentConfig
         void OnPillAdded(Action<string, CallbackContext> callback);
         /// <summary>Invoked when a pill is removed; receives item name + callback context (no Panel).</summary>
         void OnPillRemoved(Action<string, CallbackContext> callback);
-        void Type(string value);
     }
 }

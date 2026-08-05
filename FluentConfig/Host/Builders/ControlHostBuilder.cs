@@ -86,7 +86,6 @@ namespace FluentConfig
         public TWrapper Textbox(string label, string key) => Begin(p => p.BeginTextbox(label, key));
         public TWrapper Slider(string label, string key) => Begin(p => p.BeginSlider(label, key));
         public TWrapper Button(string label) => Begin(p => p.BeginButton(label));
-        public TWrapper Input(string label, string key) => Begin(p => p.BeginInput(label, key));
         public TWrapper IntegerInput(string label, string key) => Begin(p => p.BeginIntegerInput(label, key));
         public TWrapper DurationInput(string label, string key) => Begin(p => p.BeginDurationInput(label, key));
         public TWrapper Filepath(string label, string key) => Begin(p => p.BeginFilepath(label, key));

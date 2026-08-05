@@ -8,8 +8,9 @@ namespace FluentConfig.Helpers
 {
     /// <summary>
     /// Pure validation/formatting helpers (no WPF).
+    /// Not yet wired into the RPC/save path — kept as experimental utilities for authors/tests.
     /// </summary>
-    public static class InputValidation
+    internal static class InputValidation
     {
         private static readonly NumberFormatInfo CommaFormat = new NumberFormatInfo { NumberDecimalSeparator = "," };
 

@@ -13,14 +13,21 @@ namespace FluentConfig
         public PanelFluentWrapper Intro(string text) { Host.FlushPending(); Host.Intro(text); return Next(); }
         public PanelFluentWrapper Separator() { Host.FlushPending(); Host.Separator(); return Next(); }
 
-        public PanelFluentWrapper WithVisibility(string toggleKey, Action<PanelBuilder> build)
+        public PanelFluentWrapper ConnectionStatus(
+            string label,
+            string initialStatus,
+            string buttonText = null,
+            Action<UiContext> onClick = null)
         {
             Host.FlushPending();
-            Host.WithVisibility(toggleKey, build);
+            Host.ConnectionStatus(label, initialStatus, buttonText, onClick);
             return Next();
         }
 
-        public PanelFluentWrapper WithVisibility(string toggleKey, Action<PanelBuilder> build, bool inverted)
+        /// <summary>
+        /// Visibility group. Prefer <c>inverted: true</c> (named) or <see cref="WithVisibilityWhenOff"/>.
+        /// </summary>
+        public PanelFluentWrapper WithVisibility(string toggleKey, Action<PanelBuilder> build, bool inverted = false)
         {
             Host.FlushPending();
             Host.WithVisibility(toggleKey, build, inverted);

@@ -5,9 +5,9 @@ namespace FluentConfig.Helpers
 {
     /// <summary>
     /// Pure duration string parser ("30seconds", "5m", "permanent").
-    /// Replaces the WPF-coupled ControlExtractionHelper.ParseDuration surface.
+    /// Not yet wired into the RPC/save path — kept as an experimental utility for authors/tests.
     /// </summary>
-    public static class DurationParsing
+    internal static class DurationParsing
     {
         /// <summary>
         /// Parses a duration string into (numeric value, unit index).

@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 
 namespace FluentConfig.Protocol
@@ -31,7 +30,6 @@ namespace FluentConfig.Protocol
                 // Schema nodes are polymorphic on "type"; converter handles read/write.
             };
             settings.Converters.Add(new SchemaNodeConverter());
-            settings.Converters.Add(new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() });
             return settings;
         }
     }
