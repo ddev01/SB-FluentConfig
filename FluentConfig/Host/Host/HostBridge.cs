@@ -27,6 +27,21 @@ namespace FluentConfig
             _window.NavigationCompleted += OnNavigationCompleted;
         }
 
+        /// <summary>
+        /// Unsubscribe window events and cancel in-flight request waits before WebView2 dispose.
+        /// </summary>
+        public void Detach()
+        {
+            _window.WebMessageReceived -= OnWebMessage;
+            _window.NavigationCompleted -= OnNavigationCompleted;
+
+            foreach (var pair in _pending)
+            {
+                if (_pending.TryRemove(pair.Key, out var tcs))
+                    tcs.TrySetResult(null);
+            }
+        }
+
         public void Start(UiDocument document)
         {
             _window.SetBootstrapDocument(document);

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,7 @@ namespace FluentConfig
         private readonly WebView2 _webView;
         private UiDocument _pendingBootstrap;
         private readonly string _colorScheme;
+        private bool _webViewDisposed;
 
         public event Action<string> WebMessageReceived;
         public event Action NavigationCompleted;
@@ -66,6 +68,92 @@ namespace FluentConfig
             return doc;
         }
 
+        /// <summary>
+        /// Dispose WebView2 on the UI thread while the COM controller is still alive.
+        /// Leaving it to <see cref="System.Windows.Interop.HwndHost"/>'s finalizer crashes
+        /// Streamer.bot on shutdown (InvalidCastException / E_NOINTERFACE).
+        /// </summary>
+        /// <remarks>
+        /// WebView2.Dispose can throw when the COM controller is already torn down during
+        /// host exit. We always <see cref="GC.SuppressFinalize"/> afterward so the broken
+        /// HwndHost finalizer cannot run and take down Streamer.bot (WebView2Feedback #2420).
+        /// </remarks>
+        internal void DisposeWebViewCore()
+        {
+            if (_webViewDisposed) return;
+
+            if (!Dispatcher.CheckAccess())
+            {
+                try
+                {
+                    Dispatcher.Invoke(DisposeWebViewCore);
+                }
+                catch (Exception ex)
+                {
+                    // Dispatcher may already be shutting down — still kill the finalizer.
+                    _webViewDisposed = true;
+                    try { GC.SuppressFinalize(_webView); }
+                    catch { /* ignore */ }
+                    FluentConfigApp.LogInternal(
+                        "[FluentConfig] WebView2 dispose marshal failed: " + ex.Message);
+                }
+                return;
+            }
+
+            if (_webViewDisposed) return;
+            _webViewDisposed = true;
+
+            try
+            {
+                if (ReferenceEquals(Content, _webView))
+                    Content = null;
+
+                TryCloseCoreWebView2Controller();
+                _webView.Dispose();
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal("[FluentConfig] WebView2 dispose: " + ex.Message);
+            }
+            finally
+            {
+                // Critical: Dispose(true) can throw before WebView2 reaches SuppressFinalize.
+                // Without this, HwndHost.Finalize → Dispose(false) fatals Streamer.bot.
+                try { GC.SuppressFinalize(_webView); }
+                catch { /* ignore */ }
+            }
+        }
+
+        /// <summary>
+        /// Best-effort controller.Close() before Dispose, via the WPF control's public surface
+        /// when available. Failures are ignored — Dispose / SuppressFinalize handle the rest.
+        /// </summary>
+        private void TryCloseCoreWebView2Controller()
+        {
+            try
+            {
+                var core = _webView.CoreWebView2;
+                if (core == null) return;
+
+                // WPF WebView2 does not expose Controller publicly on all SB-bundled builds.
+                // Stop the page so in-flight work does not touch a dying COM object.
+                core.Stop();
+            }
+            catch
+            {
+                // Environment may already be gone during Streamer.bot shutdown.
+            }
+        }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            // base raises Closing first (session Detach), then we dispose WebView2
+            // while the COM controller is still alive — before HWND teardown.
+            base.OnClosing(e);
+            if (!e.Cancel)
+                DisposeWebViewCore();
+        }
+
         private void ApplyIcon(string iconPath)
         {
             try
@@ -98,10 +186,13 @@ namespace FluentConfig
         /// </summary>
         internal void BeginNavigate()
         {
+            if (_webViewDisposed) return;
+
             // BeginInvoke installs DispatcherSynchronizationContext for the callback,
             // which Streamer.bot's WebView2 treats as "event loop has started".
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
+                if (_webViewDisposed) return;
                 _ = EnsureAndNavigateSafeAsync();
             }));
         }
@@ -110,6 +201,8 @@ namespace FluentConfig
         {
             try
             {
+                if (_webViewDisposed) return;
+
                 EnsureDispatcherSyncContext();
 
                 if (!IsLoaded)
@@ -123,6 +216,7 @@ namespace FluentConfig
                     };
                     Loaded += handler;
                     await tcs.Task.ConfigureAwait(true);
+                    if (_webViewDisposed) return;
                     EnsureDispatcherSyncContext();
                 }
 
@@ -130,6 +224,7 @@ namespace FluentConfig
             }
             catch (Exception ex)
             {
+                if (_webViewDisposed) return;
                 Content = new TextBlock
                 {
                     Text = "WebView2 init failed:\n" + ex,
@@ -151,12 +246,23 @@ namespace FluentConfig
 
         private async Task EnsureAndNavigateAsync()
         {
+            if (_webViewDisposed) return;
+
             await _webView.EnsureCoreWebView2Async(null);
+            if (_webViewDisposed || _webView.CoreWebView2 == null) return;
+
+            // WebView2Feedback #2420: HwndHost.Finalize → Dispose(false) fatals if the COM
+            // controller is already gone (typical Streamer.bot shutdown). We always dispose
+            // ourselves on close/host-exit; suppressing the finalizer makes a missed teardown
+            // a leak instead of a process-killing Fatal UI Exception.
+            GC.SuppressFinalize(_webView);
+
             _webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             _webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
             _webView.CoreWebView2.WebMessageReceived += (s, args) =>
             {
+                if (_webViewDisposed) return;
                 try
                 {
                     // Prefer string posts (web RpcClient JSON.stringifies). Fall back to
@@ -175,7 +281,12 @@ namespace FluentConfig
 
             _webView.CoreWebView2.NavigationCompleted += (s, args) =>
             {
-                Dispatcher.BeginInvoke(new Action(() => NavigationCompleted?.Invoke()));
+                if (_webViewDisposed) return;
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (!_webViewDisposed)
+                        NavigationCompleted?.Invoke();
+                }));
             };
 
 #if DEBUG
@@ -188,12 +299,13 @@ namespace FluentConfig
 
         internal void PostWebMessage(string json)
         {
-            if (_webView?.CoreWebView2 == null) return;
+            if (_webViewDisposed || _webView?.CoreWebView2 == null) return;
             if (!Dispatcher.CheckAccess())
             {
                 Dispatcher.BeginInvoke(new Action(() => PostWebMessage(json)));
                 return;
             }
+            if (_webViewDisposed || _webView.CoreWebView2 == null) return;
             _webView.CoreWebView2.PostWebMessageAsJson(json);
         }
     }

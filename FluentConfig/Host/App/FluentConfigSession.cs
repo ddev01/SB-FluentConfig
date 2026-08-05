@@ -18,6 +18,10 @@ namespace FluentConfig
     /// </summary>
     public sealed class FluentConfigSession
     {
+        private static readonly object HostExitHookLock = new object();
+        private static bool _hostExitHookRegistered;
+        private static FluentConfigHostWindow _activeWindowForHostExit;
+
         private readonly IInlineInvokeProxy _cph;
         private readonly string _title;
         private readonly string _version;
@@ -168,7 +172,9 @@ namespace FluentConfig
             var colorScheme = document?.ColorScheme ?? "dark";
             _window = new FluentConfigHostWindow(_title, _version, geometry, _iconPath, colorScheme);
             _bridge = new HostBridge(_window, this);
+            _window.Closing += OnWindowClosing;
             _window.Closed += OnWindowClosed;
+            RegisterActiveWindowForHostExit(_window);
 
             _perfTracer.BeginPhase("Window.Show");
             _window.Show();
@@ -256,9 +262,18 @@ namespace FluentConfig
             return ProtocolJson.Deserialize<List<SchemaNode>>(json) ?? new List<SchemaNode>();
         }
 
+        private void OnWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // Detach before WebView2 Dispose (FluentConfigHostWindow.OnClosing) so no
+            // in-flight bridge work touches a half-dead controller.
+            _bridge?.Detach();
+        }
+
         private void OnWindowClosed(object sender, EventArgs e)
         {
             FluentConfigWindowManager.SetOpened(false);
+            UnregisterActiveWindowForHostExit(_window);
+
             if (_window != null)
             {
                 var geometry = WindowGeometryStore.FromWindow(_window);
@@ -270,9 +285,108 @@ namespace FluentConfig
                     : new Rect(_window.Left, _window.Top, _window.Width, _window.Height);
                 FluentConfigWindowManager.InvokeWindowClosedCallback(
                     bounds.Left, bounds.Top, bounds.Width, bounds.Height);
+
+                // Idempotent safety net if Closing was skipped somehow.
+                _window.DisposeWebViewCore();
             }
+
             _bridge = null;
             _window = null;
+        }
+
+        private static void RegisterActiveWindowForHostExit(FluentConfigHostWindow window)
+        {
+            if (window == null) return;
+            lock (HostExitHookLock)
+            {
+                _activeWindowForHostExit = window;
+                EnsureHostExitHookLocked();
+            }
+        }
+
+        private static void UnregisterActiveWindowForHostExit(FluentConfigHostWindow window)
+        {
+            lock (HostExitHookLock)
+            {
+                if (ReferenceEquals(_activeWindowForHostExit, window))
+                    _activeWindowForHostExit = null;
+            }
+        }
+
+        private static void EnsureHostExitHookLocked()
+        {
+            if (_hostExitHookRegistered) return;
+            var app = Application.Current;
+            if (app == null) return;
+
+            _hostExitHookRegistered = true;
+
+            // MainWindow.Closing fires before Application.Exit / WebView2 env teardown —
+            // dispose our control while COM is still alive.
+            var main = app.MainWindow;
+            if (main != null)
+                main.Closing += OnHostMainWindowClosing;
+
+            app.SessionEnding += (_, __) => CloseActiveWindowForHostExit();
+            app.Exit += (_, __) => CloseActiveWindowForHostExit();
+            app.Dispatcher.ShutdownStarted += (_, __) => CloseActiveWindowForHostExit();
+        }
+
+        private static void OnHostMainWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            CloseActiveWindowForHostExit();
+        }
+
+        private static void CloseActiveWindowForHostExit()
+        {
+            FluentConfigHostWindow window;
+            lock (HostExitHookLock)
+            {
+                window = _activeWindowForHostExit;
+                // Clear first so re-entrant Exit/ShutdownStarted/Closing hooks no-op.
+                _activeWindowForHostExit = null;
+            }
+            if (window == null) return;
+
+            try
+            {
+                void Teardown()
+                {
+                    try
+                    {
+                        FluentConfigApp.LogInternal(
+                            "[FluentConfig] Host exit — disposing WebView2 before Streamer.bot teardown");
+                        // Dispose first (SuppressFinalize even if COM is already dead), then Close.
+                        window.DisposeWebViewCore();
+                        window.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        FluentConfigApp.LogInternal(
+                            "[FluentConfig] Host-exit WebView2 teardown: " + ex.Message);
+                        try { window.DisposeWebViewCore(); }
+                        catch { /* already shutting down */ }
+                    }
+                }
+
+                if (window.Dispatcher.CheckAccess())
+                    Teardown();
+                else
+                {
+                    try { window.Dispatcher.Invoke(Teardown); }
+                    catch
+                    {
+                        // Last resort off the UI thread: still suppress the fatal finalizer.
+                        try { window.DisposeWebViewCore(); }
+                        catch { /* ignore */ }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal(
+                    "[FluentConfig] Host-exit WebView2 teardown failed: " + ex.Message);
+            }
         }
 
         // ── Values / settings ──
