@@ -1,76 +1,116 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using FluentConfig.Core;
 using Xunit;
 
 namespace FluentConfig.Tests
 {
     /// <summary>
-    /// Behavior spec for duplicate-window guard + thread-safe static state.
+    /// Per-title window registry and close callbacks.
     /// </summary>
     public class FluentConfigWindowManagerTests
     {
         [Fact]
         public void AlreadyOpened_WhenNotOpen_ReturnsFalse()
         {
-            FluentConfigWindowManager.SetOpened(false);
-            try
+            RunSta(() =>
             {
-                Assert.False(FluentConfigWindowManager.AlreadyOpened("Test", "1.0", null));
-            }
-            finally
-            {
-                FluentConfigWindowManager.SetOpened(false);
-            }
+                ClearWindows();
+                try
+                {
+                    Assert.False(FluentConfigWindowManager.AlreadyOpened("Test", "1.0", null));
+                }
+                finally
+                {
+                    ClearWindows();
+                }
+            });
         }
 
         [Fact]
-        public void AlreadyOpened_WhenOpen_ReturnsTrue()
+        public void AlreadyOpened_DifferentTitles_AreIndependent()
         {
-            FluentConfigWindowManager.SetOpened(true);
-            try
+            RunSta(() =>
             {
-                Assert.True(FluentConfigWindowManager.AlreadyOpened("Test", "1.0", null));
-            }
-            finally
+                ClearWindows();
+                try
+                {
+                    FluentConfigWindowManager.Register("Title A", new Window());
+                    Assert.False(FluentConfigWindowManager.AlreadyOpened("Title B", "1.0", null));
+                    Assert.True(FluentConfigWindowManager.AlreadyOpened("Title A", "1.0", null));
+                }
+                finally
+                {
+                    ClearWindows();
+                }
+            });
+        }
+
+        [Fact]
+        public void AlreadyOpened_SameTitle_ReturnsTrueWithoutAffectingOtherTitle()
+        {
+            RunSta(() =>
             {
-                FluentConfigWindowManager.SetOpened(false);
-            }
+                ClearWindows();
+                try
+                {
+                    FluentConfigWindowManager.Register("Title A", new Window());
+                    FluentConfigWindowManager.Register("Title B", new Window());
+
+                    Assert.True(FluentConfigWindowManager.AlreadyOpened("Title A", "2.0", null));
+                    Assert.False(FluentConfigWindowManager.AlreadyOpened("Title C", "1.0", null));
+                    Assert.True(FluentConfigWindowManager.IsOpen);
+                }
+                finally
+                {
+                    ClearWindows();
+                }
+            });
         }
 
         [Fact]
         public void AlreadyOpened_WhenOpen_InvokesLog()
         {
-            FluentConfigWindowManager.SetOpened(true);
-            string loggedMessage = null;
-            try
+            RunSta(() =>
             {
-                FluentConfigWindowManager.AlreadyOpened("MyPlugin", "2.0", msg => loggedMessage = msg);
-                Assert.NotNull(loggedMessage);
-                Assert.Contains("MyPlugin", loggedMessage);
-                Assert.Contains("2.0", loggedMessage);
-            }
-            finally
-            {
-                FluentConfigWindowManager.SetOpened(false);
-            }
+                ClearWindows();
+                string loggedMessage = null;
+                try
+                {
+                    FluentConfigWindowManager.Register("MyPlugin", new Window());
+                    FluentConfigWindowManager.AlreadyOpened("MyPlugin", "2.0", msg => loggedMessage = msg);
+                    Assert.NotNull(loggedMessage);
+                    Assert.Contains("MyPlugin", loggedMessage);
+                    Assert.Contains("2.0", loggedMessage);
+                }
+                finally
+                {
+                    ClearWindows();
+                }
+            });
         }
 
         [Fact]
-        public void IsOpen_ReflectsSetOpened()
+        public void IsOpen_ReflectsRegisteredWindows()
         {
-            FluentConfigWindowManager.SetOpened(false);
-            Assert.False(FluentConfigWindowManager.IsOpen);
-
-            FluentConfigWindowManager.SetOpened(true);
-            try
+            RunSta(() =>
             {
-                Assert.True(FluentConfigWindowManager.IsOpen);
-            }
-            finally
-            {
-                FluentConfigWindowManager.SetOpened(false);
-            }
+                ClearWindows();
+                try
+                {
+                    Assert.False(FluentConfigWindowManager.IsOpen);
+                    FluentConfigWindowManager.Register("One", new Window());
+                    Assert.True(FluentConfigWindowManager.IsOpen);
+                    FluentConfigWindowManager.Register("Two", new Window());
+                    Assert.True(FluentConfigWindowManager.IsOpen);
+                }
+                finally
+                {
+                    ClearWindows();
+                }
+            });
         }
 
         [Fact]
@@ -91,7 +131,7 @@ namespace FluentConfig.Tests
             finally
             {
                 FluentConfigWindowManager.SetWindowClosedCallback((Action<double, double>)null);
-                FluentConfigWindowManager.SetOpened(false);
+                ClearWindows();
             }
         }
 
@@ -117,7 +157,7 @@ namespace FluentConfig.Tests
             finally
             {
                 FluentConfigWindowManager.SetWindowClosedCallback((Action<double, double, double, double>)null);
-                FluentConfigWindowManager.SetOpened(false);
+                ClearWindows();
             }
         }
 
@@ -130,22 +170,57 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
-        public void ConcurrentSetOpened_DoesNotThrowOrCorrupt()
+        public void ConcurrentIsOpen_DoesNotThrow()
         {
-            FluentConfigWindowManager.SetOpened(false);
+            RunSta(() =>
+            {
+                ClearWindows();
+                FluentConfigWindowManager.Register("Concurrent-A", new Window());
+                FluentConfigWindowManager.Register("Concurrent-B", new Window());
+            });
+
             try
             {
-                Parallel.For(0, 100, i =>
+                Parallel.For(0, 100, _ =>
                 {
-                    FluentConfigWindowManager.SetOpened(i % 2 == 0);
-                    _ = FluentConfigWindowManager.IsOpen;
-                    FluentConfigWindowManager.AlreadyOpened("Concurrent", "1.0", null);
+                    var open = FluentConfigWindowManager.IsOpen;
+                    Assert.True(open);
                 });
             }
             finally
             {
-                FluentConfigWindowManager.SetOpened(false);
+                RunSta(ClearWindows);
             }
+        }
+
+        private static void ClearWindows()
+        {
+            var windows = FluentConfigWindowManager.TakeAllWindows();
+            foreach (var w in windows)
+            {
+                try { w?.Close(); } catch { /* ignore */ }
+            }
+        }
+
+        private static void RunSta(Action action)
+        {
+            Exception error = null;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    error = ex;
+                }
+            });
+            thread.SetApartmentState(ApartmentState.STA);
+            thread.Start();
+            thread.Join();
+            if (error != null)
+                throw error;
         }
     }
 }
