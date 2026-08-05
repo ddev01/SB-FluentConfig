@@ -17,7 +17,15 @@ FluentConfigUi.Create(CPH, "My Extension", "1.0")
     .Show();
 ```
 
-Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals, and you read them back at runtime with `GetValue<T>()`.
+Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`FluentConfig_Settings_{title}`).
+
+**Reading values at runtime** depends on context:
+
+| Context | API |
+|---------|-----|
+| After the user opens/saves the UI | `CPH.GetGlobalVar<string>("FluentConfig_Settings_{title}", true)` then parse JSON |
+| Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)` |
+| Pill `OnAdded` / `OnRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
 
 ## Quick Start
 
@@ -65,13 +73,19 @@ Outputs land in `FluentConfig/Host/bin/{Debug|Release}/net481/FluentConfig.dll`.
 
 ## Documentation
 
+See the index at [docs/README.md](docs/README.md). Highlights:
+
 | Document | Contents |
 |----------|----------|
-| [docs/PLUGIN_DEVELOPER_GUIDE.md](docs/PLUGIN_DEVELOPER_GUIDE.md) | Integration guide: Create, Section, Show, GetValue, pills, updater |
+| [docs/PLUGIN_DEVELOPER_GUIDE.md](docs/PLUGIN_DEVELOPER_GUIDE.md) | Integration guide: Create, Section, Show, pills, updater |
+| [docs/EXTENSION_UPDATES.md](docs/EXTENSION_UPDATES.md) | Self-update vs notify-only extension update paths |
 | [docs/REFERENCES.md](docs/REFERENCES.md) | Assembly reference setup for Streamer.bot C# actions |
+| [docs/performance/README.md](docs/performance/README.md) | Cold/warm open baselines and how to remeasure |
 | [FluentConfig/PROTOCOL.md](FluentConfig/PROTOCOL.md) | Host ↔ web message contract |
 | [FluentConfig/Host/PACKAGING.md](FluentConfig/Host/PACKAGING.md) | Deploy footprint (FluentConfig.dll + Newtonsoft; WebView2 from Streamer.bot) |
 | [FluentConfig/ARCHITECTURE.md](FluentConfig/ARCHITECTURE.md) | Module boundaries and design notes |
+| [FluentConfig/README.md](FluentConfig/README.md) | Host/web package overview |
+| [examples/README.md](examples/README.md) | Example action index |
 
 ## Examples
 
@@ -79,5 +93,6 @@ Outputs land in `FluentConfig/Host/bin/{Debug|Release}/net481/FluentConfig.dll`.
 |---------|--------------|
 | `SimpleExample.cs` | Minimal setup: toggle, textbox, slider |
 | `MediumExample.cs` | Dropdown, slider, button, `ShowWhen` visibility |
+| `DevPreviewExample.cs` | Mirrors the localhost mock document for in-SB comparison |
 | `CompleteExample.cs` | Broad control surface (including Pill / schema nesting) |
-| `UpdaterExample.cs` | GitHub release check / stage-and-swap helper |
+| `UpdaterExample.cs` | Notify-only extension update banner (`WithExtensionUpdateNotice`) |
