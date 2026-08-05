@@ -50,30 +50,29 @@ namespace FluentConfig.UpdaterHelper
             // Brief settle for file locks to release.
             Thread.Sleep(1000);
 
+            var backupPath = targetPath + ".bak";
             try
             {
                 if (File.Exists(targetPath))
                 {
-                    var backup = targetPath + ".bak";
-                    try
-                    {
-                        if (File.Exists(backup)) File.Delete(backup);
-                        File.Move(targetPath, backup);
-                    }
-                    catch
-                    {
-                        // Fall through and try overwrite.
-                    }
+                    // Atomic replace: destination → backup, source → destination, source deleted.
+                    // On failure, restore target from backup if it was removed.
+                    File.Replace(stagedPath, targetPath, backupPath, ignoreMetadataErrors: true);
                 }
-
-                if (File.Exists(targetPath))
-                    File.Delete(targetPath);
-
-                File.Move(stagedPath, targetPath);
+                else
+                {
+                    // No existing target — simple move is fine.
+                    if (File.Exists(backupPath))
+                    {
+                        try { File.Delete(backupPath); } catch { /* ignore */ }
+                    }
+                    File.Move(stagedPath, targetPath);
+                }
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine("Swap failed: " + ex.Message);
+                TryRestoreFromBackup(targetPath, backupPath);
                 return 3;
             }
 
@@ -96,6 +95,23 @@ namespace FluentConfig.UpdaterHelper
             }
 
             return 0;
+        }
+
+        private static void TryRestoreFromBackup(string targetPath, string backupPath)
+        {
+            try
+            {
+                if (File.Exists(targetPath))
+                    return;
+                if (!File.Exists(backupPath))
+                    return;
+                File.Copy(backupPath, targetPath, overwrite: true);
+                Console.Error.WriteLine("Restored target from backup: " + backupPath);
+            }
+            catch (Exception restoreEx)
+            {
+                Console.Error.WriteLine("Restore from backup failed: " + restoreEx.Message);
+            }
         }
     }
 }

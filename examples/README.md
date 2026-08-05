@@ -9,6 +9,6 @@ Use **Execute C# Method** with **Run on UI thread** enabled. Assembly refs: see 
 | **MediumExample.cs** | Dropdown, slider, button, `ShowWhen`. |
 | **DevPreviewExample.cs** | Mirrors `localhost:5173` mock document (General / Inputs / Lists) for in-Streamer.bot comparison. |
 | **CompleteExample.cs** | Full control surface with Pill / `WithVisibility` APIs (schema sub-builders — no raw WPF `Panel`). |
-| **UpdaterExample.cs** | Third-party extension author using `CheckForUpdate` / `EnsureInstalled` / stage-and-swap. |
+| **UpdaterExample.cs** | Notify-only extension update banner (`WithExtensionUpdateNotice`). |
 
 Call patterns match [PROTOCOL.md](../FluentConfig/PROTOCOL.md).

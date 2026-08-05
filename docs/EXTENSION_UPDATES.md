@@ -106,6 +106,18 @@ var ext = GitHubUpdater.CheckForTaggedRelease("example-org/my-extension", "my-ex
 
 Both return `null` on network or parse failure — failures are silent by design so a bad connection never blocks opening settings.
 
+## Version comparison notes
+
+`GitHubUpdater.IsNewer` / tag comparison use a **dotted-numeric** compare after stripping all non-digit characters (except dots). Pre-release / build metadata is invisible:
+
+| Candidate | Current | Result |
+|-----------|---------|--------|
+| `1.0.1` | `1.0.0` | newer |
+| `1.0.0-rc1` | `1.0.0` | **equal** (both normalize to `1.0.0`) |
+| `1.0.0-beta` | `0.9.0` | newer (compares as `1.0.0` vs `0.9.0`) |
+
+Do not rely on pre-release ordering for update checks; publish distinct numeric versions for each shippable release.
+
 ## See also
 
 - [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md) — general authoring

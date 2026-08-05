@@ -43,8 +43,21 @@ namespace FluentConfig.Updater
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(helper) ?? Environment.CurrentDirectory,
             };
-            Process.Start(psi);
-            return true;
+            try
+            {
+                var proc = Process.Start(psi);
+                if (proc == null)
+                {
+                    FluentConfigApp.LogInternal("[FluentConfig] UpdaterHelper Process.Start returned null.");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal("[FluentConfig] UpdaterHelper launch failed: " + ex.Message);
+                return false;
+            }
         }
 
         private static string FindHelperExe()

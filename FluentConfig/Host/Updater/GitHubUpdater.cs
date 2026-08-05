@@ -294,24 +294,103 @@ namespace FluentConfig.Updater
 
         private static void DownloadToFile(string url, string path)
         {
-            var bytes = Http.GetByteArrayAsync(url).GetAwaiter().GetResult();
-            File.WriteAllBytes(path, bytes);
+            if (!IsAllowedDownloadUrl(url))
+                throw new InvalidOperationException("Download URL is not on the allowed host list (https GitHub release assets).");
+
+            const long maxBytes = 64L * 1024 * 1024; // 64 MiB — generous for a single managed DLL
+            using (var response = Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).GetAwaiter().GetResult())
+            {
+                response.EnsureSuccessStatusCode();
+                var contentLength = response.Content.Headers.ContentLength;
+                if (contentLength.HasValue && contentLength.Value > maxBytes)
+                    throw new InvalidOperationException($"Update asset exceeds size cap ({maxBytes} bytes).");
+
+                using (var remote = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                using (var ms = new MemoryStream())
+                {
+                    var buffer = new byte[81920];
+                    long total = 0;
+                    int read;
+                    while ((read = remote.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        total += read;
+                        if (total > maxBytes)
+                            throw new InvalidOperationException($"Update asset exceeds size cap ({maxBytes} bytes).");
+                        ms.Write(buffer, 0, read);
+                    }
+
+                    var bytes = ms.ToArray();
+                    if (!LooksLikePeImage(bytes))
+                        throw new InvalidOperationException("Downloaded update is not a valid PE image (MZ/PE header check failed).");
+
+                    File.WriteAllBytes(path, bytes);
+                }
+            }
         }
 
         /// <summary>
-        /// Picks a single downloadable asset URL from a GitHub release JSON object.
-        /// Self-update only (expects one primary .dll asset). Prefer a .dll
-        /// <c>browser_download_url</c>; otherwise the first asset URL, else <c>zipball_url</c>.
+        /// True when <paramref name="url"/> is https and targets a known GitHub download host,
+        /// or (for tests) the host of the current <see cref="ApiBaseUrl"/> override / loopback.
+        /// </summary>
+        public static bool IsAllowedDownloadUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url)) return false;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) return false;
+
+            // Test / mock escape hatch: ApiBaseUrl override or explicit env allows that host (incl. http loopback).
+            var apiBase = ApiBaseUrl;
+            if (Uri.TryCreate(apiBase, UriKind.Absolute, out var apiUri)
+                && !string.Equals(apiUri.Host, "api.github.com", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(uri.Host, apiUri.Host, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return IsGitHubDownloadHost(uri.Host);
+        }
+
+        private static bool IsGitHubDownloadHost(string host)
+        {
+            if (string.IsNullOrEmpty(host)) return false;
+            // github.com release links + objects/release-assets CDNs
+            if (host.Equals("github.com", StringComparison.OrdinalIgnoreCase)) return true;
+            if (host.Equals("objects.githubusercontent.com", StringComparison.OrdinalIgnoreCase)) return true;
+            if (host.Equals("release-assets.githubusercontent.com", StringComparison.OrdinalIgnoreCase)) return true;
+            if (host.Equals("github-releases.githubusercontent.com", StringComparison.OrdinalIgnoreCase)) return true;
+            if (host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>Minimal DOS/PE sanity check before staging a self-update DLL.</summary>
+        internal static bool LooksLikePeImage(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length < 64) return false;
+            if (bytes[0] != (byte)'M' || bytes[1] != (byte)'Z') return false;
+
+            int peOffset = BitConverter.ToInt32(bytes, 0x3C);
+            if (peOffset < 0 || peOffset + 4 > bytes.Length) return false;
+            return bytes[peOffset] == (byte)'P'
+                   && bytes[peOffset + 1] == (byte)'E'
+                   && bytes[peOffset + 2] == 0
+                   && bytes[peOffset + 3] == 0;
+        }
+
+        /// <summary>
+        /// Picks a single .dll downloadable asset URL from a GitHub release JSON object.
+        /// Self-update only — never falls back to <c>zipball_url</c> (source archive).
+        /// Returns null when no .dll asset exists (treat as no update available).
         /// Not used by <see cref="CheckForTaggedRelease"/> (notify-only / no download).
         /// </summary>
-        private static string PickAssetUrl(JObject release)
+        internal static string PickAssetUrl(JObject release)
         {
+            if (release == null) return null;
             var assets = release["assets"] as JArray;
             if (assets == null || assets.Count == 0)
-                return release.Value<string>("zipball_url");
+                return null;
 
-            // Prefer a .dll asset; otherwise first browser_download_url.
-            string fallback = null;
             foreach (var asset in assets)
             {
                 var name = asset.Value<string>("name") ?? "";
@@ -319,9 +398,8 @@ namespace FluentConfig.Updater
                 if (string.IsNullOrEmpty(url)) continue;
                 if (name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                     return url;
-                if (fallback == null) fallback = url;
             }
-            return fallback;
+            return null;
         }
 
         private static string StripV(string version)
