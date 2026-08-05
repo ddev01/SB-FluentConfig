@@ -179,7 +179,8 @@ namespace FluentConfig.Tests
             _tempDir = Path.Combine(Path.GetTempPath(), "FluentConfigUpdaterTest_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_tempDir);
             _assetPath = Path.Combine(_tempDir, "ExampleExtension.dll");
-            _assetBytes = new byte[] { 0x4D, 0x5A, 0x90, 0x00, 0x01, 0x02, 0x03, 0x04 }; // tiny fake PE header-ish
+            // Minimal valid PE stub (MZ + e_lfanew → PE\0\0) for DownloadToFile sanity check.
+            _assetBytes = CreateMinimalPeBytes();
 
             _listener = new HttpListener();
             // Port 0 is not supported by HttpListener prefixes; pick a free port.
@@ -363,6 +364,20 @@ namespace FluentConfig.Tests
             var port = ((IPEndPoint)listener.LocalEndpoint).Port;
             listener.Stop();
             return port;
+        }
+
+        /// <summary>Minimal PE image that passes <c>GitHubUpdater.LooksLikePeImage</c>.</summary>
+        private static byte[] CreateMinimalPeBytes()
+        {
+            var bytes = new byte[128];
+            bytes[0] = (byte)'M';
+            bytes[1] = (byte)'Z';
+            BitConverter.GetBytes(0x40).CopyTo(bytes, 0x3C);
+            bytes[0x40] = (byte)'P';
+            bytes[0x41] = (byte)'E';
+            bytes[0x42] = 0;
+            bytes[0x43] = 0;
+            return bytes;
         }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using FluentConfig.Core;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -5,54 +6,18 @@ using Xunit;
 namespace FluentConfig.Tests
 {
     /// <summary>
-    /// Spec for the simplified sync flow: receive a flat/nested values blob from the web
-    /// (save RPC), merge via SettingsPathHelper, persist via SettingsManager.
-    /// Replaces WPF control-tree walking in the old SettingsSynchronizer.
-    ///
-    /// replace local merge helper with the real Host API.
+    /// Exercises the real Host save-merge path:
+    /// <see cref="SettingsPathHelper.MergeValues"/> and <see cref="SettingsSync.ApplyAndSave"/>.
     /// </summary>
     public class SettingsMergeTests
     {
-        /// <summary>
-        /// Intended Host save path until SettingsManager owns this: apply each
-        /// top-level / nested path from a values blob onto an existing settings object.
-        /// </summary>
-        private static JObject MergeValuesBlob(JObject existing, JObject valuesBlob)
+        private static SettingsManager CreateManager(JObject seed = null)
         {
-            var result = existing != null ? (JObject)existing.DeepClone() : new JObject();
-            if (valuesBlob == null) return result;
-
-            void Walk(JToken token, string path)
-            {
-                if (token is JObject obj)
-                {
-                    foreach (var prop in obj.Properties())
-                    {
-                        var childPath = string.IsNullOrEmpty(path) ? prop.Name : path + "." + prop.Name;
-                        if (prop.Value is JObject || prop.Value is JArray)
-                            Walk(prop.Value, childPath);
-                        else
-                            SettingsPathHelper.SetNestedValue(result, childPath, prop.Value);
-                    }
-                }
-                else if (token is JArray arr)
-                {
-                    // Whole arrays under a saveKey (pill-input, dynamic-textboxes) replace by path.
-                    SettingsPathHelper.SetNestedValue(result, path, arr.DeepClone());
-                }
-            }
-
-            foreach (var prop in valuesBlob.Properties())
-            {
-                if (prop.Value is JObject nested)
-                    Walk(nested, prop.Name);
-                else if (prop.Value is JArray arr)
-                    SettingsPathHelper.SetNestedValue(result, prop.Name, arr.DeepClone());
-                else
-                    SettingsPathHelper.SetNestedValue(result, prop.Name, prop.Value);
-            }
-
-            return result;
+            // null CPH: Save is a no-op; ReplaceSettings / GetSettings exercise the merge path.
+            var mgr = new SettingsManager(null, "FluentConfig_Settings_MergeTest");
+            if (seed != null)
+                mgr.ReplaceSettings((JObject)seed.DeepClone());
+            return mgr;
         }
 
         [Fact]
@@ -61,10 +26,11 @@ namespace FluentConfig.Tests
             var existing = new JObject { ["keep"] = "yes", ["volume"] = 10 };
             var blob = new JObject { ["volume"] = 50 };
 
-            var merged = MergeValuesBlob(existing, blob);
+            var target = (JObject)existing.DeepClone();
+            SettingsPathHelper.MergeValues(target, blob);
 
-            Assert.Equal("yes", merged["keep"]?.ToString());
-            Assert.Equal(50, merged["volume"]?.Value<int>());
+            Assert.Equal("yes", target["keep"]?.ToString());
+            Assert.Equal(50, target["volume"]?.Value<int>());
         }
 
         [Fact]
@@ -73,12 +39,24 @@ namespace FluentConfig.Tests
             var existing = JObject.Parse(@"{ ""settings"": { ""timeout"": 10, ""retries"": 3 } }");
             var blob = JObject.Parse(@"{ ""settings"": { ""timeout"": 30 } }");
 
-            var merged = MergeValuesBlob(existing, blob);
+            var target = (JObject)existing.DeepClone();
+            SettingsPathHelper.MergeValues(target, blob);
 
-            Assert.Equal(30, merged["settings"]?["timeout"]?.Value<int>());
-            // Current merge walks nested objects and only writes visited leaves —
-            // sibling "retries" is preserved because we deep-cloned existing first.
-            Assert.Equal(3, merged["settings"]?["retries"]?.Value<int>());
+            Assert.Equal(30, target["settings"]?["timeout"]?.Value<int>());
+            Assert.Equal(3, target["settings"]?["retries"]?.Value<int>());
+        }
+
+        [Fact]
+        public void ApplyAndSave_PersistsMergedBlob()
+        {
+            var mgr = CreateManager(new JObject { ["keep"] = "yes", ["volume"] = 10 });
+            var blob = new JObject { ["volume"] = 50 };
+
+            var saved = SettingsSync.ApplyAndSave(mgr, blob);
+
+            Assert.Equal("yes", saved["keep"]?.ToString());
+            Assert.Equal(50, saved["volume"]?.Value<int>());
+            Assert.Equal(50, mgr.GetSettings()?["volume"]?.Value<int>());
         }
 
         [Fact]
@@ -88,19 +66,22 @@ namespace FluentConfig.Tests
             SettingsPathHelper.SetNestedValue(existing, "rows[0].name", "Old");
             SettingsPathHelper.SetNestedValue(existing, "rows[0].amount", 1);
 
-            var blob = new JObject();
-            // Simulate web save of nested-path style values (host may flatten before merge).
-            SettingsPathHelper.SetNestedValue(blob, "rows[0].name", "New");
-            SettingsPathHelper.SetNestedValue(blob, "rows[0].amount", 99);
-            SettingsPathHelper.SetNestedValue(blob, "rows[1].name", "Second");
-            SettingsPathHelper.SetNestedValue(blob, "rows[1].amount", 5);
+            // Whole-array replace via MergeValues (how save blobs typically arrive).
+            var blob = new JObject
+            {
+                ["rows"] = new JArray
+                {
+                    new JObject { ["name"] = "New", ["amount"] = 99 },
+                    new JObject { ["name"] = "Second", ["amount"] = 5 },
+                }
+            };
 
-            var merged = MergeValuesBlob(existing, blob);
+            SettingsPathHelper.MergeValues(existing, blob);
 
-            Assert.Equal("New", merged["rows"]?[0]?["name"]?.ToString());
-            Assert.Equal(99, merged["rows"]?[0]?["amount"]?.Value<int>());
-            Assert.Equal("Second", merged["rows"]?[1]?["name"]?.ToString());
-            Assert.Equal(5, merged["rows"]?[1]?["amount"]?.Value<int>());
+            Assert.Equal("New", existing["rows"]?[0]?["name"]?.ToString());
+            Assert.Equal(99, existing["rows"]?[0]?["amount"]?.Value<int>());
+            Assert.Equal("Second", existing["rows"]?[1]?["name"]?.ToString());
+            Assert.Equal(5, existing["rows"]?[1]?["amount"]?.Value<int>());
         }
 
         [Fact]
@@ -109,20 +90,48 @@ namespace FluentConfig.Tests
             var existing = new JObject { ["test_items"] = new JArray("Alpha") };
             var blob = new JObject { ["test_items"] = new JArray("Alpha", "Beta") };
 
-            var merged = MergeValuesBlob(existing, blob);
+            SettingsPathHelper.MergeValues(existing, blob);
 
-            var arr = Assert.IsType<JArray>(merged["test_items"]);
+            var arr = Assert.IsType<JArray>(existing["test_items"]);
             Assert.Equal(2, arr.Count);
             Assert.Equal("Beta", arr[1]?.ToString());
         }
 
         [Fact]
-        public void Merge_NullBlob_ReturnsCloneOfExisting()
+        public void Merge_NullBlob_LeavesTargetUnchanged()
         {
             var existing = new JObject { ["a"] = 1 };
-            var merged = MergeValuesBlob(existing, null);
-            Assert.Equal(1, merged["a"]?.Value<int>());
-            Assert.NotSame(existing, merged);
+            var before = existing.ToString();
+            SettingsPathHelper.MergeValues(existing, null);
+            Assert.Equal(before, existing.ToString());
+        }
+
+        [Fact]
+        public void RemoveNestedValue_SplicesArrayElement()
+        {
+            var root = new JObject { ["items"] = new JArray("a", "b", "c") };
+            SettingsPathHelper.RemoveNestedValue(root, "items[1]");
+            var arr = Assert.IsType<JArray>(root["items"]);
+            Assert.Equal(2, arr.Count);
+            Assert.Equal("a", arr[0]?.ToString());
+            Assert.Equal("c", arr[1]?.ToString());
+        }
+
+        [Fact]
+        public void SetNestedValue_ThrowsOnTypeMismatch()
+        {
+            var root = new JObject { ["scalar"] = "hello" };
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => SettingsPathHelper.SetNestedValue(root, "scalar.child", 1));
+            Assert.Contains("type mismatch", ex.Message, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [Fact]
+        public void GetNestedValue_ReadsIndexedPath()
+        {
+            var root = new JObject();
+            SettingsPathHelper.SetNestedValue(root, "rows[0].name", "A");
+            Assert.Equal("A", SettingsPathHelper.GetNestedValue(root, "rows[0].name")?.ToString());
         }
     }
 }
