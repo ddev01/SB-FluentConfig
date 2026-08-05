@@ -52,6 +52,8 @@ Example: `script-start` at 1567 ms (mark) means the web bundle began executing 1
 |--------|---------|---------|-------------|----------------|----------------|--------|
 | `9472226` | docs: deferred updates and perf measurement guide | Minimal | `FluentConfig Perf Benchmark` | 1615 | 284 | [9472226-minimal.md](baselines/9472226-minimal.md) |
 | `9472226` | docs: deferred updates and perf measurement guide | Complete | `FluentConfig Perf Complete` | 1670 | 276 | [9472226-complete.md](baselines/9472226-complete.md) |
+| `92a3caa+*` | cold-start: lazy WebView2, env overlap, deferred icon (uncommitted) | Minimal | `FluentConfig Perf Benchmark` | 1270 | — | [cold-opt-wip-minimal.md](baselines/cold-opt-wip-minimal.md) |
+| `92a3caa+*` | cold-start: lazy WebView2, env overlap, deferred icon (uncommitted) | Complete | `FluentConfig Perf Complete` | 1282 | — | [cold-opt-wip-complete.md](baselines/cold-opt-wip-complete.md) |
 
 Full SHA: `9472226070f6d6348ae3d0fc45e000aaebd449d2` (tree at end of perf work on 2026-08-05).
 
