@@ -81,6 +81,14 @@ namespace FluentConfig.Protocol
 
         [JsonProperty("repo")]
         public string Repo { get; set; }
+
+        /// <summary><c>self</c> (default) or <c>notify</c>.</summary>
+        [JsonProperty("mode")]
+        public string Mode { get; set; }
+
+        /// <summary>Release HTML page; used when <see cref="Mode"/> is <c>notify</c>.</summary>
+        [JsonProperty("releasePageUrl")]
+        public string ReleasePageUrl { get; set; }
     }
 
     public sealed class SchemaPatchPayload

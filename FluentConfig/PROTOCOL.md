@@ -286,6 +286,48 @@ Nested keys follow existing conventions: `"settings.timeout"`, `"rows[0].name"`.
 
 ---
 
+## Performance marks (`perf.mark`)
+
+Web → host RPC `perf.mark` with `{ "name": "<mark>" }`. Meaningful only when the host is compiled with `FC_PERF_TRACE`.
+
+| Contract | Detail |
+|----------|--------|
+| Params | `{ name: string }` — arbitrary mark names are recorded as milestones |
+| Summary close | Only `web-ready` ends the run: logs the summary and writes CPH global `FluentConfig_PerfLast` |
+| Other marks | Recorded immediately; do not close the summary |
+
+### Standard web mark names (in order)
+
+| name | When |
+|------|------|
+| `script-start` | Top of the web entry module (before Svelte `mount`) |
+| `svelte-mount` | `App` `onMount` (before bridge/RPC bind) |
+| `rpc-bound` | After `RpcClient` is bound to the store / perf helper |
+| `bootstrap-received` | Host `bootstrap` push applied |
+| `web-ready` | After first paint (`requestAnimationFrame`); closes summary |
+
+### `FluentConfig_PerfLast` JSON (CPH global)
+
+Written when `web-ready` closes the summary:
+
+```json
+{
+  "cold": true,
+  "totalMs": 1234,
+  "milestones": [
+    { "name": "Settings.Load", "ms": 12, "kind": "phase" },
+    { "name": "script-start", "ms": 800, "kind": "mark" },
+    { "name": "web-ready", "ms": 1100, "kind": "mark" }
+  ]
+}
+```
+
+- `cold` — `true` on the first `Show` in the process; later opens are warm (`false`)
+- `kind: "phase"` — host phase **duration** (ms for that phase)
+- `kind: "mark"` — **elapsed ms from tracer Start** (absolute waterfall time)
+
+---
+
 ## File map
 
 | Side | Path |

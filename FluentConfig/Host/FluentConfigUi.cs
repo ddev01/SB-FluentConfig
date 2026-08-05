@@ -115,12 +115,6 @@ namespace FluentConfig
             ui.Show();
         }
 
-        public FluentConfigUi Header(string imageUrl)
-        {
-            _session.SetHeader(imageUrl ?? "");
-            return this;
-        }
-
         /// <summary>
         /// Optional window icon (.ico path). Falls back to the embedded FluentConfig icon.
         /// </summary>
@@ -138,22 +132,24 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Check GitHub <c>releases/latest</c> for a FluentConfig self-update and surface an
-        /// update-notice (<c>mode: self</c>) when available. Stages/swaps FluentConfig.dll only.
+        /// Schedule a GitHub <c>releases/latest</c> self-update check after the window is shown
+        /// (never blocks <see cref="Show"/>). Surfaces an update-notice (<c>mode: self</c>) via
+        /// <c>update.available</c> when a newer release exists. Stages/swaps FluentConfig.dll only.
         /// </summary>
         public FluentConfigUi WithUpdateCheck(string repo, string currentVersion)
         {
-            _session.CheckSelfUpdate(repo, currentVersion);
+            _session.ConfigureSelfUpdateCheck(repo, currentVersion);
             return this;
         }
 
         /// <summary>
-        /// Notify-only extension update check via tag-prefix releases (e.g. <c>spotify-v1.2.3</c>).
-        /// Surfaces an update-notice with <c>mode: notify</c> and a release-page link — no DLL swap.
+        /// Schedule a notify-only extension update check via tag-prefix releases after the window
+        /// is shown (never blocks <see cref="Show"/>). Surfaces <c>mode: notify</c> via
+        /// <c>update.available</c> with a release-page link — no DLL swap.
         /// </summary>
         public FluentConfigUi WithExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
         {
-            _session.CheckExtensionUpdateNotice(repo, tagPrefix, currentVersion);
+            _session.ConfigureExtensionUpdateNotice(repo, tagPrefix, currentVersion);
             return this;
         }
 

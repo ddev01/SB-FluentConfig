@@ -25,6 +25,8 @@ namespace FluentConfig.Updater
     /// <summary>
     /// Generic GitHub-releases updater usable by FluentConfig itself and by any third-party extension.
     /// Unauthenticated public API only (pure read for CheckForUpdate).
+    /// Synchronous check methods may block on HTTP — call them off the UI thread (e.g. ThreadPool)
+    /// when used from FluentConfig Show/bootstrap paths.
     /// </summary>
     public static class GitHubUpdater
     {

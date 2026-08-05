@@ -43,11 +43,13 @@ namespace FluentConfig
         private FluentConfigHostWindow _window;
         private JObject _latestValues;
         private long _nextRequestId = 1;
-        private string _headerImageUrl;
         private string _iconPath;
         private UpdateCheckResult _pendingUpdate;
         private string _updateRepo;
+        private string _updateCurrentVersion;
+        private string _updateTagPrefix;
         private string _updateMode = "self";
+        private int _updateCheckStarted;
         private bool _dontRemindDiscard;
         private bool _closeAlreadyConfirmed;
         /// <summary>True while a deferred native-close discard prompt is in flight.</summary>
@@ -71,8 +73,6 @@ namespace FluentConfig
         }
 
         internal PerformanceTracer PerfTracer => _perfTracer;
-
-        internal void SetHeader(string imageUrl) => _headerImageUrl = imageUrl;
 
         internal void SetIconPath(string iconPath) => _iconPath = iconPath;
 
@@ -114,50 +114,36 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Optional FluentConfig self-update check (releases/latest). When available, adds an
-        /// update-notice with <c>mode: self</c>. Target DLL is always this assembly's location.
+        /// Store FluentConfig self-update args; HTTP runs after bootstrap (never blocks Show).
         /// </summary>
-        public FluentConfigSession CheckSelfUpdate(string repo, string currentVersion)
+        public FluentConfigSession ConfigureSelfUpdateCheck(string repo, string currentVersion)
         {
-            try
-            {
-                var result = GitHubUpdater.CheckForUpdate(repo, currentVersion);
-                if (result != null && result.UpdateAvailable)
-                {
-                    _pendingUpdate = result;
-                    _updateRepo = repo;
-                    _updateMode = "self";
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"[FluentConfig] CheckSelfUpdate failed: {ex.Message}");
-            }
+            _updateRepo = repo;
+            _updateCurrentVersion = currentVersion;
+            _updateTagPrefix = null;
+            _updateMode = "self";
             return this;
         }
 
         /// <summary>
-        /// Notify-only extension update via tag-prefix releases. When newer, adds an
-        /// update-notice with <c>mode: notify</c> and <c>releasePageUrl</c> (no DLL swap).
+        /// Store notify-only extension update args; HTTP runs after bootstrap (never blocks Show).
         /// </summary>
-        public FluentConfigSession CheckExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
+        public FluentConfigSession ConfigureExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
         {
-            try
-            {
-                var result = GitHubUpdater.CheckForTaggedRelease(repo, tagPrefix, currentVersion);
-                if (result != null && result.UpdateAvailable)
-                {
-                    _pendingUpdate = result;
-                    _updateRepo = repo;
-                    _updateMode = "notify";
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"[FluentConfig] CheckExtensionUpdateNotice failed: {ex.Message}");
-            }
+            _updateRepo = repo;
+            _updateTagPrefix = tagPrefix;
+            _updateCurrentVersion = currentVersion;
+            _updateMode = "notify";
             return this;
         }
+
+        /// <summary>Obsolete name — prefer <see cref="ConfigureSelfUpdateCheck"/>.</summary>
+        public FluentConfigSession CheckSelfUpdate(string repo, string currentVersion)
+            => ConfigureSelfUpdateCheck(repo, currentVersion);
+
+        /// <summary>Obsolete name — prefer <see cref="ConfigureExtensionUpdateNotice"/>.</summary>
+        public FluentConfigSession CheckExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
+            => ConfigureExtensionUpdateNotice(repo, tagPrefix, currentVersion);
 
         internal void LogExistingSettings()
         {
@@ -230,27 +216,8 @@ namespace FluentConfig
         {
             var sections = _deferredSections.Select(f => f()).ToList();
 
-            if (_pendingUpdate != null && _pendingUpdate.UpdateAvailable && sections.Count > 0)
-            {
-                var notice = new UpdateNoticeNode
-                {
-                    Id = string.Equals(_updateMode, "notify", StringComparison.Ordinal)
-                        ? "extension-update"
-                        : "self-update",
-                    CurrentVersion = _pendingUpdate.CurrentVersion,
-                    LatestVersion = _pendingUpdate.LatestVersion,
-                    ReleaseNotes = _pendingUpdate.ReleaseNotes,
-                    DownloadUrl = _pendingUpdate.DownloadUrl,
-                    Repo = _updateRepo,
-                    Dismissible = true,
-                    Mode = _updateMode ?? "self",
-                    ReleasePageUrl = _pendingUpdate.ReleasePageUrl,
-                };
-                var first = sections[0];
-                var children = first.Children?.ToList() ?? new List<SchemaNode>();
-                children.Insert(0, notice);
-                first.Children = children;
-            }
+            // Update notices are pushed via update.available after a deferred HTTP check
+            // (never injected here — that would block Show on network I/O).
 
             ExpandPillItems(sections, _latestValues);
 
@@ -824,30 +791,108 @@ namespace FluentConfig
         private void HandlePerfMark(WireMessage msg)
         {
             var p = msg.Params?.ToObject<PerfMarkParams>(ProtocolJson.CreateSerializer());
-            if (string.Equals(p?.Name, "web-ready", StringComparison.OrdinalIgnoreCase))
+            var name = p?.Name;
+            if (!string.IsNullOrWhiteSpace(name))
             {
-                _perfTracer.BeginPhase("Web.Ready");
-                _perfTracer.EndPhase();
-                _perfTracer.LogSummary();
+                _perfTracer.Mark(name);
+                if (string.Equals(name, "web-ready", StringComparison.OrdinalIgnoreCase))
+                {
+                    _perfTracer.LogSummary();
+                    ExportPerfLastToCph();
+                }
             }
             _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
         }
 
+        /// <summary>
+        /// Writes the last PerfTrace summary to CPH global <c>FluentConfig_PerfLast</c>
+        /// (no-op unless compiled with FC_PERF_TRACE and summary has closed).
+        /// </summary>
+        private void ExportPerfLastToCph()
+        {
+#if FC_PERF_TRACE
+            try
+            {
+                var json = _perfTracer.ToSummaryJson();
+                if (json == null) return;
+                _cph.SetGlobalVar("FluentConfig_PerfLast", json, true);
+            }
+            catch (Exception ex)
+            {
+                Log($"[FluentConfig] FluentConfig_PerfLast export failed: {ex.Message}");
+            }
+#endif
+        }
+
         internal void OnWebReady()
         {
-            if (_pendingUpdate != null && _pendingUpdate.UpdateAvailable
-                && string.Equals(_updateMode, "self", StringComparison.Ordinal))
+            BeginDeferredUpdateCheck();
+        }
+
+        /// <summary>
+        /// Run configured update HTTP off the Show critical path after bootstrap is sent.
+        /// Pushes <c>update.available</c> on the UI thread when a newer release exists.
+        /// </summary>
+        private void BeginDeferredUpdateCheck()
+        {
+            if (string.IsNullOrWhiteSpace(_updateRepo))
+                return;
+            if (Interlocked.Exchange(ref _updateCheckStarted, 1) != 0)
+                return;
+
+            var repo = _updateRepo;
+            var currentVersion = _updateCurrentVersion;
+            var tagPrefix = _updateTagPrefix;
+            var mode = _updateMode ?? "self";
+            var isNotify = string.Equals(mode, "notify", StringComparison.Ordinal);
+
+            ThreadPool.QueueUserWorkItem(_ =>
             {
-                _bridge?.Send(WireMessage.Push(PushEventNames.UpdateAvailable, new UpdateAvailablePayload
+                try
                 {
-                    NoticeId = "self-update",
-                    CurrentVersion = _pendingUpdate.CurrentVersion,
-                    LatestVersion = _pendingUpdate.LatestVersion,
-                    ReleaseNotes = _pendingUpdate.ReleaseNotes,
-                    DownloadUrl = _pendingUpdate.DownloadUrl,
-                    Repo = _updateRepo,
-                }));
-            }
+                    UpdateCheckResult result = isNotify
+                        ? GitHubUpdater.CheckForTaggedRelease(repo, tagPrefix, currentVersion)
+                        : GitHubUpdater.CheckForUpdate(repo, currentVersion);
+
+                    if (result == null || !result.UpdateAvailable)
+                        return;
+
+                    var dispatcher = _window?.Dispatcher;
+                    if (dispatcher == null)
+                        return;
+
+                    dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (_bridge == null)
+                            return;
+                        _pendingUpdate = result;
+                        PushUpdateAvailableNotice();
+                    }));
+                }
+                catch (Exception ex)
+                {
+                    Log("[FluentConfig] deferred update check failed: " + ex.Message);
+                }
+            });
+        }
+
+        private void PushUpdateAvailableNotice()
+        {
+            if (_pendingUpdate == null || !_pendingUpdate.UpdateAvailable)
+                return;
+
+            var isNotify = string.Equals(_updateMode, "notify", StringComparison.Ordinal);
+            _bridge?.Send(WireMessage.Push(PushEventNames.UpdateAvailable, new UpdateAvailablePayload
+            {
+                NoticeId = isNotify ? "extension-update" : "self-update",
+                CurrentVersion = _pendingUpdate.CurrentVersion,
+                LatestVersion = _pendingUpdate.LatestVersion,
+                ReleaseNotes = _pendingUpdate.ReleaseNotes,
+                DownloadUrl = _pendingUpdate.DownloadUrl,
+                Repo = _updateRepo,
+                Mode = _updateMode ?? "self",
+                ReleasePageUrl = _pendingUpdate.ReleasePageUrl,
+            }));
         }
 
         // ── UiContext affordances ──

@@ -47,7 +47,8 @@ namespace FluentConfig.Protocol
 
         /// <summary>
         /// Web → host performance mark. Params: <see cref="PerfMarkParams"/>.
-        /// Meaningful only when compiled with FC_PERF_TRACE; web sends <c>name: "web-ready"</c> after first paint.
+        /// Meaningful only when compiled with FC_PERF_TRACE. Arbitrary <c>name</c> values are recorded as
+        /// milestones; only <c>web-ready</c> closes the summary and exports <c>FluentConfig_PerfLast</c>.
         /// </summary>
         public const string PerfMark = "perf.mark";
 

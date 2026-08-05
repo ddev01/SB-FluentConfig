@@ -2,7 +2,7 @@
 // FluentConfig Phase 2 smoke — Streamer.bot action script
 // =============================================================================
 // Paste into Execute C# Code (DISABLED), then Execute C# Method → CPHInline.Execute
-// with "Run on UI thread" ENABLED. See Host/SPIKE_MANUAL_STEPS.md for the pattern.
+// with "Run on UI thread" ENABLED.
 //
 // Required refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig
 // (path to dlls\FluentConfig.dll). Prefer Release DLL for embedded Svelte bundle;
