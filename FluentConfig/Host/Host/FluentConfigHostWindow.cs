@@ -39,6 +39,13 @@ namespace FluentConfig
         /// <summary>Optional perf tracer (set by session after construction).</summary>
         internal PerformanceTracer PerfTracer { get; set; }
 
+        /// <summary>
+        /// Process-lifetime shared WebView2 environment. Reused across window opens on the
+        /// UI thread only (no background PreWarm). Speeds warm <c>EnsureCoreWebView2Async</c>.
+        /// </summary>
+        private static readonly object SharedEnvLock = new object();
+        private static Task<CoreWebView2Environment> _sharedEnvironmentTask;
+
         public event Action<string> WebMessageReceived;
         public event Action NavigationCompleted;
 
@@ -374,12 +381,29 @@ namespace FluentConfig
                 new DispatcherSynchronizationContext(Dispatcher));
         }
 
+        /// <summary>
+        /// Lazily create one <see cref="CoreWebView2Environment"/> for the process and reuse it.
+        /// Must be awaited on the UI thread (same as <see cref="WebView2.EnsureCoreWebView2Async"/>).
+        /// </summary>
+        private static Task<CoreWebView2Environment> GetSharedEnvironmentAsync()
+        {
+            lock (SharedEnvLock)
+            {
+                if (_sharedEnvironmentTask != null)
+                    return _sharedEnvironmentTask;
+                _sharedEnvironmentTask = CoreWebView2Environment.CreateAsync();
+                return _sharedEnvironmentTask;
+            }
+        }
+
         private async Task EnsureAndNavigateAsync()
         {
             if (_webViewDisposed) return;
 
             PerfTracer?.BeginPhase("WebView.EnsureCore");
-            await _webView.EnsureCoreWebView2Async(null);
+            var env = await GetSharedEnvironmentAsync().ConfigureAwait(true);
+            if (_webViewDisposed) return;
+            await _webView.EnsureCoreWebView2Async(env).ConfigureAwait(true);
             if (_webViewDisposed || _webView.CoreWebView2 == null) return;
 
             // WebView2Feedback #2420: HwndHost.Finalize → Dispose(false) fatals if the COM
