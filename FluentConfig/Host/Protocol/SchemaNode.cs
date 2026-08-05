@@ -98,6 +98,7 @@ namespace FluentConfig.Protocol
                 case SchemaNodeTypes.Title: return new TitleNode();
                 case SchemaNodeTypes.Separator: return new SeparatorNode();
                 case SchemaNodeTypes.UpdateNotice: return new UpdateNoticeNode();
+                case SchemaNodeTypes.ConnectionStatus: return new ConnectionStatusNode();
                 case SchemaNodeTypes.Group: return new GroupNode();
                 default:
                     throw new JsonSerializationException($"Unknown schema node type '{type}'.");
@@ -124,6 +125,7 @@ namespace FluentConfig.Protocol
         public const string Title = "title";
         public const string Separator = "separator";
         public const string UpdateNotice = "update-notice";
+        public const string ConnectionStatus = "connection-status";
         public const string Group = "group";
     }
 }

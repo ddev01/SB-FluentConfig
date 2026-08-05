@@ -33,6 +33,24 @@ namespace FluentConfig.Protocol
         /// <summary>Forward a log line to the host log callback. Params: <see cref="LogParams"/>.</summary>
         public const string Log = "log";
 
+        /// <summary>
+        /// In-app Exit button asks the host to close. Params: <see cref="WindowCloseParams"/>.
+        /// When <c>alreadyConfirmed</c> is true, host skips the <see cref="WindowCloseRequested"/> round-trip.
+        /// </summary>
+        public const string WindowClose = "window.close";
+
+        /// <summary>
+        /// Open an external URL in the system browser. Params: <see cref="ShellOpenUrlParams"/>.
+        /// Fire-and-forget from the web (footer, update-notice links, rich-text links).
+        /// </summary>
+        public const string ShellOpenUrl = "shell.openUrl";
+
+        /// <summary>
+        /// Web → host performance mark. Params: <see cref="PerfMarkParams"/>.
+        /// Meaningful only when compiled with FC_PERF_TRACE; web sends <c>name: "web-ready"</c> after first paint.
+        /// </summary>
+        public const string PerfMark = "perf.mark";
+
         // --- Host → Web (UI affordances formerly on UiContext) ---
 
         /// <summary>Show a confirm dialog in the web UI. Params: <see cref="ConfirmParams"/>. Result: <see cref="ConfirmResult"/>.</summary>
@@ -43,6 +61,12 @@ namespace FluentConfig.Protocol
 
         /// <summary>Show a toast. Params: <see cref="ToastParams"/>.</summary>
         public const string Toast = "toast.show";
+
+        /// <summary>
+        /// Native title-bar close: host asks web whether discard is allowed.
+        /// Result: <see cref="WindowCloseRequestedResult"/>.
+        /// </summary>
+        public const string WindowCloseRequested = "window.closeRequested";
     }
 
     public sealed class SaveParams
@@ -172,5 +196,41 @@ namespace FluentConfig.Protocol
     {
         [JsonProperty("message")]
         public string Message { get; set; }
+    }
+
+    public sealed class WindowCloseParams
+    {
+        /// <summary>
+        /// True when the web already ran the dirty-check/dialog (in-app Exit path).
+        /// </summary>
+        [JsonProperty("alreadyConfirmed")]
+        public bool AlreadyConfirmed { get; set; }
+
+        /// <summary>
+        /// When true (Exit path), persist per-title "don't remind before discard" preference.
+        /// </summary>
+        [JsonProperty("dontRemindAgain")]
+        public bool DontRemindAgain { get; set; }
+    }
+
+    public sealed class WindowCloseRequestedResult
+    {
+        [JsonProperty("allowClose")]
+        public bool AllowClose { get; set; }
+
+        [JsonProperty("dontRemindAgain")]
+        public bool DontRemindAgain { get; set; }
+    }
+
+    public sealed class ShellOpenUrlParams
+    {
+        [JsonProperty("url")]
+        public string Url { get; set; }
+    }
+
+    public sealed class PerfMarkParams
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; }
     }
 }

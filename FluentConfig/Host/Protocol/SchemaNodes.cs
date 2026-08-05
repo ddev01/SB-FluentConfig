@@ -348,6 +348,48 @@ namespace FluentConfig.Protocol
 
         [JsonProperty("dismissible")]
         public bool Dismissible { get; set; } = true;
+
+        /// <summary>
+        /// <c>self</c> = stage-and-swap FluentConfig.dll; <c>notify</c> = link-out only (extension update).
+        /// Defaults to <c>self</c> for back-compat.
+        /// </summary>
+        [JsonProperty("mode")]
+        public string Mode { get; set; } = "self";
+
+        /// <summary>GitHub release page URL; used in notify mode via shell.openUrl.</summary>
+        [JsonProperty("releasePageUrl")]
+        public string ReleasePageUrl { get; set; }
+    }
+
+    /// <summary>
+    /// Live connection-status indicator with optional action button (reuses button.click when ButtonId is set).
+    /// </summary>
+    public sealed class ConnectionStatusNode : SchemaNode
+    {
+        public override string Type => SchemaNodeTypes.ConnectionStatus;
+
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("label")]
+        public string Label { get; set; }
+
+        [JsonProperty("hint")]
+        public string Hint { get; set; }
+
+        /// <summary>"connected" | "disconnected" | "connecting" | "error"</summary>
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
+        [JsonProperty("statusText")]
+        public string StatusText { get; set; }
+
+        [JsonProperty("buttonText")]
+        public string ButtonText { get; set; }
+
+        /// <summary>When set with <see cref="ButtonText"/>, web fires button.click with this id.</summary>
+        [JsonProperty("buttonId")]
+        public string ButtonId { get; set; }
     }
 
     /// <summary>

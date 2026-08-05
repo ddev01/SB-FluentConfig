@@ -36,6 +36,7 @@ export type SchemaNodeType =
   | 'title'
   | 'separator'
   | 'update-notice'
+  | 'connection-status'
   | 'group';
 
 export interface SchemaNodeBase {
@@ -187,6 +188,9 @@ export interface SeparatorNode extends SchemaNodeBase {
 /**
  * GitHub-releases update banner. Host fills after CheckForUpdate;
  * UI never talks to GitHub — stage/relaunch go through RPC.
+ *
+ * `mode: 'self'` (default) stages via `update.stage`.
+ * `mode: 'notify'` opens `releasePageUrl` via `shell.openUrl` (no DLL swap).
  */
 export interface UpdateNoticeNode extends SchemaNodeBase {
   type: 'update-notice';
@@ -198,6 +202,28 @@ export interface UpdateNoticeNode extends SchemaNodeBase {
   /** owner/name form (informational). */
   repo?: string;
   dismissible?: boolean;
+  /** Default `'self'` for back-compat. */
+  mode?: 'self' | 'notify';
+  /** Release HTML page; used when `mode === 'notify'`. */
+  releasePageUrl?: string;
+}
+
+export type ConnectionStatusValue =
+  | 'connected'
+  | 'disconnected'
+  | 'connecting'
+  | 'error';
+
+/** Live connection indicator; status updates arrive via `schema.patch`. */
+export interface ConnectionStatusNode extends SchemaNodeBase {
+  type: 'connection-status';
+  id: string;
+  label: string;
+  hint?: string;
+  status: ConnectionStatusValue;
+  statusText?: string;
+  buttonText?: string;
+  buttonId?: string;
 }
 
 /**
@@ -255,6 +281,7 @@ export type SchemaNode =
   | TitleNode
   | SeparatorNode
   | UpdateNoticeNode
+  | ConnectionStatusNode
   | GroupNode;
 
 export interface SectionSchema {
@@ -272,4 +299,10 @@ export interface UiDocument {
   colorScheme?: ColorScheme;
   sections: SectionSchema[];
   values: SettingsValues;
+  /** FluentConfig framework version (host-injected, not author-configurable). */
+  frameworkVersion?: string;
+  /** FluentConfig repo URL (host-injected). */
+  repoUrl?: string;
+  /** Skip discard-changes dialog on close (from CPH prefs). */
+  dontRemindDiscard?: boolean;
 }

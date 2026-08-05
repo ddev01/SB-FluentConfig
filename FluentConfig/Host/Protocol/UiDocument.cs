@@ -26,6 +26,21 @@ namespace FluentConfig.Protocol
         /// <summary>Current settings blob (nested JSON object). Paths match saveKey conventions.</summary>
         [JsonProperty("values")]
         public JObject Values { get; set; }
+
+        /// <summary>FluentConfig framework version (host-injected, not author-configurable).</summary>
+        [JsonProperty("frameworkVersion")]
+        public string FrameworkVersion { get; set; }
+
+        /// <summary>FluentConfig GitHub repo URL (host-injected, for footer branding).</summary>
+        [JsonProperty("repoUrl")]
+        public string RepoUrl { get; set; }
+
+        /// <summary>
+        /// When true, the web UI skips the discard-changes confirm on close
+        /// (loaded from CPH global FluentConfig_Prefs_{title}).
+        /// </summary>
+        [JsonProperty("dontRemindDiscard")]
+        public bool DontRemindDiscard { get; set; }
     }
 
     public sealed class SectionSchema
