@@ -38,6 +38,33 @@ namespace FluentConfig
             FlushPending();
             Nodes.Add(new Protocol.SeparatorNode());
         }
+
+        protected void AddConnectionStatus(
+            string label,
+            string initialStatus,
+            string buttonText,
+            Action<UiContext> onClick)
+        {
+            FlushPending();
+            // Stable id from label so authors can PatchSchema without an extra id parameter.
+            var id = "conn_" + (label ?? "status").Replace(' ', '_');
+            string buttonId = null;
+            if (!string.IsNullOrEmpty(buttonText))
+            {
+                buttonId = "btn_" + id;
+                if (onClick != null)
+                    Session.RegisterButtonClick(buttonId, onClick);
+            }
+
+            Nodes.Add(new Protocol.ConnectionStatusNode
+            {
+                Id = id,
+                Label = label ?? "",
+                Status = string.IsNullOrEmpty(initialStatus) ? "disconnected" : initialStatus,
+                ButtonText = buttonText,
+                ButtonId = buttonId,
+            });
+        }
     }
 
     public abstract class ControlHostBuilder<TWrapper> : ControlHostBuilder

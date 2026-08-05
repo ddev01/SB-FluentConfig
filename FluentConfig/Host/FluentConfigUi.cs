@@ -1,5 +1,6 @@
 using System;
 using FluentConfig.Core;
+using FluentConfig.Protocol;
 using Streamer.bot.Plugin.Interface;
 
 namespace FluentConfig
@@ -61,6 +62,11 @@ namespace FluentConfig
     /// <summary>
     /// Root fluent entry for building FluentConfig UIs. Create(...).Section(...).Show().
     /// </summary>
+    /// <remarks>
+    /// Recommended authoring pattern: a plain static <c>ExtensionInfo</c> class per extension
+    /// with <c>Title</c> / <c>Version</c> / <c>IconPath</c> constants, then call
+    /// <see cref="ShowOrFocus"/> (or the granular Create/Section/Show API).
+    /// </remarks>
     public class FluentConfigUi
     {
         private readonly FluentConfigSession _session;
@@ -82,6 +88,31 @@ namespace FluentConfig
             WebView2AssemblyResolve.EnsureInitialized();
             var session = new FluentConfigSession(cph, title ?? "Settings", version);
             return new FluentConfigUi(session);
+        }
+
+        /// <summary>
+        /// Focus an existing window with this title, or create/build/show a new one.
+        /// Collapses the usual AlreadyOpened → Create → build → Show boilerplate.
+        /// </summary>
+        /// <remarks>
+        /// Prefer a static <c>ExtensionInfo</c> class holding Title/Version/IconPath constants
+        /// and pass those here — that is a recommended convention, not a framework type.
+        /// </remarks>
+        public static void ShowOrFocus(
+            IInlineInvokeProxy cph,
+            string title,
+            string version,
+            Action<FluentConfigUi> build,
+            string iconPath = null)
+        {
+            if (FluentConfigApp.AlreadyOpened(title, version))
+                return;
+
+            var ui = Create(cph, title, version);
+            if (!string.IsNullOrEmpty(iconPath))
+                ui.Icon(iconPath);
+            build?.Invoke(ui);
+            ui.Show();
         }
 
         public FluentConfigUi Header(string imageUrl)
@@ -107,11 +138,22 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Check GitHub releases for an update and surface an update-notice when available.
+        /// Check GitHub <c>releases/latest</c> for a FluentConfig self-update and surface an
+        /// update-notice (<c>mode: self</c>) when available. Stages/swaps FluentConfig.dll only.
         /// </summary>
-        public FluentConfigUi WithUpdateCheck(string repo, string currentVersion, string dllPath = null)
+        public FluentConfigUi WithUpdateCheck(string repo, string currentVersion)
         {
-            _session.CheckSelfUpdate(repo, currentVersion, dllPath);
+            _session.CheckSelfUpdate(repo, currentVersion);
+            return this;
+        }
+
+        /// <summary>
+        /// Notify-only extension update check via tag-prefix releases (e.g. <c>spotify-v1.2.3</c>).
+        /// Surfaces an update-notice with <c>mode: notify</c> and a release-page link — no DLL swap.
+        /// </summary>
+        public FluentConfigUi WithExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
+        {
+            _session.CheckExtensionUpdateNotice(repo, tagPrefix, currentVersion);
             return this;
         }
 

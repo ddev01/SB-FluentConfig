@@ -1,4 +1,5 @@
 using System;
+using FluentConfig.Protocol;
 using Newtonsoft.Json.Linq;
 
 namespace FluentConfig
@@ -30,9 +31,9 @@ namespace FluentConfig
         public void Popup(string title, string message) => _session.Popup(title, message);
 
         /// <summary>
-        /// Shows a confirm dialog via the web UI (dialog.confirm RPC). Returns Yes/No.
+        /// Shows a confirm dialog via the web UI (dialog.confirm RPC). Returns true if confirmed.
         /// </summary>
-        public System.Windows.MessageBoxResult ShowConfirmDialog(string title, string message, string yesButton, string noButton)
+        public bool ShowConfirmDialog(string title, string message, string yesButton, string noButton)
         {
             return _session.ShowConfirmDialog(title, message, yesButton, noButton);
         }
@@ -41,6 +42,12 @@ namespace FluentConfig
         {
             return _session.ShowProgressWindow(title, message, progressLabel, total);
         }
+
+        /// <summary>
+        /// Push a live schema.patch (e.g. update a <see cref="ConnectionStatusNode"/> after reconnect).
+        /// </summary>
+        public void PatchSchemaNode(string sectionId, string nodeId, SchemaNode node)
+            => _session.PushSchemaPatch(sectionId, nodeId, node);
 
         public void Log(string message) => _session.Log(message);
     }

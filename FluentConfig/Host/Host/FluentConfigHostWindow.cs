@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FluentConfig.Core;
@@ -20,13 +22,32 @@ namespace FluentConfig
     /// </summary>
     public class FluentConfigHostWindow : Window
     {
+        private readonly Grid _root;
         private readonly WebView2 _webView;
+        private readonly Border _loadingOverlay;
         private UiDocument _pendingBootstrap;
         private readonly string _colorScheme;
         private bool _webViewDisposed;
+        private HwndSource _hwndSource;
+        /// <summary>
+        /// When false, title-bar / Alt+F4 close is swallowed so <see cref="Window.Closing"/>
+        /// never runs (WebView2 goes blank if Closing is raised then cancelled).
+        /// </summary>
+        private bool _allowClose;
+        private bool _nativeCloseNotifyInFlight;
+
+        /// <summary>Optional perf tracer (set by session after construction).</summary>
+        internal PerformanceTracer PerfTracer { get; set; }
 
         public event Action<string> WebMessageReceived;
         public event Action NavigationCompleted;
+
+        /// <summary>
+        /// Raised when the user clicks the native close button (or Alt+F4 / system menu)
+        /// before WPF <see cref="Window.Closing"/> runs. Session should prompt, then call
+        /// <see cref="CloseAllowed"/>.
+        /// </summary>
+        internal event Action NativeCloseRequested;
 
         static FluentConfigHostWindow()
         {
@@ -51,12 +72,108 @@ namespace FluentConfig
             ApplyIcon(iconPath);
             WindowGeometryStore.ApplyToWindow(this, geometry);
             DwmTitleBar.Apply(this, _colorScheme);
+            SourceInitialized += OnSourceInitialized;
 
             _webView = new WebView2
             {
                 DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 30, 30, 30),
             };
-            Content = _webView;
+
+            _loadingOverlay = CreateLoadingOverlay();
+            _root = new Grid();
+            _root.Children.Add(_webView);
+            _root.Children.Add(_loadingOverlay);
+            Content = _root;
+        }
+
+        private void OnSourceInitialized(object sender, EventArgs e)
+        {
+            SourceInitialized -= OnSourceInitialized;
+            _hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+            _hwndSource?.AddHook(WndProc);
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int wmSysCommand = 0x0112;
+            const int scClose = 0xF060;
+
+            if (_allowClose)
+                return IntPtr.Zero;
+
+            // Title-bar X, Alt+F4, system-menu Close. Do not swallow WM_CLOSE — WPF
+            // programmatic Close() relies on it after Closing; intercepting blanks/orphans the HWND.
+            if (msg == wmSysCommand && ((int)(long)wParam & 0xFFF0) == scClose)
+            {
+                handled = true;
+                NotifyNativeCloseRequested();
+                return IntPtr.Zero;
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private void NotifyNativeCloseRequested()
+        {
+            if (_nativeCloseNotifyInFlight)
+                return;
+            _nativeCloseNotifyInFlight = true;
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(() =>
+            {
+                try
+                {
+                    NativeCloseRequested?.Invoke();
+                }
+                finally
+                {
+                    _nativeCloseNotifyInFlight = false;
+                }
+            }));
+        }
+
+        /// <summary>
+        /// Proceed with a real close after discard confirmation (or host exit / in-app Exit).
+        /// Sets the allow flag so the WndProc hook does not swallow destruction.
+        /// </summary>
+        internal void CloseAllowed()
+        {
+            _allowClose = true;
+            Close();
+        }
+
+        private static Border CreateLoadingOverlay()
+        {
+            var stack = new StackPanel
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            };
+            stack.Children.Add(new ProgressBar
+            {
+                IsIndeterminate = true,
+                Width = 140,
+                Height = 4,
+            });
+            stack.Children.Add(new TextBlock
+            {
+                Text = "Loading…",
+                Foreground = Brushes.White,
+                Margin = new Thickness(0, 14, 0, 0),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                FontSize = 13,
+            });
+
+            return new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
+                Child = stack,
+            };
+        }
+
+        private void HideLoadingOverlay()
+        {
+            if (_loadingOverlay != null)
+                _loadingOverlay.Visibility = Visibility.Collapsed;
         }
 
         internal void SetBootstrapDocument(UiDocument document) => _pendingBootstrap = document;
@@ -105,7 +222,9 @@ namespace FluentConfig
 
             try
             {
-                if (ReferenceEquals(Content, _webView))
+                if (_root != null)
+                    _root.Children.Remove(_webView);
+                else if (ReferenceEquals(Content, _webView))
                     Content = null;
 
                 TryCloseCoreWebView2Controller();
@@ -152,6 +271,16 @@ namespace FluentConfig
             base.OnClosing(e);
             if (!e.Cancel)
                 DisposeWebViewCore();
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            if (_hwndSource != null)
+            {
+                _hwndSource.RemoveHook(WndProc);
+                _hwndSource = null;
+            }
+            base.OnClosed(e);
         }
 
         private void ApplyIcon(string iconPath)
@@ -225,6 +354,7 @@ namespace FluentConfig
             catch (Exception ex)
             {
                 if (_webViewDisposed) return;
+                HideLoadingOverlay();
                 Content = new TextBlock
                 {
                     Text = "WebView2 init failed:\n" + ex,
@@ -248,6 +378,7 @@ namespace FluentConfig
         {
             if (_webViewDisposed) return;
 
+            PerfTracer?.BeginPhase("WebView.EnsureCore");
             await _webView.EnsureCoreWebView2Async(null);
             if (_webViewDisposed || _webView.CoreWebView2 == null) return;
 
@@ -284,11 +415,14 @@ namespace FluentConfig
                 if (_webViewDisposed) return;
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    if (!_webViewDisposed)
-                        NavigationCompleted?.Invoke();
+                    if (_webViewDisposed) return;
+                    // Hide overlay on NavigationCompleted (not web-ready) — correctness, not instrumentation.
+                    HideLoadingOverlay();
+                    NavigationCompleted?.Invoke();
                 }));
             };
 
+            PerfTracer?.BeginPhase("WebView.NavigateCall");
 #if DEBUG
             // Hot-reload: Vite/Bun dev server from FluentConfig/web
             _webView.CoreWebView2.Navigate("http://localhost:5173");

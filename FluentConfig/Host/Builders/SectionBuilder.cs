@@ -40,6 +40,24 @@ namespace FluentConfig
         }
 
         /// <summary>
+        /// Connection-status indicator. Optional action button reuses the existing button.click RPC.
+        /// Live updates: push a replacement node via <see cref="UiContext.PatchSchemaNode"/>.
+        /// </summary>
+        /// <param name="label">Control label.</param>
+        /// <param name="initialStatus">"connected" | "disconnected" | "connecting" | "error"</param>
+        /// <param name="buttonText">Optional action button label.</param>
+        /// <param name="onClick">Optional click handler when <paramref name="buttonText"/> is set.</param>
+        public SectionBuilder ConnectionStatus(
+            string label,
+            string initialStatus,
+            string buttonText = null,
+            Action<UiContext> onClick = null)
+        {
+            AddConnectionStatus(label, initialStatus, buttonText, onClick);
+            return this;
+        }
+
+        /// <summary>
         /// Adds a group visible when the toggle is on. Pass <c>inverted: true</c> to show when off.
         /// (inverted moved to a trailing named parameter — avoids the old positional-bool smell.)
         /// </summary>

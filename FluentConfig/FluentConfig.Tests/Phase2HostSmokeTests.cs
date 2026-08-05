@@ -164,6 +164,7 @@ namespace FluentConfig.Tests
     /// <summary>
     /// Updater end-to-end against a local HttpListener mock (no production hosts).
     /// </summary>
+    [Collection("GitHubUpdaterMock")]
     public class UpdaterFlowTests : IDisposable
     {
         private readonly HttpListener _listener;
@@ -292,6 +293,37 @@ namespace FluentConfig.Tests
                                     ["browser_download_url"] = downloadUrl,
                                 }
                             }
+                        }.ToString();
+                        WriteResponse(ctx, 200, "application/json", body);
+                    }
+                    else if (path.EndsWith("/repos/example-org/example-extension/releases", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var body = new JArray
+                        {
+                            new JObject
+                            {
+                                ["tag_name"] = "other-v9.9.9",
+                                ["body"] = "wrong prefix",
+                                ["html_url"] = _baseUrl + "/releases/other-v9.9.9",
+                            },
+                            new JObject
+                            {
+                                ["tag_name"] = "spotify-v1.0.0",
+                                ["body"] = "initial",
+                                ["html_url"] = _baseUrl + "/releases/spotify-v1.0.0",
+                            },
+                            new JObject
+                            {
+                                ["tag_name"] = "spotify-v1.1.0",
+                                ["body"] = "middle",
+                                ["html_url"] = _baseUrl + "/releases/spotify-v1.1.0",
+                            },
+                            new JObject
+                            {
+                                ["tag_name"] = "spotify-v1.2.3",
+                                ["body"] = "newest spotify",
+                                ["html_url"] = _baseUrl + "/releases/spotify-v1.2.3",
+                            },
                         }.ToString();
                         WriteResponse(ctx, 200, "application/json", body);
                     }

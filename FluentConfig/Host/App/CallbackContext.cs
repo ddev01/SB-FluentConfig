@@ -1,4 +1,5 @@
 using System;
+using FluentConfig.Protocol;
 
 namespace FluentConfig
 {
@@ -19,5 +20,12 @@ namespace FluentConfig
 
         /// <summary>Removes the given keys from settings (e.g. when a pill item is removed).</summary>
         public void RemoveSettingsKeys(params string[] keys) => _session.RemoveSettingsKeys(keys);
+
+        /// <summary>
+        /// Push a live schema.patch (same path as <see cref="UiContext.PatchSchemaNode"/>).
+        /// Useful for updating a connection-status node from pill/lifecycle callbacks.
+        /// </summary>
+        public void PatchSchemaNode(string sectionId, string nodeId, SchemaNode node)
+            => _session.PushSchemaPatch(sectionId, nodeId, node);
     }
 }

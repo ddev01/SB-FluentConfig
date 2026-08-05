@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Windows;
-using System.Windows.Threading;
 using FluentConfig.Core;
 using FluentConfig.Protocol;
 using FluentConfig.Updater;
@@ -18,9 +18,15 @@ namespace FluentConfig
     /// </summary>
     public sealed class FluentConfigSession
     {
+        /// <summary>FluentConfig framework version injected into every UiDocument (footer branding).</summary>
+        public const string FrameworkVersion = "0.1.0-dev";
+
+        /// <summary>FluentConfig repo URL injected into every UiDocument (footer GitHub link).</summary>
+        public const string RepoUrl = "https://github.com/ddev01/SB-FluentConfig";
+
         private static readonly object HostExitHookLock = new object();
         private static bool _hostExitHookRegistered;
-        private static FluentConfigHostWindow _activeWindowForHostExit;
+        private static volatile bool _hostExitInProgress;
 
         private readonly IInlineInvokeProxy _cph;
         private readonly string _title;
@@ -40,8 +46,12 @@ namespace FluentConfig
         private string _headerImageUrl;
         private string _iconPath;
         private UpdateCheckResult _pendingUpdate;
-        private string _updateTargetPath;
         private string _updateRepo;
+        private string _updateMode = "self";
+        private bool _dontRemindDiscard;
+        private bool _closeAlreadyConfirmed;
+        /// <summary>True while a deferred native-close discard prompt is in flight.</summary>
+        private bool _closePromptInFlight;
 
         private sealed class PillRegistration
         {
@@ -104,10 +114,10 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Optional self-update check. When an update is available, an update-notice node is added
-        /// and an <c>update.available</c> event is pushed after bootstrap.
+        /// Optional FluentConfig self-update check (releases/latest). When available, adds an
+        /// update-notice with <c>mode: self</c>. Target DLL is always this assembly's location.
         /// </summary>
-        public FluentConfigSession CheckSelfUpdate(string repo, string currentVersion, string dllPath = null)
+        public FluentConfigSession CheckSelfUpdate(string repo, string currentVersion)
         {
             try
             {
@@ -116,7 +126,7 @@ namespace FluentConfig
                 {
                     _pendingUpdate = result;
                     _updateRepo = repo;
-                    _updateTargetPath = dllPath;
+                    _updateMode = "self";
                 }
             }
             catch (Exception ex)
@@ -126,9 +136,35 @@ namespace FluentConfig
             return this;
         }
 
+        /// <summary>
+        /// Notify-only extension update via tag-prefix releases. When newer, adds an
+        /// update-notice with <c>mode: notify</c> and <c>releasePageUrl</c> (no DLL swap).
+        /// </summary>
+        public FluentConfigSession CheckExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
+        {
+            try
+            {
+                var result = GitHubUpdater.CheckForTaggedRelease(repo, tagPrefix, currentVersion);
+                if (result != null && result.UpdateAvailable)
+                {
+                    _pendingUpdate = result;
+                    _updateRepo = repo;
+                    _updateMode = "notify";
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"[FluentConfig] CheckExtensionUpdateNotice failed: {ex.Message}");
+            }
+            return this;
+        }
+
         internal void LogExistingSettings()
         {
-            var settings = _settingsManager.GetSettings();
+            // Load from CPH — in-memory may still be empty when called from the build delegate
+            // before Show() (common pattern: .LogExistingSettings() inside ShowOrFocus).
+            var settings = _settingsManager.Load();
+            _latestValues = settings ?? new JObject();
             Log($"[FluentConfig] Existing settings for '{_title}': {settings}");
         }
 
@@ -139,15 +175,18 @@ namespace FluentConfig
         {
             var settings = _settingsManager.Load();
             _latestValues = settings ?? new JObject();
+            var prefs = WindowPrefsStore.Load(_cph, _title);
+            _dontRemindDiscard = prefs?.DontRemindDiscard ?? false;
             return BuildDocument();
         }
 
         /// <summary>Exposes in-memory settings for tests after save RPCs.</summary>
         internal JObject GetSettingsForTests() => _settingsManager.GetSettings();
-
         internal void Show()
         {
             _perfTracer.Start("Show.begin");
+            _closeAlreadyConfirmed = false;
+            _closePromptInFlight = false;
 
             if (Thread.CurrentThread.GetApartmentState() != ApartmentState.STA)
             {
@@ -163,25 +202,28 @@ namespace FluentConfig
             var settings = _settingsManager.Load();
             _latestValues = settings ?? new JObject();
 
+            var prefs = WindowPrefsStore.Load(_cph, _title);
+            _dontRemindDiscard = prefs?.DontRemindDiscard ?? false;
+
             _perfTracer.BeginPhase("Schema.Build");
             var document = BuildDocument();
 
             _perfTracer.BeginPhase("Window.Create");
-            FluentConfigWindowManager.SetOpened(true);
+            // ColorScheme is always "dark" today — only dark is supported (no author builder yet).
             var geometry = WindowGeometryStore.Load(_cph, _title);
-            var colorScheme = document?.ColorScheme ?? "dark";
-            _window = new FluentConfigHostWindow(_title, _version, geometry, _iconPath, colorScheme);
+            _window = new FluentConfigHostWindow(_title, _version, geometry, _iconPath, "dark");
+            _window.PerfTracer = _perfTracer;
             _bridge = new HostBridge(_window, this);
             _window.Closing += OnWindowClosing;
             _window.Closed += OnWindowClosed;
-            RegisterActiveWindowForHostExit(_window);
+            _window.NativeCloseRequested += OnNativeCloseRequested;
+            FluentConfigWindowManager.Register(_title, _window);
+            EnsureHostExitHook();
 
             _perfTracer.BeginPhase("Window.Show");
             _window.Show();
             _bridge.Start(document);
-
-            _perfTracer.EndPhase();
-            _perfTracer.LogSummary();
+            // LogSummary moves to perf.mark("web-ready") — navigation has not started yet here.
         }
 
         private UiDocument BuildDocument()
@@ -192,13 +234,17 @@ namespace FluentConfig
             {
                 var notice = new UpdateNoticeNode
                 {
-                    Id = "self-update",
+                    Id = string.Equals(_updateMode, "notify", StringComparison.Ordinal)
+                        ? "extension-update"
+                        : "self-update",
                     CurrentVersion = _pendingUpdate.CurrentVersion,
                     LatestVersion = _pendingUpdate.LatestVersion,
                     ReleaseNotes = _pendingUpdate.ReleaseNotes,
                     DownloadUrl = _pendingUpdate.DownloadUrl,
                     Repo = _updateRepo,
                     Dismissible = true,
+                    Mode = _updateMode ?? "self",
+                    ReleasePageUrl = _pendingUpdate.ReleasePageUrl,
                 };
                 var first = sections[0];
                 var children = first.Children?.ToList() ?? new List<SchemaNode>();
@@ -208,13 +254,23 @@ namespace FluentConfig
 
             ExpandPillItems(sections, _latestValues);
 
+            // First menu open writes schema defaults for missing keys only (never overwrites
+            // user values). Runtime actions can then use CPH.GetGlobalVar on the settings blob.
+            var defaults = SettingsDefaultsCollector.Collect(sections, _latestValues);
+            if (SettingsSync.SeedMissingDefaults(_settingsManager, defaults, persist: true) > 0)
+                _latestValues = _settingsManager.GetSettings() ?? new JObject();
+
             return new UiDocument
             {
                 Title = _title,
                 Version = _version,
+                // Only dark is supported today (no .ColorScheme builder).
                 ColorScheme = "dark",
                 Sections = sections,
                 Values = _latestValues,
+                FrameworkVersion = FrameworkVersion,
+                RepoUrl = RepoUrl,
+                DontRemindDiscard = _dontRemindDiscard,
             };
         }
 
@@ -253,26 +309,128 @@ namespace FluentConfig
             }
         }
 
+        /// <summary>
+        /// Substitute <c>{name}</c> only inside leaf string values of the schema tree
+        /// (avoids corrupting JSON when the pill name contains quotes/backslashes).
+        /// </summary>
         private static IList<SchemaNode> ExpandTemplate(IList<SchemaNode> template, string name)
         {
             if (template == null) return new List<SchemaNode>();
-            // Re-serialize with placeholder substitution for "{name}"
             var json = ProtocolJson.Serialize(template);
-            json = json.Replace("{name}", name);
-            return ProtocolJson.Deserialize<List<SchemaNode>>(json) ?? new List<SchemaNode>();
+            var root = JToken.Parse(json);
+            ReplaceNamePlaceholders(root, name ?? "");
+            // Use ProtocolJson.Serialize — not JToken.ToString(Formatting). Streamer.bot may load an
+            // older Newtonsoft.Json without that overload (MissingMethodException at runtime).
+            return ProtocolJson.Deserialize<List<SchemaNode>>(ProtocolJson.Serialize(root))
+                   ?? new List<SchemaNode>();
+        }
+
+        private static void ReplaceNamePlaceholders(JToken token, string name)
+        {
+            if (token == null) return;
+
+            switch (token.Type)
+            {
+                case JTokenType.Object:
+                    foreach (var prop in ((JObject)token).Properties())
+                        ReplaceNamePlaceholders(prop.Value, name);
+                    break;
+                case JTokenType.Array:
+                    foreach (var item in (JArray)token)
+                        ReplaceNamePlaceholders(item, name);
+                    break;
+                case JTokenType.String:
+                    var s = token.Value<string>();
+                    if (s != null && s.IndexOf("{name}", StringComparison.Ordinal) >= 0)
+                        ((JValue)token).Value = s.Replace("{name}", name);
+                    break;
+            }
         }
 
         private void OnWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Detach before WebView2 Dispose (FluentConfigHostWindow.OnClosing) so no
-            // in-flight bridge work touches a half-dead controller.
-            _bridge?.Detach();
+            // Native X/Alt+F4 never reach here until CloseAllowed() — see FluentConfigHostWindow
+            // WndProc hook. Closing only runs for confirmed / in-app / host-exit closes.
+            if (!e.Cancel)
+                _bridge?.Detach();
+        }
+
+        /// <summary>
+        /// Native chrome close was intercepted before <see cref="Window.Closing"/>. Ask the web
+        /// (async — do not DispatcherFrame-wait) so WebView2 can deliver the reply, then
+        /// <see cref="FluentConfigHostWindow.CloseAllowed"/> when allowed.
+        /// </summary>
+        private void OnNativeCloseRequested()
+        {
+            if (_hostExitInProgress || _closeAlreadyConfirmed || _bridge == null || _window == null)
+                return;
+            if (_closePromptInFlight)
+                return;
+
+            _closePromptInFlight = true;
+            try
+            {
+                _bridge.SendRequest(RpcMethods.WindowCloseRequested, new { }, OnNativeCloseReply);
+            }
+            catch (Exception ex)
+            {
+                Log($"[FluentConfig] window.closeRequested send failed: {ex.Message}");
+                _closePromptInFlight = false;
+                // Bridge broken — never leave the X button as a hard no-op.
+                FinishNativeClose(allowClose: true, dontRemindAgain: false);
+            }
+        }
+
+        private void OnNativeCloseReply(JToken resultJson)
+        {
+            try
+            {
+                if (_hostExitInProgress || _window == null)
+                    return;
+
+                WindowCloseRequestedResult parsed = null;
+                try
+                {
+                    parsed = resultJson?.ToObject<WindowCloseRequestedResult>(ProtocolJson.CreateSerializer());
+                }
+                catch (Exception ex)
+                {
+                    Log($"[FluentConfig] window.closeRequested bad result: {ex.Message}");
+                }
+
+                // Null = timeout / error / detach. Prefer closing over a permanently stuck X.
+                if (parsed == null)
+                {
+                    FinishNativeClose(allowClose: true, dontRemindAgain: false);
+                    return;
+                }
+
+                FinishNativeClose(parsed.AllowClose, parsed.DontRemindAgain);
+            }
+            finally
+            {
+                _closePromptInFlight = false;
+            }
+        }
+
+        private void FinishNativeClose(bool allowClose, bool dontRemindAgain)
+        {
+            if (dontRemindAgain)
+            {
+                _dontRemindDiscard = true;
+                WindowPrefsStore.SetDontRemindDiscard(_cph, _title, true);
+            }
+
+            if (!allowClose || _window == null || _hostExitInProgress)
+                return;
+
+            _closeAlreadyConfirmed = true;
+            _window.CloseAllowed();
         }
 
         private void OnWindowClosed(object sender, EventArgs e)
         {
-            FluentConfigWindowManager.SetOpened(false);
-            UnregisterActiveWindowForHostExit(_window);
+            FluentConfigWindowManager.Unregister(_title);
 
             if (_window != null)
             {
@@ -294,58 +452,51 @@ namespace FluentConfig
             _window = null;
         }
 
-        private static void RegisterActiveWindowForHostExit(FluentConfigHostWindow window)
-        {
-            if (window == null) return;
-            lock (HostExitHookLock)
-            {
-                _activeWindowForHostExit = window;
-                EnsureHostExitHookLocked();
-            }
-        }
-
-        private static void UnregisterActiveWindowForHostExit(FluentConfigHostWindow window)
+        private static void EnsureHostExitHook()
         {
             lock (HostExitHookLock)
             {
-                if (ReferenceEquals(_activeWindowForHostExit, window))
-                    _activeWindowForHostExit = null;
+                if (_hostExitHookRegistered) return;
+                var app = Application.Current;
+                if (app == null) return;
+
+                _hostExitHookRegistered = true;
+
+                // MainWindow.Closing fires before Application.Exit / WebView2 env teardown —
+                // dispose our control while COM is still alive.
+                var main = app.MainWindow;
+                if (main != null)
+                    main.Closing += OnHostMainWindowClosing;
+
+                app.SessionEnding += (_, __) => CloseAllWindowsForHostExit();
+                app.Exit += (_, __) => CloseAllWindowsForHostExit();
+                app.Dispatcher.ShutdownStarted += (_, __) => CloseAllWindowsForHostExit();
             }
-        }
-
-        private static void EnsureHostExitHookLocked()
-        {
-            if (_hostExitHookRegistered) return;
-            var app = Application.Current;
-            if (app == null) return;
-
-            _hostExitHookRegistered = true;
-
-            // MainWindow.Closing fires before Application.Exit / WebView2 env teardown —
-            // dispose our control while COM is still alive.
-            var main = app.MainWindow;
-            if (main != null)
-                main.Closing += OnHostMainWindowClosing;
-
-            app.SessionEnding += (_, __) => CloseActiveWindowForHostExit();
-            app.Exit += (_, __) => CloseActiveWindowForHostExit();
-            app.Dispatcher.ShutdownStarted += (_, __) => CloseActiveWindowForHostExit();
         }
 
         private static void OnHostMainWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            CloseActiveWindowForHostExit();
+            CloseAllWindowsForHostExit();
         }
 
-        private static void CloseActiveWindowForHostExit()
+        private static void CloseAllWindowsForHostExit()
         {
-            FluentConfigHostWindow window;
+            Window[] windows;
             lock (HostExitHookLock)
             {
-                window = _activeWindowForHostExit;
-                // Clear first so re-entrant Exit/ShutdownStarted/Closing hooks no-op.
-                _activeWindowForHostExit = null;
+                // Take-all clears the registry so re-entrant Exit/ShutdownStarted/Closing hooks no-op.
+                windows = FluentConfigWindowManager.TakeAllWindows();
+                if (windows != null && windows.Length > 0)
+                    _hostExitInProgress = true;
             }
+            if (windows == null || windows.Length == 0) return;
+
+            foreach (var window in windows)
+                TeardownWindowForHostExit(window as FluentConfigHostWindow);
+        }
+
+        private static void TeardownWindowForHostExit(FluentConfigHostWindow window)
+        {
             if (window == null) return;
 
             try
@@ -358,7 +509,7 @@ namespace FluentConfig
                             "[FluentConfig] Host exit — disposing WebView2 before Streamer.bot teardown");
                         // Dispose first (SuppressFinalize even if COM is already dead), then Close.
                         window.DisposeWebViewCore();
-                        window.Close();
+                        window.CloseAllowed();
                     }
                     catch (Exception ex)
                     {
@@ -410,6 +561,16 @@ namespace FluentConfig
                 return default;
             try { return token.ToObject<T>(); }
             catch { return default; }
+        }
+
+        internal void PushSchemaPatch(string sectionId, string nodeId, SchemaNode node)
+        {
+            _bridge?.Send(WireMessage.Push(PushEventNames.SchemaPatch, new SchemaPatchPayload
+            {
+                SectionId = sectionId,
+                NodeId = nodeId,
+                Node = node,
+            }));
         }
 
         // ── Bridge RPC handlers ──
@@ -470,6 +631,15 @@ namespace FluentConfig
                     case RpcMethods.UpdateDismiss:
                         _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
                         break;
+                    case RpcMethods.WindowClose:
+                        HandleWindowClose(msg);
+                        break;
+                    case RpcMethods.ShellOpenUrl:
+                        HandleShellOpenUrl(msg);
+                        break;
+                    case RpcMethods.PerfMark:
+                        HandlePerfMark(msg);
+                        break;
                     case RpcMethods.Log:
                         var logParams = msg.Params?.ToObject<LogParams>(ProtocolJson.CreateSerializer());
                         if (!string.IsNullOrEmpty(logParams?.Message))
@@ -510,12 +680,44 @@ namespace FluentConfig
             if (p?.Values != null)
                 _latestValues = p.Values;
 
-            if (p != null && !string.IsNullOrEmpty(p.ButtonId) && _buttonClicks.TryGetValue(p.ButtonId, out var cb))
-            {
-                var ctx = new UiContext(this, _latestValues);
-                cb(ctx);
-            }
+            Action<UiContext> cb = null;
+            if (p != null && !string.IsNullOrEmpty(p.ButtonId))
+                _buttonClicks.TryGetValue(p.ButtonId, out cb);
+
+            // Reply before running OnClick. Nested SendRequestAndWait (confirm/popup) inside
+            // WebMessageReceived deadlocks — WebView2 won't deliver the dialog response until
+            // this handler returns. Defer the callback so confirm/progress RPCs can complete.
             _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
+
+            if (cb == null) return;
+
+            var ctx = new UiContext(this, _latestValues);
+            var dispatcher = _window?.Dispatcher;
+            if (dispatcher != null)
+            {
+                dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        cb(ctx);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[FluentConfig] button.click handler failed: {ex.Message}");
+                    }
+                }));
+            }
+            else
+            {
+                try
+                {
+                    cb(ctx);
+                }
+                catch (Exception ex)
+                {
+                    Log($"[FluentConfig] button.click handler failed: {ex.Message}");
+                }
+            }
         }
 
         private void HandleFilepathBrowse(WireMessage msg)
@@ -571,18 +773,70 @@ namespace FluentConfig
                 return;
             }
 
-            var target = _updateTargetPath;
-            if (string.IsNullOrEmpty(target))
-                target = System.Reflection.Assembly.GetExecutingAssembly().Location;
-
+            // Self-update always targets this assembly — no author-supplied dllPath override.
+            var target = System.Reflection.Assembly.GetExecutingAssembly().Location;
             GitHubUpdater.StageUpdate(p.DownloadUrl, target);
             UpdateHelperLauncher.LaunchSwapAndRelaunch(target, "Streamer.bot.exe");
             _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value, new { staged = true }));
         }
 
+        private void HandleWindowClose(WireMessage msg)
+        {
+            var p = msg.Params?.ToObject<WindowCloseParams>(ProtocolJson.CreateSerializer());
+            if (p != null && p.AlreadyConfirmed)
+                _closeAlreadyConfirmed = true;
+            if (p != null && p.DontRemindAgain)
+            {
+                _dontRemindDiscard = true;
+                WindowPrefsStore.SetDontRemindDiscard(_cph, _title, true);
+            }
+
+            _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
+
+            // WebMessageReceived already runs on the UI thread.
+            _window?.CloseAllowed();
+        }
+
+        private void HandleShellOpenUrl(WireMessage msg)
+        {
+            var p = msg.Params?.ToObject<ShellOpenUrlParams>(ProtocolJson.CreateSerializer());
+            var url = p?.Url?.Trim();
+            if (string.IsNullOrEmpty(url)
+                || (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                    && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+            {
+                _bridge?.Send(WireMessage.ResponseError(msg.Id.Value, "bad_params", "url must be http(s)"));
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                Log($"[FluentConfig] shell.openUrl failed: {ex.Message}");
+            }
+
+            _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
+        }
+
+        private void HandlePerfMark(WireMessage msg)
+        {
+            var p = msg.Params?.ToObject<PerfMarkParams>(ProtocolJson.CreateSerializer());
+            if (string.Equals(p?.Name, "web-ready", StringComparison.OrdinalIgnoreCase))
+            {
+                _perfTracer.BeginPhase("Web.Ready");
+                _perfTracer.EndPhase();
+                _perfTracer.LogSummary();
+            }
+            _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
+        }
+
         internal void OnWebReady()
         {
-            if (_pendingUpdate != null && _pendingUpdate.UpdateAvailable)
+            if (_pendingUpdate != null && _pendingUpdate.UpdateAvailable
+                && string.Equals(_updateMode, "self", StringComparison.Ordinal))
             {
                 _bridge?.Send(WireMessage.Push(PushEventNames.UpdateAvailable, new UpdateAvailablePayload
                 {
@@ -608,11 +862,10 @@ namespace FluentConfig
             _bridge?.SendRequestFireAndForget(RpcMethods.DialogPopup, new PopupParams { Title = title, Message = message });
         }
 
-        internal MessageBoxResult ShowConfirmDialog(string title, string message, string yesButton, string noButton)
+        internal bool ShowConfirmDialog(string title, string message, string yesButton, string noButton)
         {
             if (_bridge == null)
-                return MessageBox.Show(message, title, MessageBoxButton.YesNo) == MessageBoxResult.Yes
-                    ? MessageBoxResult.Yes : MessageBoxResult.No;
+                return MessageBox.Show(message, title, MessageBoxButton.YesNo) == MessageBoxResult.Yes;
 
             var resultJson = _bridge.SendRequestAndWait(RpcMethods.DialogConfirm, new ConfirmParams
             {
@@ -625,18 +878,18 @@ namespace FluentConfig
             try
             {
                 var parsed = resultJson?.ToObject<ConfirmResult>(ProtocolJson.CreateSerializer());
-                return parsed != null && parsed.Confirmed ? MessageBoxResult.Yes : MessageBoxResult.No;
+                return parsed != null && parsed.Confirmed;
             }
             catch
             {
-                return MessageBoxResult.No;
+                return false;
             }
         }
 
         internal IProgressReporter ShowProgressWindow(string title, string message, string progressLabel, int total)
         {
             var id = "progress-" + Interlocked.Increment(ref _nextRequestId);
-            return new BridgeProgressReporter(_bridge, id, title, message, total);
+            return new BridgeProgressReporter(_bridge, _window?.Dispatcher, id, title, message, total);
         }
 
         internal void Log(string message) => FluentConfigApp.LogInternal(message);
@@ -647,14 +900,22 @@ namespace FluentConfig
     internal sealed class BridgeProgressReporter : IProgressReporter
     {
         private readonly HostBridge _bridge;
+        private readonly System.Windows.Threading.Dispatcher _dispatcher;
         private readonly string _id;
         private readonly string _title;
         private readonly int _total;
         private string _message;
 
-        public BridgeProgressReporter(HostBridge bridge, string id, string title, string message, int total)
+        public BridgeProgressReporter(
+            HostBridge bridge,
+            System.Windows.Threading.Dispatcher dispatcher,
+            string id,
+            string title,
+            string message,
+            int total)
         {
             _bridge = bridge;
+            _dispatcher = dispatcher;
             _id = id;
             _title = title;
             _message = message;
@@ -674,8 +935,18 @@ namespace FluentConfig
 
         private void Push(int current, bool done)
         {
+            if (_bridge == null) return;
+
+            // Example OnClick handlers often Report from Task.Run — marshal to the UI
+            // dispatcher so WebView2 posts aren't racing a busy/non-UI thread.
+            if (_dispatcher != null && !_dispatcher.CheckAccess())
+            {
+                _dispatcher.BeginInvoke(new Action(() => Push(current, done)));
+                return;
+            }
+
             double? percent = _total > 0 ? (100.0 * current / _total) : (double?)null;
-            _bridge?.Send(WireMessage.Push(PushEventNames.Progress, new ProgressPayload
+            _bridge.Send(WireMessage.Push(PushEventNames.Progress, new ProgressPayload
             {
                 Id = _id,
                 Title = _title,

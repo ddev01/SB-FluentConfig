@@ -9,6 +9,15 @@
     <Nullable>disable</Nullable>
 
     <!--
+      Perf-trace compile flag (independent of Debug/Release web-bundle switch).
+      Default: on for Debug, off otherwise. Override with -p:FluentConfigPerfTrace=true|false
+      or Redeploy.ps1 -PerfTrace.
+    -->
+    <FluentConfigPerfTrace Condition="'$(FluentConfigPerfTrace)' == '' AND '$(Configuration)' == 'Debug'">true</FluentConfigPerfTrace>
+    <FluentConfigPerfTrace Condition="'$(FluentConfigPerfTrace)' == ''">false</FluentConfigPerfTrace>
+    <DefineConstants Condition="'$(FluentConfigPerfTrace)' == 'true'">$(DefineConstants);FC_PERF_TRACE</DefineConstants>
+
+    <!--
       Resolve Streamer.bot install for compile-time refs (Plugin.Interface + WebView2).
       Override explicitly with:  dotnet build -p:StreamerBotPath=C:\path\to\Streamer.bot
       Candidates are tried in order; first path that contains WebView2.Wpf.dll wins.

@@ -33,6 +33,19 @@ namespace FluentConfig
         }
 
         /// <summary>
+        /// Connection-status indicator (see <see cref="SectionBuilder.ConnectionStatus"/>).
+        /// </summary>
+        public PanelBuilder ConnectionStatus(
+            string label,
+            string initialStatus,
+            string buttonText = null,
+            Action<UiContext> onClick = null)
+        {
+            AddConnectionStatus(label, initialStatus, buttonText, onClick);
+            return this;
+        }
+
+        /// <summary>
         /// Nested visibility group. Use <c>inverted: true</c> (named) or <see cref="WithVisibilityWhenOff"/>.
         /// </summary>
         public PanelBuilder WithVisibility(string toggleKey, Action<PanelBuilder> build, bool inverted = false)
