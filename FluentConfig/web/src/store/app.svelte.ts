@@ -6,9 +6,11 @@ import type {
   UiDocument,
   UpdateAvailablePayload,
   ValuesPatchPayload,
+  WindowCloseRequestedResult,
 } from '../protocol';
 import { PushEventNames, RpcMethods } from '../protocol';
 import { cloneJson } from '../lib/clone';
+import { deepEqual, diffEntries as computeDiffEntries, type DiffEntry } from '../lib/diff';
 import { applyPathMap, deepMerge, getPath, setPath } from '../lib/paths';
 import { applyColorScheme, watchSystemScheme } from '../lib/theme';
 import type { RpcClient } from '../rpc/client';
@@ -29,10 +31,18 @@ export type PopupDialogState = {
   resolve: () => void;
 };
 
+export type DiscardDialogState = {
+  entries: DiffEntry[];
+  dontRemindInitial: boolean;
+  resolve: (result: WindowCloseRequestedResult) => void;
+};
+
 /** Shared app state (Svelte 5 runes module). */
 class AppStore {
   document = $state<UiDocument | null>(null);
   values = $state<SettingsValues>({});
+  /** Snapshot of values at bootstrap / last successful save. */
+  savedValues = $state<SettingsValues>({});
   progress = $state<ProgressPayload | null>(null);
   activeSectionId = $state<string | null>(null);
   ready = $state(false);
@@ -42,11 +52,17 @@ class AppStore {
   saveMessage = $state<string | null>(null);
   confirmDialog = $state<ConfirmDialogState | null>(null);
   popupDialog = $state<PopupDialogState | null>(null);
+  discardDialog = $state<DiscardDialogState | null>(null);
+  private webReadyMarked = false;
 
   private rpc: RpcClient | null = null;
   private unsubSystem: (() => void) | null = null;
   private toastSeq = 0;
   private disposed = false;
+
+  get isDirty(): boolean {
+    return !deepEqual(this.values, this.savedValues);
+  }
 
   bind(rpc: RpcClient, usingMock: boolean): void {
     this.rpc = rpc;
@@ -102,8 +118,82 @@ class AppStore {
         this.pushToast(p.message);
         return { ok: true };
       }
+      if (method === RpcMethods.WindowCloseRequested) {
+        return this.confirmDiscardIfNeeded();
+      }
       throw new Error(`Unhandled host request: ${method}`);
     });
+  }
+
+  /**
+   * Shared dirty-check used by native `window.closeRequested` and in-app Exit.
+   * Resolves immediately when clean or `dontRemindDiscard` is set.
+   */
+  confirmDiscardIfNeeded(): Promise<WindowCloseRequestedResult> {
+    const dontRemind = !!this.document?.dontRemindDiscard;
+    if (!this.isDirty || dontRemind) {
+      return Promise.resolve({
+        allowClose: true,
+        dontRemindAgain: dontRemind,
+      });
+    }
+    return new Promise((resolve) => {
+      this.discardDialog?.resolve({
+        allowClose: false,
+        dontRemindAgain: false,
+      });
+      this.discardDialog = {
+        entries: this.diffEntries(),
+        dontRemindInitial: false,
+        resolve,
+      };
+    });
+  }
+
+  resolveDiscard(result: WindowCloseRequestedResult): void {
+    const dialog = this.discardDialog;
+    if (!dialog) return;
+    this.discardDialog = null;
+    if (result.dontRemindAgain && this.document) {
+      this.document = { ...this.document, dontRemindDiscard: true };
+    }
+    dialog.resolve(result);
+  }
+
+  /** In-app Exit: confirm discard if needed, then ask host to close. */
+  async exit(): Promise<void> {
+    if (!this.rpc) return;
+    const result = await this.confirmDiscardIfNeeded();
+    if (!result.allowClose) return;
+    try {
+      await this.rpc.request(RpcMethods.WindowClose, {
+        alreadyConfirmed: true,
+        dontRemindAgain: result.dontRemindAgain,
+      });
+    } catch (err) {
+      this.pushToast(err instanceof Error ? err.message : 'Close failed');
+    }
+  }
+
+  /** Open an external URL via the host (WebView2 must not navigate itself). */
+  openUrl(url: string): void {
+    if (!this.rpc || !url) return;
+    void this.rpc.request(RpcMethods.ShellOpenUrl, { url }).catch(() => {
+      /* fire-and-forget */
+    });
+  }
+
+  /** Mark first paint complete for host perf tracing (once). */
+  markWebReady(): void {
+    if (this.webReadyMarked || !this.rpc) return;
+    this.webReadyMarked = true;
+    void this.rpc.request(RpcMethods.PerfMark, { name: 'web-ready' }).catch(() => {
+      /* fire-and-forget */
+    });
+  }
+
+  diffEntries(): DiffEntry[] {
+    return computeDiffEntries(this.savedValues, this.values);
   }
 
   openConfirm(params: {
@@ -145,6 +235,8 @@ class AppStore {
     this.confirmDialog = null;
     this.popupDialog?.resolve();
     this.popupDialog = null;
+    this.discardDialog?.resolve({ allowClose: false, dontRemindAgain: false });
+    this.discardDialog = null;
     this.unsubSystem?.();
     this.unsubSystem = null;
     this.rpc = null;
@@ -221,18 +313,21 @@ class AppStore {
     this.document = doc;
   }
 
-  async save(): Promise<void> {
-    if (!this.rpc) return;
+  async save(): Promise<boolean> {
+    if (!this.rpc) return false;
     this.saving = true;
     this.saveMessage = null;
     try {
       await this.rpc.request(RpcMethods.Save, { values: this.values });
+      this.savedValues = cloneJson(this.values) as SettingsValues;
       this.saveMessage = 'Saved';
       window.setTimeout(() => {
         if (this.saveMessage === 'Saved') this.saveMessage = null;
       }, 2000);
+      return true;
     } catch (err) {
       this.saveMessage = err instanceof Error ? err.message : 'Save failed';
+      return false;
     } finally {
       this.saving = false;
     }
@@ -254,12 +349,16 @@ class AppStore {
   private applyBootstrap(doc: UiDocument): void {
     if (this.disposed) return;
     this.document = doc;
-    this.values = cloneJson(doc.values) as SettingsValues;
+    const vals = cloneJson(doc.values) as SettingsValues;
+    this.values = vals;
+    this.savedValues = cloneJson(vals) as SettingsValues;
     this.activeSectionId = doc.sections[0]?.id ?? null;
     this.ready = true;
     this.unsubSystem?.();
     applyColorScheme(doc.colorScheme);
     this.unsubSystem = watchSystemScheme(doc.colorScheme);
+    // Defer until after first paint so host perf.Web.Ready is meaningful.
+    requestAnimationFrame(() => this.markWebReady());
   }
 
   private applyValuesPatch(patch: ValuesPatchPayload): void {

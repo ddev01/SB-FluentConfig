@@ -10,6 +10,8 @@
   let { node }: Props = $props();
   let busy = $state(false);
 
+  const isNotify = $derived(node.mode === 'notify');
+
   async function stage(): Promise<void> {
     busy = true;
     try {
@@ -23,6 +25,15 @@
     } finally {
       busy = false;
     }
+  }
+
+  function openRelease(): void {
+    const url = node.releasePageUrl;
+    if (!url) {
+      appStore.pushToast('No release page URL');
+      return;
+    }
+    appStore.openUrl(url);
   }
 
   async function dismiss(): Promise<void> {
@@ -54,14 +65,24 @@
       {/if}
     </div>
     <div class="flex shrink-0 gap-2">
-      <button
-        type="button"
-        class="rounded-fc bg-fc-warning px-3 py-1.5 text-sm font-semibold text-fc-bg transition-[filter] duration-150 hover:brightness-110 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
-        disabled={busy}
-        onclick={stage}
-      >
-        {busy ? 'Staging…' : 'Update'}
-      </button>
+      {#if isNotify}
+        <button
+          type="button"
+          class="rounded-fc bg-fc-warning px-3 py-1.5 text-sm font-semibold text-fc-bg transition-[filter] duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
+          onclick={openRelease}
+        >
+          View release
+        </button>
+      {:else}
+        <button
+          type="button"
+          class="rounded-fc bg-fc-warning px-3 py-1.5 text-sm font-semibold text-fc-bg transition-[filter] duration-150 hover:brightness-110 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
+          disabled={busy}
+          onclick={stage}
+        >
+          {busy ? 'Staging…' : 'Update'}
+        </button>
+      {/if}
       {#if node.dismissible !== false}
         <button
           type="button"

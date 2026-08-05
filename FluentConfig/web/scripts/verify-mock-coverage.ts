@@ -24,6 +24,7 @@ const ALL_TYPES: SchemaNodeType[] = [
   'title',
   'separator',
   'update-notice',
+  'connection-status',
   'group',
 ];
 

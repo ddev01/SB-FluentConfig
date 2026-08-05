@@ -9,6 +9,9 @@ export function createMockDocument(): UiDocument {
     title: 'FluentConfig Dev Preview',
     version: '0.1.0-dev',
     colorScheme: 'dark',
+    frameworkVersion: '0.1.0-dev',
+    repoUrl: 'https://example.test/example-org/fluentconfig',
+    dontRemindDiscard: false,
     sections: [
       {
         id: 'General',
@@ -16,7 +19,26 @@ export function createMockDocument(): UiDocument {
         children: [
           {
             type: 'description',
-            text: 'Standalone mock bridge — every control type below. Save and RPCs stay in-browser.',
+            text: [
+              '# Dev Preview',
+              '',
+              'Standalone mock bridge — every control type below. Save and RPCs stay in-browser.',
+              '',
+              'Supports **bold**, `code`, {#00c47a|colored text}, and [example links](https://example.test).',
+              '',
+              '## Lists',
+              '',
+              '- Unordered item one',
+              '- Unordered item two',
+              '',
+              '1. Ordered first',
+              '2. Ordered second',
+              '',
+              '```',
+              'plain code block',
+              'no highlighting',
+              '```',
+            ].join('\n'),
           },
           {
             type: 'update-notice',
@@ -27,6 +49,30 @@ export function createMockDocument(): UiDocument {
             downloadUrl: 'https://example.test/releases/download/v0.2.0/Extension.dll',
             repo: 'example-org/example-extension',
             dismissible: true,
+            mode: 'self',
+          },
+          {
+            type: 'update-notice',
+            id: 'ext-update',
+            currentVersion: '1.0.0',
+            latestVersion: '1.1.0',
+            releaseNotes: 'Mock extension update (notify-only).',
+            downloadUrl: '',
+            repo: 'example-org/example-extension',
+            dismissible: true,
+            mode: 'notify',
+            releasePageUrl:
+              'https://example.test/example-org/example-extension/releases/tag/ext-v1.1.0',
+          },
+          {
+            type: 'connection-status',
+            id: 'svc-status',
+            label: 'Service connection',
+            hint: 'Live status via schema.patch in a real host; static in mock.',
+            status: 'connected',
+            statusText: 'Connected to mock service',
+            buttonText: 'Reconnect',
+            buttonId: 'btn-reconnect',
           },
           {
             type: 'title',

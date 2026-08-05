@@ -25,7 +25,8 @@
   --color-fc-text-subtle: #718096;
   --color-fc-accent: #00a86b;
   --color-fc-accent-muted: #008f5b;
-  --color-fc-danger: #dc2626;
+  --color-fc-danger: #a80300;
+  --color-fc-danger-glow: #c40300;
   --color-fc-success: #059669;
   --color-fc-warning: #d97706;
   --color-fc-glow: #00c47a;
@@ -35,6 +36,7 @@
   --radius-fc-lg: 0.5rem;
 
   --shadow-fc-glow: 0 0 14px color-mix(in srgb, #00c47a 14%, transparent);
+  --shadow-fc-danger-glow: 0 0 14px color-mix(in srgb, #c40300 14%, transparent);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -51,7 +53,9 @@
     --color-fc-text-subtle: #5c6b80;
     --color-fc-accent: #00c47a;
     --color-fc-accent-muted: #009e62;
-    --color-fc-danger: #f87171;
+    --color-fc-danger: #c40300;
+    --color-fc-danger-glow: #c40300;
+    --shadow-fc-danger-glow: 0 0 20px rgba(196, 3, 0, 0.14);
     --color-fc-success: #34d399;
     --color-fc-warning: #fbbf24;
     --color-fc-glow: #00c47a;
@@ -184,6 +188,44 @@
       focus-visible:border-fc-accent focus-visible:ring-2 focus-visible:ring-fc-ring/40;
   }
 
+  /* Custom ± steppers: hide native number spinners on stepper fields. */
+  .fc-input-stepper {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+
+  .fc-input-stepper::-webkit-outer-spin-button,
+  .fc-input-stepper::-webkit-inner-spin-button {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Section tabs: content-sized, horizontally scrollable (no flex squeeze / overlap). */
+  .fc-tabstrip {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      #000 0.75rem,
+      #000 calc(100% - 0.75rem),
+      transparent 100%
+    );
+  }
+
+  .fc-tablist {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-fc-border-strong) 70%, transparent) transparent;
+  }
+
+  .fc-tablist::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .fc-tablist::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-fc-border-strong) 70%, transparent);
+  }
+
   .fc-btn {
     @apply relative shrink-0 cursor-pointer rounded-fc border border-fc-border bg-fc-surface px-3 py-2 text-sm
       font-medium text-fc-text transition-colors duration-150
@@ -200,6 +242,15 @@
       active:brightness-95
       disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none
       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg;
+  }
+
+  .fc-btn-danger {
+    @apply relative shrink-0 cursor-pointer rounded-fc border border-transparent bg-fc-danger px-4 py-2 text-sm
+      font-semibold text-fc-bg transition-[filter,box-shadow] duration-150
+      hover:shadow-fc-danger-glow hover:brightness-105
+      active:brightness-95
+      disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-danger/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg;
   }
 
   .fc-label {

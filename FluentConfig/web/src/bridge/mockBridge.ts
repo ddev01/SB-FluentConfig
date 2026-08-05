@@ -46,7 +46,13 @@ export class MockWebView implements ChromeWebView {
 
   postMessage(message: unknown): void {
     const msg = parseIncoming(message);
-    if (!msg || msg.kind !== WireKinds.Request) return;
+    if (!msg) return;
+    // Web→Host reply to a host-initiated request (e.g. window.closeRequested).
+    if (msg.kind === WireKinds.Response) {
+      this.emit(msg);
+      return;
+    }
+    if (msg.kind !== WireKinds.Request) return;
     void this.handleRequest(msg.id, msg.method, msg.params);
   }
 
@@ -166,6 +172,9 @@ export class MockWebView implements ChromeWebView {
           // Host would show toast; mock replies ok — UI may also surface locally.
           return { ok: true, toast: 'Mock toast from host' };
         }
+        if (p.buttonId === 'btn-reconnect') {
+          return { ok: true, toast: 'Reconnect requested (mock)' };
+        }
         return { ok: true };
       }
 
@@ -209,9 +218,87 @@ export class MockWebView implements ChromeWebView {
         console.info('[mock toast]', (params as { message?: string })?.message);
         return { ok: true };
 
+      case RpcMethods.WindowClose: {
+        const p = params as { alreadyConfirmed?: boolean };
+        if (p.alreadyConfirmed) {
+          // Web already ran confirmDiscardIfNeeded — mirror host Close().
+          console.info('[mock] window.close (alreadyConfirmed)');
+          this.doc.dontRemindDiscard = this.doc.dontRemindDiscard ?? false;
+          return { ok: true };
+        }
+        // Host would send window.closeRequested; simulate that round-trip.
+        const result = await this.requestFromWeb(RpcMethods.WindowCloseRequested, {});
+        const closeResult = result as {
+          allowClose?: boolean;
+          dontRemindAgain?: boolean;
+        };
+        if (closeResult?.dontRemindAgain) {
+          this.doc.dontRemindDiscard = true;
+        }
+        if (!closeResult?.allowClose) {
+          return { ok: false, cancelled: true };
+        }
+        console.info('[mock] window.close after closeRequested allow');
+        return { ok: true };
+      }
+
+      case RpcMethods.ShellOpenUrl: {
+        const url = (params as { url?: string })?.url;
+        if (!url || !/^https?:\/\//i.test(url)) {
+          throw new Error('shell.openUrl: only http(s) URLs allowed');
+        }
+        console.info('[mock] shell.openUrl', url);
+        // Dev convenience — open in a new tab when possible.
+        try {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        } catch {
+          /* headless / restricted */
+        }
+        return { ok: true };
+      }
+
+      case RpcMethods.PerfMark: {
+        const name = (params as { name?: string })?.name;
+        console.info('[mock] perf.mark', name);
+        return { ok: true };
+      }
+
       default:
         throw new Error(`Unknown mock RPC method: ${method}`);
     }
+  }
+
+  /**
+   * Host→Web request (same surface as real HostBridge.SendRequestAndWait).
+   * Used so window.close without alreadyConfirmed exercises the real dirty dialog.
+   */
+  private requestFromWeb(method: string, params: unknown): Promise<unknown> {
+    const id = -Math.floor(Math.random() * 1_000_000) - 1;
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.listeners.delete(waiter);
+        reject(new Error(`mock requestFromWeb timeout: ${method}`));
+      }, 60_000);
+
+      const waiter: WebViewMessageListener = (event) => {
+        const msg = parseIncoming(event.data);
+        if (!msg || msg.kind !== WireKinds.Response || msg.id !== id) return;
+        clearTimeout(timeout);
+        this.listeners.delete(waiter);
+        if (msg.error) {
+          reject(new Error(`${msg.error.code}: ${msg.error.message}`));
+        } else {
+          resolve(msg.result);
+        }
+      };
+      this.listeners.add(waiter);
+      this.emit({
+        kind: WireKinds.Request,
+        id,
+        method,
+        params,
+      });
+    });
   }
 
   private findPillNode(saveKey: string) {

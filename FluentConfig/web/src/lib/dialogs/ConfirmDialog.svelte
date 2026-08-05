@@ -21,10 +21,11 @@
   }: Props = $props();
 
   let panelEl = $state<HTMLDivElement | null>(null);
-  let confirmBtn = $state<HTMLButtonElement | null>(null);
+  let cancelBtn = $state<HTMLButtonElement | null>(null);
 
+  // Default focus on the non-destructive cancel action (a11y).
   onMount(() => {
-    void tick().then(() => confirmBtn?.focus());
+    void tick().then(() => cancelBtn?.focus());
   });
 
   function onKeydown(e: KeyboardEvent): void {
@@ -77,15 +78,10 @@
       {message}
     </p>
     <div class="mt-5 flex justify-end gap-2">
-      <button type="button" class="fc-btn" onclick={oncancel}>
+      <button type="button" class="fc-btn" bind:this={cancelBtn} onclick={oncancel}>
         {cancelText}
       </button>
-      <button
-        type="button"
-        class="fc-btn-accent"
-        bind:this={confirmBtn}
-        onclick={onconfirm}
-      >
+      <button type="button" class="fc-btn-accent" onclick={onconfirm}>
         {confirmText}
       </button>
     </div>

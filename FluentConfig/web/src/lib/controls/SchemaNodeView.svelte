@@ -18,6 +18,7 @@
   import TitleControl from './TitleControl.svelte';
   import SeparatorControl from './SeparatorControl.svelte';
   import UpdateNoticeControl from './UpdateNoticeControl.svelte';
+  import ConnectionStatusControl from './ConnectionStatusControl.svelte';
   import GroupControl from './GroupControl.svelte';
 
   interface Props {
@@ -63,6 +64,8 @@
     <SeparatorControl {node} />
   {:else if node.type === 'update-notice'}
     <UpdateNoticeControl {node} />
+  {:else if node.type === 'connection-status'}
+    <ConnectionStatusControl {node} />
   {:else if node.type === 'group'}
     <GroupControl {node} />
   {/if}

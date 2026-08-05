@@ -9,6 +9,8 @@
 //   - PillInput.WithItemTemplate / OnPillAdded / OnPillRemoved (sub-builder, no Panel)
 //   - WithVisibility(saveKey, inverted: true, …) or WithVisibilityWhenOff(…)
 //   - ShowProgressWindow / Toast / Popup / ShowConfirmDialog surfaces (may be RPC-backed)
+//   - FluentConfigUi.ShowOrFocus collapses AlreadyOpened → Create → build → Show
+//   - ConnectionStatus + rich Intro() samples (see docs/EXTENSION_UPDATES.md for updates)
 
 using FluentConfig;
 using System;
@@ -51,17 +53,18 @@ public class CPHInline
             WriteLog("=== FluentConfig Complete Example Started ===");
             FluentConfig.FluentConfig.SetLogCallback(msg => WriteLog($"[FluentConfig] {msg}"));
 
-            if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig Complete Example", "1.0"))
-            {
-                WriteLog("=== Action skipped - UI already open ===");
-                return true;
-            }
-
             var options = new[] { "Option A", "Option B", "Option C" };
 
-            FluentConfigUi.Create(CPH, "FluentConfig Complete Example", "1.0")
+            FluentConfigUi.ShowOrFocus(CPH, "FluentConfig Complete Example", "1.0", ui => ui
                 .Section("General settings", "General", g => g
-                    .Intro("All FluentConfig controls. Use Save to persist; buttons exercise dialogs and Pending values.")
+                    .Intro(
+                        "## Complete example\n\n"
+                        + "All FluentConfig controls in one place. Use **Save** to persist settings.\n\n"
+                        + "1. Edit values on any tab\n"
+                        + "2. Click `{Save}` or press Ctrl/Cmd+S\n"
+                        + "3. Buttons on the **Buttons** tab exercise dialogs\n\n"
+                        + "More: [extension update docs](https://example.test/fluentconfig/extension-updates)")
+                    .ConnectionStatus("Backend API", "disconnected", "Connect", ctx => ctx.Toast("Connect clicked — wire your handler here"))
                     .Toggle("Enable requirement", "custom_requirement_enabled")
                         .Hint("Turn this on to require a custom condition.")
                     .Textbox("Requirement name", "custom_requirement_name")
@@ -251,7 +254,7 @@ public class CPHInline
                         })
                 )
                 .LogExistingSettings()
-                .Show();
+            );
 
             WriteLog("=== Action completed - UI should now be visible ===");
         }

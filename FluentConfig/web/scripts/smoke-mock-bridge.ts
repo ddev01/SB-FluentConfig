@@ -23,6 +23,11 @@ const rpc = new RpcClient(bridge);
 const doc = await waitForBootstrap(rpc);
 if (!doc.title || !doc.sections?.length) throw new Error('bad bootstrap');
 if (doc.colorScheme !== 'dark') throw new Error('expected dark colorScheme');
+if (!doc.frameworkVersion) throw new Error('expected frameworkVersion');
+if (!doc.repoUrl) throw new Error('expected repoUrl');
+if (typeof doc.dontRemindDiscard !== 'boolean') {
+  throw new Error('expected dontRemindDiscard boolean');
+}
 
 const types = new Set<string>();
 const walk = (nodes: { type: string; children?: unknown[]; items?: { children: unknown[] }[]; itemTemplate?: unknown[]; rowSchema?: unknown[] }[]) => {
@@ -37,6 +42,9 @@ const walk = (nodes: { type: string; children?: unknown[]; items?: { children: u
   }
 };
 for (const s of doc.sections) walk(s.children as Parameters<typeof walk>[0]);
+if (!types.has('connection-status')) {
+  throw new Error('mock document missing connection-status');
+}
 
 const refresh = await rpc.request<{ options: { value: string; display: string }[] }>(
   RpcMethods.DropdownRefresh,
@@ -81,8 +89,13 @@ if (!pill.items?.some((i) => i.name === 'Gamma')) {
   throw new Error('pill.changed add failed');
 }
 
+await rpc.request(RpcMethods.ShellOpenUrl, { url: 'https://example.test/docs' });
+await rpc.request(RpcMethods.PerfMark, { name: 'web-ready' });
+await rpc.request(RpcMethods.WindowClose, { alreadyConfirmed: true });
+
 console.log('OK — mock bridge smoke passed');
 console.log('  bootstrap title:', doc.title);
+console.log('  frameworkVersion:', doc.frameworkVersion);
 console.log('  schema types:', [...types].sort().join(', '));
 console.log('  refresh options:', refresh.options.length);
 console.log('  browse path:', browse.path);

@@ -15,10 +15,31 @@
     appStore.getValue(node.saveKey) ?? node.defaultValue ?? 0,
   );
 
+  /** Decimal places implied by step (e.g. 0.1 → 1) so 0.1+0.2 stays 0.3. */
+  function stepDecimals(s: number): number {
+    if (!Number.isFinite(s) || s <= 0) return 0;
+    const text = String(s);
+    if (text.includes('e') || text.includes('E')) {
+      const fixed = s.toFixed(10).replace(/\.?0+$/, '');
+      const dot = fixed.indexOf('.');
+      return dot === -1 ? 0 : fixed.length - dot - 1;
+    }
+    const dot = text.indexOf('.');
+    return dot === -1 ? 0 : text.length - dot - 1;
+  }
+
+  function roundToStep(raw: number): number {
+    const s = step;
+    if (!Number.isFinite(raw) || !Number.isFinite(s) || s <= 0) return raw;
+    const rounded = Math.round(raw / s) * s;
+    return Number(rounded.toFixed(stepDecimals(s)));
+  }
+
   function coerce(raw: number): string | number {
-    let n = raw;
+    let n = roundToStep(raw);
     if (node.min !== undefined) n = Math.max(node.min, n);
     if (node.max !== undefined) n = Math.min(node.max, n);
+    n = roundToStep(n);
     if (node.valueType === 'string') return String(n);
     if (node.valueType === 'int') return Math.round(n);
     return n;
@@ -57,6 +78,7 @@
       id={fieldId}
       type="number"
       class="fc-input tabular-nums"
+      class:fc-input-stepper={node.stepper}
       min={node.min}
       max={node.max}
       step={step}

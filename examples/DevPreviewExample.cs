@@ -18,12 +18,15 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("FluentConfig Dev Preview", "0.1.0-dev"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "FluentConfig Dev Preview", "0.1.0-dev")
+        FluentConfigUi.ShowOrFocus(CPH, "FluentConfig Dev Preview", "0.1.0-dev", ui => ui
             .Section("General", "General", g => g
-                .Intro("Dev preview mirror of localhost:5173 — every control type below. Save persists to Streamer.bot globals.")
+                .Intro(
+                    "# Dev preview\n\n"
+                    + "Mirror of **localhost:5173** — every control type below.\n\n"
+                    + "- Rich **bold** and `{code}` samples\n"
+                    + "- Save persists to Streamer.bot globals\n\n"
+                    + "See [FluentConfig docs](https://example.test/fluentconfig) for more.")
+                .ConnectionStatus("Mock service", "connected", "Reconnect", ctx => ctx.Toast("Reconnect clicked"))
                 .Title("Basics")
                 .Toggle("Enable feature", "feature_enabled")
                     .Hint("Master switch for the sample feature.")
@@ -157,7 +160,7 @@ public class CPHInline
                 )
             )
             .LogExistingSettings()
-            .Show();
+        );
 
         return true;
     }
