@@ -194,6 +194,9 @@ namespace FluentConfig
             _perfTracer.BeginPhase("Schema.Build");
             var document = BuildDocument();
 
+            // Overlap CoreWebView2Environment.CreateAsync with Window.Create / Show (UI thread only).
+            FluentConfigHostWindow.KickoffSharedEnvironment();
+
             _perfTracer.BeginPhase("Window.Create");
             // ColorScheme is always "dark" today — only dark is supported (no author builder yet).
             var geometry = WindowGeometryStore.Load(_cph, _title);

@@ -23,10 +23,11 @@ namespace FluentConfig
     public class FluentConfigHostWindow : Window
     {
         private readonly Grid _root;
-        private readonly WebView2 _webView;
+        private WebView2 _webView;
         private readonly Border _loadingOverlay;
         private UiDocument _pendingBootstrap;
         private readonly string _colorScheme;
+        private readonly string _iconPath;
         private bool _webViewDisposed;
         private HwndSource _hwndSource;
         /// <summary>
@@ -45,6 +46,15 @@ namespace FluentConfig
         /// </summary>
         private static readonly object SharedEnvLock = new object();
         private static Task<CoreWebView2Environment> _sharedEnvironmentTask;
+
+        /// <summary>
+        /// Start <see cref="CoreWebView2Environment.CreateAsync"/> without awaiting so creation
+        /// overlaps window construction. UI thread only; safe to call multiple times.
+        /// </summary>
+        internal static void KickoffSharedEnvironment()
+        {
+            _ = GetSharedEnvironmentAsync();
+        }
 
         public event Action<string> WebMessageReceived;
         public event Action NavigationCompleted;
@@ -75,22 +85,34 @@ namespace FluentConfig
             MinHeight = 360;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             _colorScheme = colorScheme ?? "dark";
+            _iconPath = iconPath;
 
-            ApplyIcon(iconPath);
             WindowGeometryStore.ApplyToWindow(this, geometry);
             DwmTitleBar.Apply(this, _colorScheme);
             SourceInitialized += OnSourceInitialized;
+
+            _loadingOverlay = CreateLoadingOverlay();
+            _root = new Grid();
+            _root.Children.Add(_loadingOverlay);
+            Content = _root;
+
+            // Icon decode is not on the critical path — defer until after first layout.
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => ApplyIcon(_iconPath)));
+        }
+
+        /// <summary>
+        /// Lazily construct the WebView2 control after the window HWND exists (Show), not during
+        /// <c>Window.Create</c>. Must run on the UI thread before <see cref="EnsureAndNavigateAsync"/>.
+        /// </summary>
+        private void EnsureWebViewCreated()
+        {
+            if (_webView != null || _webViewDisposed) return;
 
             _webView = new WebView2
             {
                 DefaultBackgroundColor = System.Drawing.Color.FromArgb(255, 30, 30, 30),
             };
-
-            _loadingOverlay = CreateLoadingOverlay();
-            _root = new Grid();
-            _root.Children.Add(_webView);
-            _root.Children.Add(_loadingOverlay);
-            Content = _root;
+            _root.Children.Insert(0, _webView);
         }
 
         private void OnSourceInitialized(object sender, EventArgs e)
@@ -150,30 +172,10 @@ namespace FluentConfig
 
         private static Border CreateLoadingOverlay()
         {
-            var stack = new StackPanel
-            {
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center,
-            };
-            stack.Children.Add(new ProgressBar
-            {
-                IsIndeterminate = true,
-                Width = 140,
-                Height = 4,
-            });
-            stack.Children.Add(new TextBlock
-            {
-                Text = "Loading…",
-                Foreground = Brushes.White,
-                Margin = new Thickness(0, 14, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                FontSize = 13,
-            });
-
+            // Solid cover only — spinner/text add no value before web paints and cost WPF elements.
             return new Border
             {
                 Background = new SolidColorBrush(Color.FromRgb(30, 30, 30)),
-                Child = stack,
             };
         }
 
@@ -205,6 +207,11 @@ namespace FluentConfig
         internal void DisposeWebViewCore()
         {
             if (_webViewDisposed) return;
+            if (_webView == null)
+            {
+                _webViewDisposed = true;
+                return;
+            }
 
             if (!Dispatcher.CheckAccess())
             {
@@ -329,6 +336,7 @@ namespace FluentConfig
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
                 if (_webViewDisposed) return;
+                EnsureWebViewCreated();
                 _ = EnsureAndNavigateSafeAsync();
             }));
         }
