@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   interface Node {
     x: number;
     y: number;
@@ -6,6 +8,46 @@
     vy: number;
     r: number;
   }
+
+  /**
+   * Defer canvas work until after first paint / idle so cold-open stays responsive.
+   * Respects prefers-reduced-motion (fewer/slower nodes — still draws, never freezes).
+   */
+  let armed = $state(false);
+
+  onMount(() => {
+    let cancelled = false;
+    let idleId = 0;
+    let timeoutId = 0;
+    let raf1 = 0;
+    let raf2 = 0;
+
+    const arm = (): void => {
+      if (!cancelled) armed = true;
+    };
+
+    // Wait two frames so the shell can paint before the canvas starts.
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const ric = window.requestIdleCallback;
+        if (typeof ric === 'function') {
+          idleId = ric.call(window, arm, { timeout: 1200 });
+        } else {
+          timeoutId = window.setTimeout(arm, 0);
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      if (idleId && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  });
 
   /**
    * Particle network canvas (from fngg-scraper bg-network.js).
@@ -151,4 +193,6 @@
   }
 </script>
 
-<canvas use:network class="bg-network" aria-hidden="true"></canvas>
+{#if armed}
+  <canvas use:network class="bg-network" aria-hidden="true"></canvas>
+{/if}
