@@ -393,8 +393,9 @@ class AppStore {
       downloadUrl: payload.downloadUrl ?? '',
       repo: payload.repo,
       dismissible: true,
-      mode: payload.mode ?? 'self',
+      mode: payload.mode ?? 'notify',
       releasePageUrl: payload.releasePageUrl,
+      updateGuideUrl: payload.updateGuideUrl,
     };
     const first = doc.sections[0];
     if (first) {

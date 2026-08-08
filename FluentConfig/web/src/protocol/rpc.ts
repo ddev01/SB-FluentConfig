@@ -72,6 +72,10 @@ export interface UpdateStageParams {
 
 export interface UpdateDismissParams {
   noticeId?: string;
+  /** `later` (default) or `ignoreVersion`. */
+  reason?: 'later' | 'ignoreVersion';
+  /** Version to ignore when `reason` is `ignoreVersion`. */
+  version?: string;
 }
 
 export interface ConfirmParams {

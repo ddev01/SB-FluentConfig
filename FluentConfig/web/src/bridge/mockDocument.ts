@@ -42,17 +42,6 @@ export function createMockDocument(): UiDocument {
           },
           {
             type: 'update-notice',
-            id: 'self-update',
-            currentVersion: '0.1.0-dev',
-            latestVersion: '0.2.0',
-            releaseNotes: 'Mock release notes: polish and bug fixes.',
-            downloadUrl: 'https://example.test/releases/download/v0.2.0/Extension.dll',
-            repo: 'example-org/example-extension',
-            dismissible: true,
-            mode: 'self',
-          },
-          {
-            type: 'update-notice',
             id: 'ext-update',
             currentVersion: '1.0.0',
             latestVersion: '1.1.0',
@@ -63,6 +52,7 @@ export function createMockDocument(): UiDocument {
             mode: 'notify',
             releasePageUrl:
               'https://example.test/example-org/example-extension/releases/tag/ext-v1.1.0',
+            updateGuideUrl: 'https://example.test/docs/extension-update',
           },
           {
             type: 'connection-status',

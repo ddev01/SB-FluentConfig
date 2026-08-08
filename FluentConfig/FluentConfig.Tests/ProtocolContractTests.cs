@@ -98,13 +98,16 @@ namespace FluentConfig.Tests
         {
             var original = new UpdateNoticeNode
             {
-                Id = "self-update",
+                Id = "extension-update",
                 CurrentVersion = "1.0.0",
                 LatestVersion = "1.1.0",
                 ReleaseNotes = "Bug fixes.",
-                DownloadUrl = "https://example.test/releases/download/v1.1.0/Extension.dll",
+                DownloadUrl = "",
                 Repo = "example-org/example-extension",
-                Dismissible = true
+                Dismissible = true,
+                Mode = "notify",
+                ReleasePageUrl = "https://example.test/example-org/example-extension/releases/tag/v1.1.0",
+                UpdateGuideUrl = "https://example.test/docs/updating",
             };
 
             var json = ProtocolJson.Serialize(original);
@@ -113,7 +116,9 @@ namespace FluentConfig.Tests
             Assert.NotNull(back);
             Assert.Equal("1.1.0", back.LatestVersion);
             Assert.Equal("example-org/example-extension", back.Repo);
-            Assert.StartsWith("https://example.test/", back.DownloadUrl);
+            Assert.Equal("notify", back.Mode);
+            Assert.Equal("https://example.test/docs/updating", back.UpdateGuideUrl);
+            Assert.StartsWith("https://example.test/", back.ReleasePageUrl);
         }
 
         [Fact]

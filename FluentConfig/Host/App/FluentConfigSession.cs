@@ -19,7 +19,7 @@ namespace FluentConfig
     public sealed partial class FluentConfigSession
     {
         /// <summary>FluentConfig framework version injected into every UiDocument (footer branding).</summary>
-        public const string FrameworkVersion = "0.1.0-dev";
+        public const string FrameworkVersion = "0.1.0-beta.1";
 
         /// <summary>
         /// Default footer repo URL. Generic placeholder â€” override at build time with
@@ -56,7 +56,9 @@ namespace FluentConfig
         private string _updateRepo;
         private string _updateCurrentVersion;
         private string _updateTagPrefix;
-        private string _updateMode = "self";
+        private string _updateMinStreamerBot;
+        private string _updateMinFluentConfig;
+        private string _updateGuideUrl;
         private int _updateCheckStarted;
         private bool _dontRemindDiscard;
         private bool _closeAlreadyConfirmed;
@@ -122,26 +124,23 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Store FluentConfig self-update args; HTTP runs after bootstrap (never blocks Show).
-        /// </summary>
-        public FluentConfigSession ConfigureSelfUpdateCheck(string repo, string currentVersion)
-        {
-            _updateRepo = repo;
-            _updateCurrentVersion = currentVersion;
-            _updateTagPrefix = null;
-            _updateMode = "self";
-            return this;
-        }
-
-        /// <summary>
         /// Store notify-only extension update args; HTTP runs after bootstrap (never blocks Show).
+        /// Empty <paramref name="tagPrefix"/> → <c>releases/latest</c>; otherwise tagged prefix.
         /// </summary>
-        public FluentConfigSession ConfigureExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
+        public FluentConfigSession ConfigureExtensionUpdateNotice(
+            string repo,
+            string currentVersion,
+            string tagPrefix = null,
+            string minStreamerBot = null,
+            string minFluentConfig = null,
+            string updateGuideUrl = null)
         {
             _updateRepo = repo;
-            _updateTagPrefix = tagPrefix;
             _updateCurrentVersion = currentVersion;
-            _updateMode = "notify";
+            _updateTagPrefix = string.IsNullOrWhiteSpace(tagPrefix) ? null : tagPrefix.Trim();
+            _updateMinStreamerBot = string.IsNullOrWhiteSpace(minStreamerBot) ? null : minStreamerBot.Trim();
+            _updateMinFluentConfig = string.IsNullOrWhiteSpace(minFluentConfig) ? null : minFluentConfig.Trim();
+            _updateGuideUrl = string.IsNullOrWhiteSpace(updateGuideUrl) ? null : updateGuideUrl.Trim();
             return this;
         }
 
@@ -179,6 +178,17 @@ namespace FluentConfig
                 throw new InvalidOperationException(
                     "FluentConfig requires STA (enable Run on UI thread on Execute C# Method). " +
                     "Current apartment state: " + Thread.CurrentThread.GetApartmentState());
+            }
+
+            if (!TryValidateExtensionVersionGates(out var gateMessage))
+            {
+                MessageBox.Show(
+                    gateMessage,
+                    _title,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                FluentConfigWindowManager.Unregister(_title);
+                return;
             }
 
             // Idempotent: if this session already owns a live window, focus it instead of orphaning.

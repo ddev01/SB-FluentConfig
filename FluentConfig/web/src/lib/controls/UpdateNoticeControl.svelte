@@ -1,95 +1,141 @@
 <script lang="ts">
+  import { onMount, tick } from 'svelte';
   import type { UpdateNoticeNode } from '../../protocol';
   import { RpcMethods } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
+  import { fadeIn, scaleIn } from '../motion';
 
   interface Props {
     node: UpdateNoticeNode;
   }
 
+  const NOTES_MAX = 800;
+
   let { node }: Props = $props();
-  let busy = $state(false);
 
-  const isNotify = $derived(node.mode === 'notify');
+  let panelEl = $state<HTMLDivElement | null>(null);
+  let laterBtn = $state<HTMLButtonElement | null>(null);
+  let dismissing = $state(false);
 
-  async function stage(): Promise<void> {
-    busy = true;
-    try {
-      await appStore.client().request(RpcMethods.UpdateStage, {
-        downloadUrl: node.downloadUrl,
-        noticeId: node.id,
-      });
-      appStore.pushToast('Update staging started');
-    } catch (err) {
-      appStore.pushToast(err instanceof Error ? err.message : 'Update failed');
-    } finally {
-      busy = false;
-    }
-  }
+  const title = $derived(
+    `Update available: ${node.currentVersion} → ${node.latestVersion}`,
+  );
 
-  function openRelease(): void {
-    const url = node.releasePageUrl;
-    if (!url) {
-      appStore.pushToast('No release page URL');
-      return;
-    }
-    appStore.openUrl(url);
-  }
+  const displayNotes = $derived.by(() => {
+    const notes = node.releaseNotes?.trim();
+    if (!notes) return '';
+    if (notes.length <= NOTES_MAX) return notes;
+    return `${notes.slice(0, NOTES_MAX).trimEnd()}…`;
+  });
 
-  async function dismiss(): Promise<void> {
+  onMount(() => {
+    void tick().then(() => laterBtn?.focus());
+  });
+
+  async function dismiss(reason: 'later' | 'ignoreVersion'): Promise<void> {
+    if (dismissing) return;
+    dismissing = true;
     try {
       await appStore.client().request(RpcMethods.UpdateDismiss, {
         noticeId: node.id,
+        reason,
+        ...(reason === 'ignoreVersion' ? { version: node.latestVersion } : {}),
       });
     } catch {
       /* still hide locally */
     }
     appStore.removeUpdateNotice(node.id);
   }
+
+  function openUpdateGuide(): void {
+    const url = node.updateGuideUrl ?? node.releasePageUrl;
+    if (!url) {
+      appStore.pushToast('No update guide URL');
+      return;
+    }
+    appStore.openUrl(url);
+  }
+
+  function onKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      void dismiss('later');
+      return;
+    }
+    if (e.key !== 'Tab' || !panelEl) return;
+    const focusable = panelEl.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 </script>
 
+<svelte:window onkeydown={onKeydown} />
+
 <div
-  class="my-2 rounded-fc-lg border border-fc-warning/40 bg-fc-warning/10 px-4 py-3 text-sm text-fc-text"
-  role="status"
+  class="fixed inset-0 z-[60] flex items-center justify-center bg-fc-bg/70 p-4 backdrop-blur-sm"
+  transition:fadeIn={{ duration: 0.15 }}
+  role="presentation"
+  onclick={(e) => {
+    if (e.target === e.currentTarget) void dismiss('later');
+  }}
 >
-  <div class="flex flex-wrap items-start justify-between gap-3">
-    <div class="min-w-0 flex-1 space-y-1">
-      <p class="font-medium text-fc-warning">
-        Update available: {node.currentVersion} → {node.latestVersion}
-      </p>
+  <div
+    bind:this={panelEl}
+    class="fc-card w-full max-w-md bg-fc-elevated/90 p-5 shadow-fc-glow"
+    transition:scaleIn={{ duration: 0.18 }}
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="fc-update-title"
+    aria-describedby="fc-update-body"
+  >
+    <h2 id="fc-update-title" class="text-base font-semibold text-fc-text">
+      {title}
+    </h2>
+
+    <div id="fc-update-body" class="mt-2 space-y-2">
       {#if node.repo}
         <p class="text-xs text-fc-text-subtle">{node.repo}</p>
       {/if}
-      {#if node.releaseNotes}
-        <p class="text-fc-text-muted">{node.releaseNotes}</p>
+      {#if displayNotes}
+        <p class="max-h-64 overflow-y-auto text-sm whitespace-pre-wrap text-fc-text-muted">
+          {displayNotes}
+        </p>
       {/if}
     </div>
-    <div class="flex shrink-0 gap-2">
-      {#if isNotify}
+
+    <div class="mt-5 flex flex-col gap-3">
+      <div class="flex flex-wrap justify-end gap-2">
         <button
           type="button"
-          class="rounded-fc bg-fc-warning px-3 py-1.5 text-sm font-semibold text-fc-bg transition-[filter] duration-150 hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
-          onclick={openRelease}
+          class="fc-btn"
+          bind:this={laterBtn}
+          disabled={dismissing}
+          onclick={() => void dismiss('later')}
         >
-          View release
+          Later
         </button>
-      {:else}
-        <button
-          type="button"
-          class="rounded-fc bg-fc-warning px-3 py-1.5 text-sm font-semibold text-fc-bg transition-[filter] duration-150 hover:brightness-110 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
-          disabled={busy}
-          onclick={stage}
-        >
-          {busy ? 'Staging…' : 'Update'}
+        <button type="button" class="fc-btn-accent" onclick={openUpdateGuide}>
+          How to update
         </button>
-      {/if}
+      </div>
       {#if node.dismissible !== false}
         <button
           type="button"
-          class="rounded-fc border border-fc-warning/40 px-3 py-1.5 text-sm font-medium text-fc-text transition-colors duration-150 hover:bg-fc-warning/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50"
-          onclick={dismiss}
+          class="self-end text-sm text-fc-text-subtle transition-colors duration-150 hover:text-fc-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50"
+          disabled={dismissing}
+          onclick={() => void dismiss('ignoreVersion')}
         >
-          Dismiss
+          Don't ask for this version
         </button>
       {/if}
     </div>

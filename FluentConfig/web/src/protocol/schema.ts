@@ -186,11 +186,8 @@ export interface SeparatorNode extends SchemaNodeBase {
 }
 
 /**
- * GitHub-releases update banner. Host fills after CheckForUpdate;
- * UI never talks to GitHub — stage/relaunch go through RPC.
- *
- * `mode: 'self'` (default) stages via `update.stage`.
- * `mode: 'notify'` opens `releasePageUrl` via `shell.openUrl` (no DLL swap).
+ * Extension update modal. Host fills after CheckForUpdate;
+ * UI never talks to GitHub — opens guide/release URLs via `shell.openUrl`.
  */
 export interface UpdateNoticeNode extends SchemaNodeBase {
   type: 'update-notice';
@@ -198,14 +195,17 @@ export interface UpdateNoticeNode extends SchemaNodeBase {
   currentVersion: string;
   latestVersion: string;
   releaseNotes?: string;
-  downloadUrl: string;
+  /** Unused for extension notices; kept for protocol compatibility. */
+  downloadUrl?: string;
   /** owner/name form (informational). */
   repo?: string;
   dismissible?: boolean;
-  /** Default `'self'` for back-compat. */
+  /** Default `'notify'` for in-menu extension notices. */
   mode?: 'self' | 'notify';
-  /** Release HTML page; used when `mode === 'notify'`. */
+  /** Release HTML page (fallback for How to update). */
   releasePageUrl?: string;
+  /** Preferred “How to update” URL (guide or release page). */
+  updateGuideUrl?: string;
 }
 
 export type ConnectionStatusValue =

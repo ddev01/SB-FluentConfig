@@ -67,7 +67,7 @@ namespace FluentConfig
                         HandleUpdateStage(msg);
                         break;
                     case RpcMethods.UpdateDismiss:
-                        _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
+                        HandleUpdateDismissRpc(msg);
                         break;
                     case RpcMethods.WindowClose:
                         HandleWindowClose(msg);
@@ -232,6 +232,8 @@ namespace FluentConfig
 
         private void HandleUpdateStage(WireMessage msg)
         {
+            // Kept for tests / low-level tooling. Menu UI no longer stages self-updates;
+            // FluentConfig.dll updates run from the copy-paste DllCheck action.
             var p = msg.Params?.ToObject<UpdateStageParams>(ProtocolJson.CreateSerializer());
             if (p == null || string.IsNullOrEmpty(p.DownloadUrl))
             {
@@ -257,7 +259,6 @@ namespace FluentConfig
 
             try
             {
-                // Self-update always targets this assembly — no author-supplied dllPath override.
                 var target = System.Reflection.Assembly.GetExecutingAssembly().Location;
                 GitHubUpdater.StageUpdate(p.DownloadUrl, target);
                 if (!UpdateHelperLauncher.LaunchSwapAndRelaunch(target, "Streamer.bot.exe"))
@@ -271,6 +272,21 @@ namespace FluentConfig
             {
                 Log("[FluentConfig] update.stage failed: " + ex.Message);
                 _bridge?.Send(WireMessage.ResponseError(msg.Id.Value, "stage_failed", ex.Message));
+            }
+        }
+
+        private void HandleUpdateDismissRpc(WireMessage msg)
+        {
+            var p = msg.Params?.ToObject<UpdateDismissParams>(ProtocolJson.CreateSerializer());
+            try
+            {
+                HandleUpdateDismiss(p);
+                _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value));
+            }
+            catch (Exception ex)
+            {
+                Log("[FluentConfig] update.dismiss failed: " + ex.Message);
+                _bridge?.Send(WireMessage.ResponseError(msg.Id.Value, "dismiss_failed", ex.Message));
             }
         }
 

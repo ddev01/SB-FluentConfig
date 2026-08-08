@@ -12,7 +12,7 @@ Wire format: **camelCase JSON** on both sides (`Newtonsoft.Json` camelCase resol
 
 ### Fixing the old Pill panel leak
 
-In the WPF FluentConfig API, `WithSectionsPanel` / `OnPillAdded` / `OnPillRemoved` handed plugin authors a raw `System.Windows.Controls.Panel` to mutate (see `examples/CompleteExample.cs` ~248–275). That leaks the UI toolkit into author code and cannot work with a schema-driven web renderer.
+In the WPF FluentConfig API, `WithSectionsPanel` / `OnPillAdded` / `OnPillRemoved` handed plugin authors a raw `System.Windows.Controls.Panel` to mutate (see `examples/menu/CompleteExample.cs` ~248–275). That leaks the UI toolkit into author code and cannot work with a schema-driven web renderer.
 
 **New shape:** `pill-input` nodes carry nested controls as more `SchemaNode`s:
 
@@ -40,7 +40,7 @@ Author callbacks on the host receive a fluent **sub-builder** that emits schema 
    → web request method "save" with full values blob
    → host persists via SettingsManager / CPH
 
-5. Buttons / update banner / filepath browse
+5. Buttons / extension update modal / filepath browse
    → RPC to host; host may push progress / dialog.* / schema.patch / update.available
 
 6. Progress (e.g. long OnClick work)
@@ -66,7 +66,7 @@ Either side may send `kind:"request"` (e.g. host → web `dialog.confirm`). Corr
 | `bootstrap` | `UiDocument` |
 | `progress` | `{ id, title?, message?, percent?, current?, total?, done? }` |
 | `values.patch` | `{ paths? }` and/or `{ values? }` |
-| `update.available` | `{ noticeId?, currentVersion, latestVersion, releaseNotes?, downloadUrl, repo? }` |
+| `update.available` | `{ noticeId?, currentVersion, latestVersion, releaseNotes?, downloadUrl?, repo?, mode: "notify", releasePageUrl?, updateGuideUrl? }` |
 | `schema.patch` | `{ sectionId?, nodeId?, node }` |
 
 ### Visibility
@@ -235,16 +235,6 @@ Response (host → web):
         "children": [
           { "type": "description", "text": "Configure the extension." },
           {
-            "type": "update-notice",
-            "id": "self-update",
-            "currentVersion": "1.0.0",
-            "latestVersion": "1.1.0",
-            "releaseNotes": "Bug fixes and performance improvements.",
-            "downloadUrl": "https://example.test/releases/download/v1.1.0/Extension.dll",
-            "repo": "example-org/example-extension",
-            "dismissible": true
-          },
-          {
             "type": "number-input",
             "label": "Rate",
             "saveKey": "rate_value",
@@ -283,6 +273,39 @@ Response (host → web):
 | button / description / title / separator / update-notice | no settings value |
 
 Nested keys follow existing conventions: `"settings.timeout"`, `"rows[0].name"`.
+
+---
+
+## Extension update modal
+
+Update notices are **not** in bootstrap. After the window is ready, the host may push:
+
+```json
+{
+  "kind": "event",
+  "event": "update.available",
+  "payload": {
+    "noticeId": "extension-update",
+    "currentVersion": "1.0.0",
+    "latestVersion": "1.1.0",
+    "releaseNotes": "Bug fixes.",
+    "repo": "example-org/example-extension",
+    "mode": "notify",
+    "releasePageUrl": "https://example.test/example-org/example-extension/releases/tag/v1.1.0",
+    "updateGuideUrl": "https://example.test/docs/updating"
+  }
+}
+```
+
+The web UI shows an in-menu modal (How to update / Later / Don't ask for this version).
+
+| RPC | Params | Host behavior |
+|-----|--------|---------------|
+| `update.dismiss` | `{ noticeId?, reason?: "later" \| "ignoreVersion", version? }` | `later` closes modal only; `ignoreVersion` persists version in `FluentConfig_UpdatePrefs_{title}` |
+| `update.stage` | `{ downloadUrl, noticeId? }` | Test/tooling only — menu no longer stages DLL updates |
+| `shell.openUrl` | `{ url }` | Opens How to update / release URL |
+
+FluentConfig.dll install/update is handled by the copy-paste **DllCheck** action, not the menu.
 
 ---
 

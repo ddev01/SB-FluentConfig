@@ -24,10 +24,13 @@ namespace FluentConfig.Protocol
         /// <summary>Pill list changed (add/remove/rename). Params: <see cref="PillChangedParams"/>. Result may include updated item schemas.</summary>
         public const string PillChanged = "pill.changed";
 
-        /// <summary>User accepted the update-notice banner. Params: <see cref="UpdateStageParams"/>.</summary>
+        /// <summary>Stage a DLL update (test/tooling). Params: <see cref="UpdateStageParams"/>.</summary>
         public const string UpdateStage = "update.stage";
 
-        /// <summary>User dismissed the update-notice banner. Params: <see cref="UpdateDismissParams"/>.</summary>
+        /// <summary>
+        /// User dismissed the extension update modal.
+        /// Params: <see cref="UpdateDismissParams"/> (<c>reason</c>: <c>later</c> | <c>ignoreVersion</c>).
+        /// </summary>
         public const string UpdateDismiss = "update.dismiss";
 
         /// <summary>
@@ -149,6 +152,14 @@ namespace FluentConfig.Protocol
     {
         [JsonProperty("noticeId")]
         public string NoticeId { get; set; }
+
+        /// <summary><c>later</c> (default) or <c>ignoreVersion</c>.</summary>
+        [JsonProperty("reason")]
+        public string Reason { get; set; }
+
+        /// <summary>Version to ignore when <see cref="Reason"/> is <c>ignoreVersion</c>.</summary>
+        [JsonProperty("version")]
+        public string Version { get; set; }
     }
 
     public sealed class ConfirmParams

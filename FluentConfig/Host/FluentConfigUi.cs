@@ -44,13 +44,35 @@ namespace FluentConfig
     /// <summary>
     /// Compatibility façade matching the old <c>FluentConfig.FluentConfig</c> static API
     /// used by examples (<c>FluentConfig.FluentConfig.AlreadyOpened</c>, <c>SetLogCallback</c>).
+    /// Also exposes framework version / update constants for docs and extension min-gates.
     /// </summary>
     public static class FluentConfig
     {
+        /// <summary>
+        /// Placeholder GitHub repo for FluentConfig.dll releases (<c>owner/name</c>).
+        /// Replace when publishing; DllCheck actions use their own copy of this constant.
+        /// </summary>
+        public const string UpdateRepo = "ddev01/SB-FluentConfig";
+
+        /// <summary>
+        /// Minimum Streamer.bot version required by this FluentConfig build (semver-ish).
+        /// Mirrored as a constant in DllCheck examples (which cannot reference this assembly).
+        /// </summary>
+        public const string MinStreamerBotVersion = "1.0.0";
+
+        /// <summary>
+        /// CPH global for FluentConfig menu/DLL prefs (window geometry, DllCheck throttle, etc.).
+        /// Mirrored in DllCheck examples (which cannot reference this assembly).
+        /// </summary>
+        public const string GeneralSettingsGlobal = "FluentConfig_General_Settings";
+
         static FluentConfig()
         {
             WebView2AssemblyResolve.EnsureInitialized();
         }
+
+        /// <summary>FluentConfig framework version string (same as UiDocument footer).</summary>
+        public static string GetVersion() => FluentConfigSession.FrameworkVersion;
 
         public static void SetLogCallback(Action<string> callback) => FluentConfigApp.SetLogCallback(callback);
         public static void SetWindowClosedCallback(Action<double, double> callback) => FluentConfigApp.SetWindowClosedCallback(callback);
@@ -150,24 +172,27 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Schedule a GitHub <c>releases/latest</c> self-update check after the window is shown
-        /// (never blocks <see cref="Show"/>). Surfaces an update-notice (<c>mode: self</c>) via
-        /// <c>update.available</c> when a newer release exists. Stages/swaps FluentConfig.dll only.
+        /// Schedule a notify-only extension update check after the window is shown
+        /// (never blocks <see cref="Show"/>). Defaults to GitHub <c>releases/latest</c>;
+        /// pass <paramref name="tagPrefix"/> for monorepo tags like <c>{prefix}-v{semver}</c>.
+        /// Optional min Streamer.bot / FluentConfig gates fail <see cref="Show"/> with a popup.
         /// </summary>
-        public FluentConfigUi WithUpdateCheck(string repo, string currentVersion)
+        /// <param name="repo">GitHub <c>owner/name</c>.</param>
+        /// <param name="currentVersion">Installed extension version (semver-ish).</param>
+        /// <param name="tagPrefix">When set, use tagged releases (<c>{prefix}-v*</c>); otherwise latest.</param>
+        /// <param name="minStreamerBot">Optional minimum <c>CPH.GetVersion()</c>.</param>
+        /// <param name="minFluentConfig">Optional minimum FluentConfig framework version.</param>
+        /// <param name="updateGuideUrl">Optional “How to update” URL (else release page).</param>
+        public FluentConfigUi WithExtensionUpdateNotice(
+            string repo,
+            string currentVersion,
+            string tagPrefix = null,
+            string minStreamerBot = null,
+            string minFluentConfig = null,
+            string updateGuideUrl = null)
         {
-            _session.ConfigureSelfUpdateCheck(repo, currentVersion);
-            return this;
-        }
-
-        /// <summary>
-        /// Schedule a notify-only extension update check via tag-prefix releases after the window
-        /// is shown (never blocks <see cref="Show"/>). Surfaces <c>mode: notify</c> via
-        /// <c>update.available</c> with a release-page link — no DLL swap.
-        /// </summary>
-        public FluentConfigUi WithExtensionUpdateNotice(string repo, string tagPrefix, string currentVersion)
-        {
-            _session.ConfigureExtensionUpdateNotice(repo, tagPrefix, currentVersion);
+            _session.ConfigureExtensionUpdateNotice(
+                repo, currentVersion, tagPrefix, minStreamerBot, minFluentConfig, updateGuideUrl);
             return this;
         }
 

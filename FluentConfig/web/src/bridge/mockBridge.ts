@@ -205,9 +205,11 @@ export class MockWebView implements ChromeWebView {
         void this.runProgressDemo('update-stage', 'Staging update…');
         return { ok: true };
 
-      case RpcMethods.UpdateDismiss:
+      case RpcMethods.UpdateDismiss: {
+        // reason: later | ignoreVersion (host persists throttle / ignored version)
         this.dismissedUpdate = true;
         return { ok: true };
+      }
 
       case RpcMethods.Toast:
         console.info('[mock toast]', (params as { message?: string })?.message);

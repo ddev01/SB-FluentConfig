@@ -8,7 +8,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 const root = path.dirname(fileURLToPath(import.meta.url))
 
 /** Informal Release gate: single-file HTML should stay near ~150 KB after mock exclusion. */
-const BUNDLE_SIZE_SOFT_MAX = 158_000
+const BUNDLE_SIZE_SOFT_MAX = 159_000
 
 /**
  * Production CSP: page is fully self-contained; no remote fetch/XHR/WS.

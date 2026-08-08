@@ -82,13 +82,17 @@ namespace FluentConfig.Protocol
         [JsonProperty("repo")]
         public string Repo { get; set; }
 
-        /// <summary><c>self</c> (default) or <c>notify</c>.</summary>
+        /// <summary>Always <c>notify</c> for extension update notices (menu no longer self-stages).</summary>
         [JsonProperty("mode")]
         public string Mode { get; set; }
 
-        /// <summary>Release HTML page; used when <see cref="Mode"/> is <c>notify</c>.</summary>
+        /// <summary>Release HTML page (fallback for How to update).</summary>
         [JsonProperty("releasePageUrl")]
         public string ReleasePageUrl { get; set; }
+
+        /// <summary>Preferred “How to update” URL (guide or release page).</summary>
+        [JsonProperty("updateGuideUrl")]
+        public string UpdateGuideUrl { get; set; }
     }
 
     public sealed class SchemaPatchPayload

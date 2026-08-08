@@ -319,8 +319,8 @@ namespace FluentConfig.Protocol
     }
 
     /// <summary>
-    /// GitHub-releases update banner. Host fills this after CheckForUpdate;
-    /// UI never talks to GitHub directly — stage/relaunch go through RPC.
+    /// Extension update modal payload (also expressible as a schema node).
+    /// Host pushes via <c>update.available</c>; UI never talks to GitHub.
     /// </summary>
     public sealed class UpdateNoticeNode : SchemaNode
     {
@@ -338,7 +338,7 @@ namespace FluentConfig.Protocol
         [JsonProperty("releaseNotes")]
         public string ReleaseNotes { get; set; }
 
-        /// <summary>Asset download URL from the release; host uses this in update.stage.</summary>
+        /// <summary>Unused for extension notices (always empty). Kept for protocol compatibility.</summary>
         [JsonProperty("downloadUrl")]
         public string DownloadUrl { get; set; }
 
@@ -349,16 +349,17 @@ namespace FluentConfig.Protocol
         [JsonProperty("dismissible")]
         public bool Dismissible { get; set; } = true;
 
-        /// <summary>
-        /// <c>self</c> = stage-and-swap FluentConfig.dll; <c>notify</c> = link-out only (extension update).
-        /// Defaults to <c>self</c> for back-compat.
-        /// </summary>
+        /// <summary>Always <c>notify</c> for in-menu extension notices.</summary>
         [JsonProperty("mode")]
-        public string Mode { get; set; } = "self";
+        public string Mode { get; set; } = "notify";
 
-        /// <summary>GitHub release page URL; used in notify mode via shell.openUrl.</summary>
+        /// <summary>GitHub release page URL (fallback How to update).</summary>
         [JsonProperty("releasePageUrl")]
         public string ReleasePageUrl { get; set; }
+
+        /// <summary>Preferred “How to update” URL.</summary>
+        [JsonProperty("updateGuideUrl")]
+        public string UpdateGuideUrl { get; set; }
     }
 
     /// <summary>

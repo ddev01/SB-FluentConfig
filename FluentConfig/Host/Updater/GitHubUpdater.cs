@@ -99,6 +99,8 @@ namespace FluentConfig.Updater
         /// <summary>
         /// GET {ApiBaseUrl}/repos/{repo}/releases/latest and compare to <paramref name="currentVersion"/>.
         /// Pure read — safe to call on every UI open. Returns null on network/parse failure.
+        /// Requires a <c>.dll</c> asset for <see cref="UpdateCheckResult.UpdateAvailable"/> (DLL install/update path).
+        /// For notify-only latest checks (extensions), use <see cref="CheckForLatestRelease"/>.
         /// </summary>
         /// <param name="repo">owner/name</param>
         /// <param name="currentVersion">SemVer-ish string (leading v stripped)</param>
@@ -140,6 +142,53 @@ namespace FluentConfig.Updater
                 LatestVersion = latest,
                 ReleaseNotes = notes,
                 DownloadUrl = downloadUrl,
+                TagName = tag,
+                ReleasePageUrl = json.Value<string>("html_url"),
+            };
+        }
+
+        /// <summary>
+        /// Notify-only probe of <c>releases/latest</c> — sets <see cref="UpdateCheckResult.UpdateAvailable"/>
+        /// when newer even if no <c>.dll</c> asset exists. <see cref="UpdateCheckResult.DownloadUrl"/> is always null.
+        /// Returns null on network/parse failure.
+        /// </summary>
+        public static UpdateCheckResult CheckForLatestRelease(string repo, string currentVersion)
+        {
+            if (string.IsNullOrWhiteSpace(repo))
+                throw new ArgumentException("repo is required (owner/name).", nameof(repo));
+
+            var url = ApiBaseUrl + "/repos/" + repo.Trim() + "/releases/latest";
+            string body;
+            try
+            {
+                body = Http.GetStringAsync(url).GetAwaiter().GetResult();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
+            JObject json;
+            try { json = JObject.Parse(body); }
+            catch { return null; }
+
+            var tag = json.Value<string>("tag_name") ?? "";
+            var latest = StripV(tag);
+            var current = StripV(currentVersion ?? "");
+            var notes = json.Value<string>("body");
+
+            var available = !string.IsNullOrEmpty(latest)
+                            && !string.IsNullOrEmpty(current)
+                            && !VersionsEqual(current, latest)
+                            && IsNewer(latest, current);
+
+            return new UpdateCheckResult
+            {
+                UpdateAvailable = available,
+                CurrentVersion = current,
+                LatestVersion = latest,
+                ReleaseNotes = notes,
+                DownloadUrl = null,
                 TagName = tag,
                 ReleasePageUrl = json.Value<string>("html_url"),
             };
