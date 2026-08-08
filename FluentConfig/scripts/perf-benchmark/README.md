@@ -33,7 +33,7 @@ Baselines are only valid with a **Release + PerfTrace** host DLL. Debug / Vite-d
    harness polls forever, check the SB checklist above (Method disabled / no UI thread /
    compile error are the usual causes).
 
-   Use **minimal** for baseline open timing; use **complete** to stress the full control surface (same density as `examples/CompleteExample.cs`).
+   Use **minimal** for baseline open timing; use **complete** to stress the full control surface (same density as `examples/menu/CompleteExample.cs`).
 
 4. Node 18+ and deps:
 

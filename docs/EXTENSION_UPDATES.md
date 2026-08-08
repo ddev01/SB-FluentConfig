@@ -1,125 +1,126 @@
 # Extension updates (FluentConfig)
 
-FluentConfig distinguishes **two update paths**. They behave differently on purpose.
-
-## FluentConfig self-update (automatic)
-
-FluentConfig's own DLL can update itself when a newer release is published on GitHub.
-
-```csharp
-FluentConfigUi.ShowOrFocus(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
-    .WithUpdateCheck("example-org/fluentconfig", ExtensionInfo.Version)
-    .Section("Settings", "Settings", s => s
-        .Toggle("Enabled", "enabled"))
-);
-```
-
-- Uses GitHub `releases/latest` (one cheap fetch **after** the window is shown — never blocks open).
-- Targets **only** `FluentConfig.dll` — the path is hardcoded inside the host; callers cannot override it.
-- When an update is available, the UI shows an update notice in **`self`** mode (via `update.available`). The user can stage the download; after Streamer.bot exits, `FluentConfig.UpdaterHelper.exe` swaps the staged file into place and relaunches.
-
-This path is for the FluentConfig framework itself, not for third-party extensions.
-
-## Extension updates (notify-only)
-
-Streamer.bot extensions are **action bundles** (imports), not a single swappable DLL. FluentConfig does **not** auto-install extension updates — that would require a fragile, author-specific swap mechanism.
-
-Instead, use **tag-prefix releases** on your GitHub repo and surface a **notify-only** banner that links to the release page (same idea as Tawmae's per-extension version checks).
-
-### 1. Publish tag-prefix releases
-
-Create GitHub releases whose tags follow:
+FluentConfig splits **framework DLL** updates from **extension** updates.
 
 ```text
-{tagPrefix}-v{semver}
+Open settings action chain
+  → DllCheck (no FluentConfig reference)  — install / daily stage FluentConfig.dll
+  → Menu action (FluentConfig)            — optional extension update modal
 ```
 
-Example for a Spotify extension with prefix `spotify`:
+## FluentConfig.dll (DllCheck action)
 
-| Tag | Meaning |
-|-----|---------|
-| `spotify-v1.0.0` | Initial release |
-| `spotify-v1.2.3` | Newer release |
+Streamer.bot will not compile a C# action that references `FluentConfig.dll` if the file is missing. First-install and DLL updates therefore live in a **copy-paste DllCheck** action with **zero** FluentConfig references (and **zero** Newtonsoft — only GAC framework refs like `System.Net.Http` / `System.Windows.Forms`, so imports do not need Find Refs for machine-specific paths).
 
-FluentConfig lists `/repos/{owner}/{repo}/releases`, filters tags starting with `{tagPrefix}-v`, and picks the highest semver. The banner links to that release's `html_url` (real changelog page on GitHub).
+See [`examples/updater/DllCheckExample.cs`](../examples/updater/DllCheckExample.cs).
 
-### 2. Wire the notify banner in your config action
+| Concern | Behavior |
+|---------|----------|
+| DLL missing | Download `.dll` (+ helper if present) from GitHub `releases/latest` |
+| DLL outdated | Once per day: compare on-disk file version → GH latest → **auto-stage** + toast; swap after Streamer.bot exits |
+| Min Streamer.bot | Hardcoded constant at top of DllCheck; MessageBox and abort if too old |
 
-Recommended: a small static `ExtensionInfo` class with shared constants.
+Edit the constants at the top of DllCheck when publishing (`UpdateRepo`, `MinStreamerBotVersion`). Matching public constants also exist on the library for docs/forks:
+
+```csharp
+FluentConfig.FluentConfig.UpdateRepo
+FluentConfig.FluentConfig.MinStreamerBotVersion
+FluentConfig.FluentConfig.GetVersion()
+```
+
+DllCheck remains the runtime path — it cannot load those constants from the DLL.
+
+Deploy `FluentConfig.UpdaterHelper.exe` next to `FluentConfig.dll` (DllCheck will also try to download it from the same release).
+
+## Extension updates (in-menu modal)
+
+Streamer.bot extensions are **action bundles**, not a swappable DLL. FluentConfig does **not** auto-install extension updates.
+
+Use `.WithExtensionUpdateNotice(...)` on the menu action. After the window opens, FluentConfig checks GitHub **at most once per day**, then shows an in-menu modal:
+
+- **How to update** — opens `updateGuideUrl` (or the release page)
+- **Later** — closes for this session; daily throttle may re-ask tomorrow
+- **Don't ask for this version** — persists ignored version in `FluentConfig_UpdatePrefs_{title}`
+
+### Discovery modes
+
+**Default (one extension per repo)** — `releases/latest`:
+
+```csharp
+.WithExtensionUpdateNotice(ExtensionInfo.Repo, ExtensionInfo.Version)
+```
+
+**Monorepo / multi-extension** — tagged releases `{tagPrefix}-v{semver}`:
+
+```csharp
+.WithExtensionUpdateNotice(ExtensionInfo.Repo, ExtensionInfo.Version, tagPrefix: "spotify")
+```
+
+### Optional gates and guide URL
 
 ```csharp
 static class ExtensionInfo
 {
     public const string Title = "My Extension";
     public const string Version = "1.0.0";
-    public const string IconPath = null; // optional .ico path
     public const string Repo = "example-org/my-extension";
-    public const string TagPrefix = "my-extension";
+    public const string MinStreamerBot = "1.0.0";      // optional
+    public const string MinFluentConfig = "0.1.0";     // optional
+    public const string UpdateGuideUrl = null;           // optional; else release page
 }
 
-public bool Execute()
-{
-    FluentConfigUi.ShowOrFocus(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
-        .WithExtensionUpdateNotice(ExtensionInfo.Repo, ExtensionInfo.TagPrefix, ExtensionInfo.Version)
-        .Section("Settings", "Settings", s => s
-            .Intro("Configure **My Extension**.")
-            .Toggle("Enabled", "enabled"))
-    );
-    return true;
-}
+FluentConfigUi.ShowOrFocus(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
+    .WithExtensionUpdateNotice(
+        ExtensionInfo.Repo,
+        ExtensionInfo.Version,
+        minStreamerBot: ExtensionInfo.MinStreamerBot,
+        minFluentConfig: ExtensionInfo.MinFluentConfig,
+        updateGuideUrl: ExtensionInfo.UpdateGuideUrl)
+    .Section("Settings", "Settings", s => s
+        .Toggle("Enabled", "enabled"))
+);
 ```
 
-- `WithExtensionUpdateNotice` runs a background check when the UI opens.
-- If a newer `{tagPrefix}-v*` release exists, an update notice appears in **`notify`** mode.
-- The **Update** control opens the release page in the system browser (`shell.openUrl`) — no download, no staging, no DLL swap.
+If a min gate fails, `Show()` aborts with a MessageBox **before** the window opens.
 
-### 3. Manual re-import (author / user flow)
+### Manual re-import
 
-When users click through to GitHub and download a new `.streamBot` (or your packaged import):
-
-1. **Export or note current settings** if your extension stores data outside Streamer.bot globals (optional but kind to users).
-2. In Streamer.bot, **import** the new action bundle (same as a fresh install).
-3. Replace or disable the old action group so only one copy runs.
-4. Re-open the FluentConfig UI — settings stored in CPH globals under `FluentConfig_Settings_{title}` are preserved as long as the **title** string unchanged.
-
-There is no one-click in-app upgrade for extensions by design. Document this flow in your own README or in-action `.Intro()` text if your audience needs hand-holding.
+1. Export or note settings if needed.
+2. Import the new action bundle in Streamer.bot.
+3. Replace/disable the old action group.
+4. Re-open the menu — CPH settings under `FluentConfig_Settings_{title}` are preserved when the **title** is unchanged.
 
 ## Quick comparison
 
-| | FluentConfig self-update | Extension notify |
-|--|--------------------------|------------------|
-| API | `.WithUpdateCheck(repo, version)` | `.WithExtensionUpdateNotice(repo, tagPrefix, version)` |
-| GitHub lookup | `releases/latest` | Paginated `releases` + tag prefix |
-| UI mode | `self` | `notify` |
-| User action | Stage + restart Streamer.bot | Open release page → manual re-import |
-| Download target | `FluentConfig.dll` only | None (link-out only) |
+| | FluentConfig.dll | Extension |
+|--|------------------|-----------|
+| Where | DllCheck action (no FluentConfig ref) | `.WithExtensionUpdateNotice` on menu |
+| GitHub lookup | `releases/latest` + `.dll` asset | `releases/latest` **or** tagged `{prefix}-v*` |
+| User action | Auto-stage; restart Streamer.bot | Modal → guide / release → manual re-import |
+| Throttle | Daily (`FluentConfig_General_Settings` → `dllCheckLastUtc`) | Daily (`FluentConfig_UpdatePrefs_{title}`) |
 
 ## Low-level API (no UI)
 
 ```csharp
-// Self-update probe (returns download URL when newer)
-var self = GitHubUpdater.CheckForUpdate("example-org/fluentconfig", "1.0.0");
+// DLL-oriented (requires .dll asset for UpdateAvailable)
+var dll = GitHubUpdater.CheckForUpdate("example-org/SB-FluentConfig", "0.1.0");
 
-// Extension probe (returns releasePageUrl when newer)
-var ext = GitHubUpdater.CheckForTaggedRelease("example-org/my-extension", "my-extension", "1.0.0");
+// Extension notify on latest (no .dll required)
+var latest = GitHubUpdater.CheckForLatestRelease("example-org/my-extension", "1.0.0");
+
+// Extension notify on tag prefix
+var tagged = GitHubUpdater.CheckForTaggedRelease("example-org/monorepo", "spotify", "1.0.0");
 ```
 
-Both return `null` on network or parse failure — failures are silent by design so a bad connection never blocks opening settings.
+All return `null` on network/parse failure.
 
 ## Version comparison notes
 
-`GitHubUpdater.IsNewer` / tag comparison use a **dotted-numeric** compare after stripping all non-digit characters (except dots). Pre-release / build metadata is invisible:
-
-| Candidate | Current | Result |
-|-----------|---------|--------|
-| `1.0.1` | `1.0.0` | newer |
-| `1.0.0-rc1` | `1.0.0` | **equal** (both normalize to `1.0.0`) |
-| `1.0.0-beta` | `0.9.0` | newer (compares as `1.0.0` vs `0.9.0`) |
-
-Do not rely on pre-release ordering for update checks; publish distinct numeric versions for each shippable release.
+`GitHubUpdater.IsNewer` uses a dotted-numeric compare after stripping non-digit characters (except dots). Pre-release metadata is invisible — publish distinct numeric versions for each shippable release.
 
 ## See also
 
-- [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md) — general authoring
-- [REFERENCES.md](REFERENCES.md) — Streamer.bot assembly references
-- `examples/CompleteExample.cs` — `ShowOrFocus`, `ConnectionStatus`, rich `Intro()`
+- [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md)
+- [REFERENCES.md](REFERENCES.md)
+- `examples/updater/DllCheckExample.cs`
+- `examples/updater/ExtensionUpdateExample.cs`

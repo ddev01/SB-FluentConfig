@@ -89,10 +89,14 @@ See the index at [docs/README.md](docs/README.md). Highlights:
 
 ## Examples
 
+See [examples/README.md](examples/README.md) for the full index. Highlights:
+
 | Example | What it shows |
 |---------|--------------|
-| `SimpleExample.cs` | Minimal setup: toggle, textbox, slider |
-| `MediumExample.cs` | Dropdown, slider, button, `ShowWhen` visibility |
-| `DevPreviewExample.cs` | Mirrors the localhost mock document for in-SB comparison |
-| `CompleteExample.cs` | Broad control surface (including Pill / schema nesting) |
-| `UpdaterExample.cs` | Notify-only extension update banner (`WithExtensionUpdateNotice`) |
+| `menu/SimpleExample.cs` | Minimal setup: toggle, textbox, slider |
+| `menu/MediumExample.cs` | Dropdown, slider, button, `ShowWhen` visibility |
+| `menu/MediumValuesExample.cs` | Read saved Medium settings from a runtime action |
+| `menu/DevPreviewExample.cs` | Mirrors the localhost mock document for in-SB comparison |
+| `menu/CompleteExample.cs` | Broad control surface (including Pill / schema nesting) |
+| `updater/DllCheckExample.cs` | Install + daily FluentConfig.dll check (no FluentConfig ref) |
+| `updater/ExtensionUpdateExample.cs` | In-menu extension update modal (`WithExtensionUpdateNotice`) |

@@ -68,4 +68,4 @@ must be installed on the OS (typical on modern Windows).
 
 - **PillInput:** use `.ItemTemplate(pb => …)` (or `.WithSectionsPanel(pb => …)` alias). Callbacks no longer receive `Panel` / `StackPanel`. Prefer `{name}` placeholders in nested saveKeys.
 - **WithVisibility:** prefer `.WithVisibility("key", build, inverted: true)` or `.WithVisibilityWhenOff("key", build)` instead of a bare positional bool in the middle.
-- **Updater:** `FluentConfigUi.Create(...).WithUpdateCheck("owner/repo", "1.0.0")` or call `FluentConfig.Updater.GitHubUpdater` directly from any extension.
+- **Updater:** chain `DllCheckExample` → menu with `.WithExtensionUpdateNotice("owner/repo", "1.0.0")`. Low-level: `FluentConfig.Updater.GitHubUpdater`. See [EXTENSION_UPDATES.md](EXTENSION_UPDATES.md).

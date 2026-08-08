@@ -55,27 +55,48 @@ Do not use WPF `Panel` types in callbacks — they are not part of this API.
 // equivalent: .WithVisibility("premium_mode", inner => ..., inverted: true)
 ```
 
-## Self-update / third-party update
+## Known bots (chat filters)
+
+Curated Twitch bot / automation logins for ignoring spam bots in chat triggers. No CPH, no UI — safe on hot paths:
+
+```csharp
+using FluentConfig;
+
+if (KnownBots.IsKnownBot(userName))
+    return true; // skip
+
+IReadOnlyList<string> all = KnownBots.GetKnownBots(); // sorted copy
+```
+
+`IsKnownBot` is case-insensitive, trims whitespace, and strips a leading `@`. Broadcaster / channel-bot exclusion stays in your action (`CPH.TwitchGetBroadcaster` / `TwitchGetBot`) — this helper only covers the shared third-party list.
+
+## Updates (DLL + extension)
+
+**FluentConfig.dll** is installed/updated by a copy-paste **DllCheck** action (no FluentConfig reference) — see [`examples/updater/DllCheckExample.cs`](../examples/updater/DllCheckExample.cs).
+
+**Extension** updates use an in-menu notify modal:
 
 ```csharp
 FluentConfigUi.Create(CPH, "My Extension", "1.0")
-    .WithUpdateCheck("example-org/example-extension", "1.0.0")
+    .WithExtensionUpdateNotice("example-org/example-extension", "1.0.0")
     .Section(...)
     .Show();
 
-// Or without UI:
-// GitHubUpdater.CheckForUpdate("example-org/example-extension", "1.0.0");
-// GitHubUpdater.EnsureInstalled(path, "example-org/example-extension");
+// Low-level (no UI):
+// GitHubUpdater.CheckForLatestRelease("example-org/example-extension", "1.0.0");
+// GitHubUpdater.CheckForTaggedRelease("example-org/monorepo", "spotify", "1.0.0");
+// GitHubUpdater.CheckForUpdate("example-org/SB-FluentConfig", "0.1.0"); // DLL assets
+// GitHubUpdater.EnsureInstalled(path, "example-org/SB-FluentConfig");
 // GitHubUpdater.StageUpdate(url, path);
 ```
 
-Staging writes `path + ".update"`. `FluentConfig.UpdaterHelper.exe` waits for Streamer.bot to exit, swaps the file, and relaunches.
+Staging writes `path + ".update"`. `FluentConfig.UpdaterHelper.exe` waits for Streamer.bot to exit, swaps the file, and relaunches. Full model: [EXTENSION_UPDATES.md](EXTENSION_UPDATES.md).
 
 ## Window chrome
 
 FluentConfig uses native WPF chrome with a dark title bar (DWM immersive mode) matching the web UI. A default FluentConfig icon is embedded; override with `.Icon(@"C:\path\to\icon.ico")` on the root builder.
 
-Window size and position are saved automatically on close to the CPH global `FluentConfig_Window_{title}` and restored on the next open (clamped to visible screens). Optional callbacks:
+Window size and position are saved automatically on close to the CPH global `FluentConfig_General_Settings` (`windows.{title}`) and restored on the next open (clamped to visible screens). Optional callbacks:
 
 ```csharp
 FluentConfig.FluentConfig.SetWindowClosedCallback((width, height) => { /* legacy size-only */ });

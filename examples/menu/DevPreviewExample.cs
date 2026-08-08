@@ -6,8 +6,8 @@
 // Refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/REFERENCES.md.
 //
-// Note: the mock's update-notice banner is not included — that only appears when
-// WithUpdateCheck finds a newer GitHub release (see UpdaterExample.cs).
+// Note: the mock's extension update modal is not included — that appears when
+// WithExtensionUpdateNotice finds a newer GitHub release (see examples/updater/).
 
 using FluentConfig;
 using System;
