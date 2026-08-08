@@ -37,7 +37,7 @@ namespace FluentConfig.Protocol
 
         /// <summary>
         /// When true, the web UI skips the discard-changes confirm on close
-        /// (loaded from CPH global FluentConfig_Prefs_{title}).
+        /// (loaded from CPH global FluentConfig_General_Settings, windows.{title}).
         /// </summary>
         [JsonProperty("dontRemindDiscard")]
         public bool DontRemindDiscard { get; set; }

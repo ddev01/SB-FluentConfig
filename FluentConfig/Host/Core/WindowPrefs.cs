@@ -1,23 +1,18 @@
-using System;
-using Newtonsoft.Json.Linq;
 using Streamer.bot.Plugin.Interface;
 
 namespace FluentConfig.Core
 {
-    /// <summary>Per-title UI preferences (CPH global FluentConfig_Prefs_{title}).</summary>
+    /// <summary>Per-title UI preferences nested under general settings <c>windows.{title}</c>.</summary>
     internal sealed class WindowPrefsData
     {
         public bool DontRemindDiscard { get; set; }
     }
 
     /// <summary>
-    /// Loads/saves per-title UI preferences via CPH global <c>FluentConfig_Prefs_{title}</c>
-    /// (same storage pattern as <see cref="WindowGeometryStore"/>).
+    /// Loads/saves per-title UI preferences via <see cref="GeneralSettingsStore"/>.
     /// </summary>
     internal static class WindowPrefsStore
     {
-        internal static string KeyForTitle(string title) => "FluentConfig_Prefs_" + (title ?? "Settings");
-
         internal static WindowPrefsData Load(IInlineInvokeProxy cph, string title)
         {
             if (cph == null || string.IsNullOrEmpty(title))
@@ -25,11 +20,10 @@ namespace FluentConfig.Core
 
             try
             {
-                string json = cph.GetGlobalVar<string>(KeyForTitle(title), true);
-                if (string.IsNullOrWhiteSpace(json))
+                var obj = GeneralSettingsStore.LoadWindowEntry(cph, title);
+                if (obj == null)
                     return null;
 
-                var obj = JObject.Parse(json);
                 return new WindowPrefsData
                 {
                     DontRemindDiscard = obj.Value<bool?>("dontRemindDiscard") == true,
@@ -46,26 +40,10 @@ namespace FluentConfig.Core
             if (cph == null || string.IsNullOrEmpty(title))
                 return;
 
-            try
+            GeneralSettingsStore.UpdateWindowEntry(cph, title, entry =>
             {
-                JObject obj;
-                try
-                {
-                    string json = cph.GetGlobalVar<string>(KeyForTitle(title), true);
-                    obj = string.IsNullOrWhiteSpace(json) ? new JObject() : JObject.Parse(json);
-                }
-                catch
-                {
-                    obj = new JObject();
-                }
-
-                obj["dontRemindDiscard"] = dontRemind;
-                cph.SetGlobalVar(KeyForTitle(title), obj.ToString(), true);
-            }
-            catch
-            {
-                // Persistence is best-effort.
-            }
+                entry["dontRemindDiscard"] = dontRemind;
+            });
         }
     }
 }

@@ -18,12 +18,10 @@ namespace FluentConfig.Core
     }
 
     /// <summary>
-    /// Loads/saves window geometry via CPH global FluentConfig_Window_{title}.
+    /// Loads/saves window geometry via <see cref="GeneralSettingsStore"/> (<c>windows.{title}</c>).
     /// </summary>
     internal static class WindowGeometryStore
     {
-        internal static string KeyForTitle(string title) => "FluentConfig_Window_" + (title ?? "Settings");
-
         internal static WindowGeometryData Load(IInlineInvokeProxy cph, string title)
         {
             if (cph == null || string.IsNullOrEmpty(title))
@@ -31,11 +29,10 @@ namespace FluentConfig.Core
 
             try
             {
-                string json = cph.GetGlobalVar<string>(KeyForTitle(title), true);
-                if (string.IsNullOrWhiteSpace(json))
+                var obj = GeneralSettingsStore.LoadWindowEntry(cph, title);
+                if (obj == null)
                     return null;
 
-                var obj = JObject.Parse(json);
                 var data = new WindowGeometryData
                 {
                     Left = obj.Value<double?>("left") ?? double.NaN,
@@ -61,22 +58,14 @@ namespace FluentConfig.Core
             if (cph == null || string.IsNullOrEmpty(title) || data == null || !IsValid(data))
                 return;
 
-            try
+            GeneralSettingsStore.UpdateWindowEntry(cph, title, entry =>
             {
-                var obj = new JObject
-                {
-                    ["left"] = data.Left,
-                    ["top"] = data.Top,
-                    ["width"] = data.Width,
-                    ["height"] = data.Height,
-                    ["state"] = data.State ?? "Normal",
-                };
-                cph.SetGlobalVar(KeyForTitle(title), obj.ToString(), true);
-            }
-            catch
-            {
-                // Persistence is best-effort.
-            }
+                entry["left"] = data.Left;
+                entry["top"] = data.Top;
+                entry["width"] = data.Width;
+                entry["height"] = data.Height;
+                entry["state"] = data.State ?? "Normal";
+            });
         }
 
         internal static WindowGeometryData FromWindow(Window window)
