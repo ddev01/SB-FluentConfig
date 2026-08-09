@@ -80,6 +80,63 @@ Every `SchemaNode` may include:
 `ShowWhen(key)` → `{ saveKey: key, equals: true }`.  
 `WithVisibility(key, inverted: true, …)` → a `group` node with `{ saveKey: key, equals: true, inverted: true }`.
 
+#### Comparator operators (additive)
+
+When `operator` is set (`gte` | `lte` | `gt` | `lt`), the legacy `equals` path is skipped. Compare the live numeric value at `saveKey` against either a literal `value` or another live key (`compareKey`):
+
+```json
+"visibility": { "saveKey": "max_count", "operator": "gte", "value": 4 }
+```
+
+```json
+"visibility": { "saveKey": "a", "operator": "gte", "compareKey": "b" }
+```
+
+`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, behavior is identical to today's equals gate.
+
+`ShowWhen(key, Comparator.GreaterOrEqual, 4)` and `WithVisibility(key, Comparator.GreaterOrEqual, 4, …)` emit this shape.
+
+#### RepeatFor (sugar — no new wire type)
+
+`RepeatFor(driverKey, (row, i) => …)` materializes real controls for each index up to the driver's declared `.Range` max (or an explicit `max`). Indices at/below the driver's min are appended ungated; higher indices wrap in a `group` with `{ operator: "gte", value: i }`. Values are preserved when the driver shrinks — visibility only toggles rendering. No host round-trip.
+
+### Layout (Grid / Row)
+
+A `group` may carry a `grid` spec (CSS grid or flex row). Any `SchemaNode` may carry a `layout` hint. Host fluent API uses Tailwind-flavored compound specs (`Grid("grid-cols-2 gap-3 items-center", …)`, `.Size("fit min-w-20")`); the wire carries **host-resolved CSS values** — never literal Tailwind class strings.
+
+```json
+{
+  "type": "group",
+  "id": "grid_2",
+  "grid": { "mode": "grid", "columns": 2, "gap": 3, "align": "center" },
+  "children": [
+    { "type": "toggle", "saveKey": "a", "label": "A" },
+    {
+      "type": "textbox",
+      "saveKey": "name",
+      "label": "Name",
+      "layout": { "span": 2, "width": "50%", "minWidth": "80px", "maxWidth": "384px" }
+    },
+    {
+      "type": "textbox",
+      "saveKey": "path",
+      "label": "Path",
+      "layout": { "grow": true }
+    }
+  ]
+}
+```
+
+- `mode`: `"grid"` (default) or `"row"` (flex-wrap)
+- `columns`: equal CSS grid columns when mode is `grid`
+- `gap`: Tailwind spacing scale (`gap * 4` px); default `3`
+- `align`: CSS `align-items` (`start`|`center`|`end`|`stretch`|`baseline`); omit for browser default
+- per-node `layout.span`: `grid-column: span N`
+- per-node `layout.width` / `minWidth` / `maxWidth`: resolved CSS strings (e.g. `fit-content`, `50%`, `80px`)
+- per-node `layout.grow` / `shrink`: booleans → `flex-grow` / `flex-shrink` `1`/`0` (Row children only)
+
+Plain `WithVisibility` groups (no `grid`) keep the indented left-border stack.
+
 ---
 
 ## Example payloads

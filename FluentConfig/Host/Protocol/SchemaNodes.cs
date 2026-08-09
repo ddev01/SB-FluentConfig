@@ -394,7 +394,7 @@ namespace FluentConfig.Protocol
     }
 
     /// <summary>
-    /// WithVisibility block: a group of nested schema nodes gated by <see cref="SchemaNode.Visibility"/>.
+    /// Nested schema group: visibility gate, layout container (Grid/Row), and/or RepeatFor index gate.
     /// Replaces the old Panel-builder callback boundary with pure data.
     /// </summary>
     public sealed class GroupNode : SchemaNode
@@ -406,6 +406,10 @@ namespace FluentConfig.Protocol
 
         [JsonProperty("children")]
         public IList<SchemaNode> Children { get; set; }
+
+        /// <summary>When set, children render in a CSS grid/flex container instead of the indented stack.</summary>
+        [JsonProperty("grid")]
+        public GridSpec Grid { get; set; }
     }
 
     /// <summary>

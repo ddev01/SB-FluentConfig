@@ -23,6 +23,10 @@ namespace FluentConfig.Protocol
         /// <summary>Optional ShowWhen-style gate on this node.</summary>
         [JsonProperty("visibility")]
         public VisibilityCondition Visibility { get; set; }
+
+        /// <summary>Optional Grid/Row layout hint (span / width).</summary>
+        [JsonProperty("layout")]
+        public LayoutHint Layout { get; set; }
     }
 
     /// <summary>
