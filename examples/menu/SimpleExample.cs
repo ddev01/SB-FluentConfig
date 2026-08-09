@@ -30,3 +30,17 @@ public class CPHInline
         return true;
     }
 }
+
+
+.Section("Settings", "Settings", "grid-cols-2", s => s
+	.Column(, c => c
+	.Toggle("Enable feature", "enabled").width("1/2")
+	.Textbox("Name", "name").width("fit-content")
+	.Column(, c => c
+	.Toggle("Enable feature2", "enabled")
+	.Textbox("Name2", "name")
+	.column("col-span-2"c => c) 
+	.Toggle("Enable feature3", "enabled")
+	.Textbox("Name3", "name")
+	)
+	

@@ -15,6 +15,7 @@ Settings UI examples — building and opening FluentConfig menus.
 | **MediumExample.cs** | Dropdown, slider, button, `ShowWhen`. |
 | **MediumValuesExample.cs** | Runtime action: read saved settings from Medium Example via `CPH.GetGlobalVar`. |
 | **CompleteExample.cs** | Full control surface with Pill / `WithVisibility` APIs. |
+| **DynamicCountLayoutExample.cs** | `RepeatFor` (integer-driven field count) + `Grid`/`Span` side-by-side layout. |
 | **DevPreviewExample.cs** | Mirrors `localhost:5173` mock document (General / Inputs / Lists). |
 
 ## updater/
