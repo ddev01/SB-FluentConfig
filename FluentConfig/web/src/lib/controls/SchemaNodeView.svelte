@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { setContext } from 'svelte';
   import type { SchemaNode } from '../../protocol';
   import { isVisible } from '../visibility';
   import { appStore } from '../../store/app.svelte';
+  import { FIT_WIDTH_CONTEXT } from '../layout';
   import ToggleControl from './ToggleControl.svelte';
   import TextboxControl from './TextboxControl.svelte';
   import SliderControl from './SliderControl.svelte';
@@ -27,8 +29,65 @@
 
   let { node }: Props = $props();
 
+  const noFieldShellTypes = new Set([
+    'group',
+    'title',
+    'separator',
+    'update-notice',
+    'description',
+  ]);
+
+  setContext(FIT_WIDTH_CONTEXT, {
+    get style() {
+      const layout = node.layout;
+      if (!layout || layout.width !== 'fit-content') return undefined;
+      if (noFieldShellTypes.has(node.type)) return undefined;
+
+      const parts = ['width: fit-content'];
+      if (layout.minWidth) parts.push(`min-width: ${layout.minWidth}`);
+      if (layout.maxWidth) parts.push(`max-width: ${layout.maxWidth}`);
+      return parts.join('; ');
+    },
+  });
+
   // Read values so visibility re-evaluates reactively when settings change.
   let visible = $derived(isVisible(node.visibility, appStore.values));
+
+  let layoutStyle = $derived.by(() => {
+    const layout = node.layout;
+    if (!layout) return '';
+
+    const parts: string[] = [];
+    const fitOnFieldShell =
+      layout.width === 'fit-content' && !noFieldShellTypes.has(node.type);
+
+    if (layout.span != null) {
+      parts.push(`grid-column: span ${layout.span}`);
+    }
+
+    // fit-content (+ its min/max) on field-shelled controls goes to FieldShell input row.
+    if (layout.width && !fitOnFieldShell) {
+      parts.push(`width: ${layout.width}`);
+    }
+
+    if (layout.minWidth && !fitOnFieldShell) {
+      parts.push(`min-width: ${layout.minWidth}`);
+    }
+
+    if (layout.maxWidth && !fitOnFieldShell) {
+      parts.push(`max-width: ${layout.maxWidth}`);
+    }
+
+    if (layout.grow != null) {
+      parts.push(`flex-grow: ${layout.grow ? 1 : 0}`);
+    }
+
+    if (layout.shrink != null) {
+      parts.push(`flex-shrink: ${layout.shrink ? 1 : 0}`);
+    }
+
+    return parts.join('; ');
+  });
 
   $effect(() => {
     if (
@@ -61,7 +120,7 @@
   });
 </script>
 
-{#if visible}
+{#snippet control()}
   {#if node.type === 'toggle'}
     <ToggleControl {node} />
   {:else if node.type === 'textbox'}
@@ -106,5 +165,15 @@
     >
       Unsupported control type: {unknownType}
     </div>
+  {/if}
+{/snippet}
+
+{#if visible}
+  {#if node.layout}
+    <div style={layoutStyle}>
+      {@render control()}
+    </div>
+  {:else}
+    {@render control()}
   {/if}
 {/if}

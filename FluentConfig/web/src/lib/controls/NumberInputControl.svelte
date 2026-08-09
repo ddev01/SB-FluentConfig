@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { NumberInputNode } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
+  import { digitCount } from '../layout';
   import FieldShell from './FieldShell.svelte';
 
   interface Props {
@@ -10,6 +11,10 @@
   let { node }: Props = $props();
   const fieldId = $derived(node.id ?? node.saveKey);
   const step = $derived(node.step ?? (node.valueType === 'int' ? 1 : 0.1));
+  const isFit = $derived(node.layout?.width === 'fit');
+  const fitChars = $derived(
+    Math.max(digitCount(node.min), digitCount(node.max)) + 1,
+  );
 
   let value = $derived(
     appStore.getValue(node.saveKey) ?? node.defaultValue ?? 0,
@@ -78,7 +83,7 @@
       id={fieldId}
       type="number"
       class="fc-input tabular-nums"
-      class:fc-input-stepper={node.stepper}
+      style={isFit ? `width: ${fitChars}ch` : undefined}
       min={node.min}
       max={node.max}
       step={step}

@@ -14,9 +14,43 @@ export type ColorScheme = 'light' | 'dark' | 'system';
 /** Conditional display (ShowWhen / WithVisibility). */
 export interface VisibilityCondition {
   saveKey: string;
-  /** Expected value; typically `true` for toggle-gated visibility. */
+  /** Expected value; typically `true` for toggle-gated visibility. Absent when using `operator`. */
   equals?: boolean | string | number | null;
   inverted?: boolean;
+  /** Comparator: `gte` | `lte` | `gt` | `lt`. Absent = legacy equals. */
+  operator?: 'gte' | 'lte' | 'gt' | 'lt';
+  /** Literal numeric comparand when `operator` is set. Mutually exclusive with `compareKey`. */
+  value?: number;
+  /** Live saveKey whose value is the right-hand comparand. Mutually exclusive with `value`. */
+  compareKey?: string;
+}
+
+/** Per-node layout hint (Span / Size). Width fields are host-resolved CSS values. */
+export interface LayoutHint {
+  /** CSS grid-column span. */
+  span?: number;
+  /** Resolved CSS `width` (e.g. `fit-content`, `50%`, `80px`). */
+  width?: string;
+  /** Resolved CSS `min-width`. */
+  minWidth?: string;
+  /** Resolved CSS `max-width`. */
+  maxWidth?: string;
+  /** Flex grow (Row only). `true` → 1, `false` → 0. */
+  grow?: boolean;
+  /** Flex shrink (Row only). `true` → 1, `false` → 0. */
+  shrink?: boolean;
+}
+
+/** Layout container spec on a group node (Grid / Row). */
+export interface GridSpec {
+  /** `grid` (CSS grid) or `row` (flex wrap). Default `grid`. */
+  mode?: 'grid' | 'row';
+  /** Equal columns when mode is `grid`. */
+  columns?: number;
+  /** Gap on Tailwind spacing scale (gap * 4px). Default 3. */
+  gap?: number;
+  /** CSS `align-items`: start | center | end | stretch | baseline. */
+  align?: 'start' | 'center' | 'end' | 'stretch' | 'baseline';
 }
 
 export type SchemaNodeType =
@@ -42,6 +76,7 @@ export type SchemaNodeType =
 export interface SchemaNodeBase {
   type: SchemaNodeType;
   visibility?: VisibilityCondition;
+  layout?: LayoutHint;
 }
 
 export interface ExclusiveToggleOptions {
@@ -227,13 +262,15 @@ export interface ConnectionStatusNode extends SchemaNodeBase {
 }
 
 /**
- * WithVisibility block: nested schema nodes gated by `visibility`.
+ * Nested schema group: visibility gate, layout container (Grid/Row), and/or RepeatFor index gate.
  * Pure data — no UI-framework container references.
  */
 export interface GroupNode extends SchemaNodeBase {
   type: 'group';
   id?: string;
   children: SchemaNode[];
+  /** When set, children render in a CSS grid/flex container instead of the indented stack. */
+  grid?: GridSpec;
 }
 
 export interface PillItemSchema {
