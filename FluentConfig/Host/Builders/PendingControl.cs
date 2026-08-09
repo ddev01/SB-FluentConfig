@@ -34,6 +34,11 @@ namespace FluentConfig
         private string _saveKey;
         private string _hint;
         private string _showWhenKey;
+        private Comparator? _showWhenOp;
+        private int? _showWhenValue;
+        private string _showWhenCompareKey;
+        private int? _span;
+        private LayoutHint _sizeHint;
 
         private bool? _defaultBool;
         private string _defaultString;
@@ -115,6 +120,11 @@ namespace FluentConfig
             _saveKey = key;
             _hint = null;
             _showWhenKey = null;
+            _showWhenOp = null;
+            _showWhenValue = null;
+            _showWhenCompareKey = null;
+            _span = null;
+            _sizeHint = null;
             _defaultBool = null;
             _defaultString = null;
             _defaultInt = null;
@@ -164,7 +174,19 @@ namespace FluentConfig
             var node = BuildNode();
             if (node != null)
             {
-                if (!string.IsNullOrEmpty(_showWhenKey))
+                if (_showWhenOp.HasValue && !string.IsNullOrEmpty(_showWhenKey))
+                {
+                    node.Visibility = new VisibilityCondition
+                    {
+                        SaveKey = _saveKeyPath(_showWhenKey),
+                        EqualsValue = null,
+                        Operator = LayoutTokens.OperatorString(_showWhenOp.Value),
+                        Value = _showWhenCompareKey == null ? (double?)(_showWhenValue ?? 0) : null,
+                        CompareKey = _showWhenCompareKey,
+                        Inverted = false,
+                    };
+                }
+                else if (!string.IsNullOrEmpty(_showWhenKey))
                 {
                     node.Visibility = new VisibilityCondition
                     {
@@ -173,9 +195,36 @@ namespace FluentConfig
                         Inverted = false,
                     };
                 }
+
+                if (_span.HasValue || _sizeHint != null)
+                {
+                    node.Layout = new LayoutHint
+                    {
+                        Span = _span,
+                        Width = _sizeHint?.Width,
+                        MinWidth = _sizeHint?.MinWidth,
+                        MaxWidth = _sizeHint?.MaxWidth,
+                        Grow = _sizeHint?.Grow,
+                        Shrink = _sizeHint?.Shrink,
+                    };
+                }
+
+                RegisterDeclaredRangeIfAny(node);
                 _target.Add(node);
             }
             _kind = Kind.None;
+        }
+
+        private void RegisterDeclaredRangeIfAny(SchemaNode node)
+        {
+            if (_session == null) return;
+            if (node is SliderNode slider)
+            {
+                _session.RegisterDeclaredRange(slider.SaveKey, slider.Min, slider.Max);
+                return;
+            }
+            if (node is NumberInputNode number && number.Min.HasValue && number.Max.HasValue)
+                _session.RegisterDeclaredRange(number.SaveKey, number.Min.Value, number.Max.Value);
         }
 
         private static string _saveKeyPath(string key) => key ?? "";

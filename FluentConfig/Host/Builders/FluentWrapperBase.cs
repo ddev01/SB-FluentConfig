@@ -41,6 +41,10 @@ namespace FluentConfig
         public TWrapper Password() => Option(o => o.Password());
         public TWrapper Multiline() => Option(o => o.Multiline());
         public TWrapper ShowWhen(string key) => Option(o => o.ShowWhen(key));
+        public TWrapper ShowWhen(string key, Comparator op, int value) => Option(o => o.ShowWhen(key, op, value));
+        public TWrapper ShowWhen(string key, Comparator op, string compareKey) => Option(o => o.ShowWhen(key, op, compareKey));
+        public TWrapper Span(int columns) => Option(o => o.Span(columns));
+        public TWrapper Size(string spec) => Option(o => o.Size(spec));
         public TWrapper Options(string[] options) => Option(o => o.Options(options));
         public TWrapper Options(IEnumerable<(string Value, string Display)> pairOptions) => Option(o => o.OptionsPairs(pairOptions));
         public TWrapper WithPairValue(string valueKey) => Option(o => o.WithPairValue(valueKey));

@@ -45,6 +45,7 @@ namespace FluentConfig
         private readonly Dictionary<string, Action<UiContext>> _buttonClicks = new Dictionary<string, Action<UiContext>>(StringComparer.Ordinal);
         private readonly Dictionary<string, Func<IList<DropdownOption>>> _dropdownRefresh = new Dictionary<string, Func<IList<DropdownOption>>>(StringComparer.Ordinal);
         private readonly Dictionary<string, PillRegistration> _pills = new Dictionary<string, PillRegistration>(StringComparer.Ordinal);
+        private readonly Dictionary<string, (double Min, double Max)> _declaredRanges = new Dictionary<string, (double Min, double Max)>(StringComparer.Ordinal);
 
         private HostBridge _bridge;
         private FluentConfigHostWindow _window;
@@ -121,6 +122,29 @@ namespace FluentConfig
                 OnAdded = onAdded,
                 OnRemoved = onRemoved,
             };
+        }
+
+        /// <summary>
+        /// Records Min/Max from a flushed IntegerInput / NumberInput / Slider so
+        /// <c>RepeatFor</c> can auto-detect the driver's range across section boundaries.
+        /// </summary>
+        internal void RegisterDeclaredRange(string saveKey, double min, double max)
+        {
+            if (string.IsNullOrEmpty(saveKey)) return;
+            _declaredRanges[saveKey] = (min, max);
+        }
+
+        internal bool TryGetDeclaredRange(string saveKey, out double min, out double max)
+        {
+            if (!string.IsNullOrEmpty(saveKey) && _declaredRanges.TryGetValue(saveKey, out var range))
+            {
+                min = range.Min;
+                max = range.Max;
+                return true;
+            }
+            min = 0;
+            max = 0;
+            return false;
         }
 
         /// <summary>

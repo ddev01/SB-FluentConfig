@@ -12,6 +12,12 @@ namespace FluentConfig
         private readonly List<SchemaNode> _nodes = new List<SchemaNode>();
         private readonly HashSet<string> _saveKeys = new HashSet<string>(StringComparer.Ordinal);
 
+        /// <summary>
+        /// When set to <c>grid</c> or <c>row</c>, this list is the direct child of a layout container.
+        /// Used to validate grow/shrink Size tokens (Row only).
+        /// </summary>
+        public string ContainerMode { get; set; }
+
         /// <summary>Reserves a saveKey for uniqueness within this list. Returns false if already used.</summary>
         public bool TryReserveSaveKey(string saveKey)
         {

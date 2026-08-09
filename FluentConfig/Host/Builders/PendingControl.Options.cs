@@ -67,7 +67,51 @@ namespace FluentConfig
             RequireKind(nameof(Multiline), Kind.Textbox);
             _multiline = true;
         }
-        public void ShowWhen(string key) => _showWhenKey = key;
+        public void ShowWhen(string key)
+        {
+            _showWhenKey = key;
+            _showWhenOp = null;
+            _showWhenValue = null;
+            _showWhenCompareKey = null;
+        }
+
+        public void ShowWhen(string key, Comparator op, int value)
+        {
+            _showWhenKey = key;
+            _showWhenOp = op;
+            _showWhenValue = value;
+            _showWhenCompareKey = null;
+        }
+
+        public void ShowWhen(string key, Comparator op, string compareKey)
+        {
+            if (string.IsNullOrWhiteSpace(compareKey))
+                throw new ArgumentException("compareKey is required (non-null, non-empty).", nameof(compareKey));
+            _showWhenKey = key;
+            _showWhenOp = op;
+            _showWhenValue = null;
+            _showWhenCompareKey = compareKey.Trim();
+        }
+
+        public void Span(int columns)
+        {
+            if (columns < 1)
+                throw new ArgumentOutOfRangeException(nameof(columns), "Span must be >= 1.");
+            _span = columns;
+        }
+
+        public void Size(string spec)
+        {
+            var hint = LayoutTokens.ParseSize(spec);
+            if ((hint.Grow.HasValue || hint.Shrink.HasValue) &&
+                !string.Equals(_target.ContainerMode, "row", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $".Size(\"{spec}\") uses grow/shrink, which only apply directly inside a Row(...) container.");
+            }
+            _sizeHint = hint;
+        }
+
         public void Options(string[] options)
         {
             RequireKind(nameof(Options), Kind.Dropdown);
