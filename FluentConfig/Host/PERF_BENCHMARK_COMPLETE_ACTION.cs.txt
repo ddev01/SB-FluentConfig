@@ -5,7 +5,7 @@
 // → CPHInline.Execute with **Run on UI thread** ENABLED.
 //
 // Why UI thread: FluentConfig opens a WPF + WebView2 window. Without
-// "Run on UI thread", ShowOrFocus will fail or hang. See docs/REFERENCES.md.
+// "Run on UI thread", ShowOrFocus will fail or hang. See docs/setup/REFERENCES.md.
 //
 // Required refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig
 // (path to dlls\FluentConfig.dll). Use Release + PerfTrace DLL for valid timings:

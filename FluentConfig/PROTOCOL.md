@@ -12,7 +12,7 @@ Wire format: **camelCase JSON** on both sides (`Newtonsoft.Json` camelCase resol
 
 ### Fixing the old Pill panel leak
 
-In the WPF FluentConfig API, `WithSectionsPanel` / `OnPillAdded` / `OnPillRemoved` handed plugin authors a raw `System.Windows.Controls.Panel` to mutate (see `examples/menu/CompleteExample.cs` ~248–275). That leaks the UI toolkit into author code and cannot work with a schema-driven web renderer.
+In the WPF FluentConfig API, `WithSectionsPanel` / `OnPillAdded` / `OnPillRemoved` handed plugin authors a raw `System.Windows.Controls.Panel` to mutate (see `examples/reference/FullControlShowcase.cs` / `examples/tutorial/09_PillsAndNestedItems.cs`). That leaks the UI toolkit into author code and cannot work with a schema-driven web renderer.
 
 **New shape:** `pill-input` nodes carry nested controls as more `SchemaNode`s:
 
