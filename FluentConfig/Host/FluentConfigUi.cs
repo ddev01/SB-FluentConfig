@@ -1,6 +1,8 @@
 using System;
 using FluentConfig.Core;
 using FluentConfig.Protocol;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using Streamer.bot.Plugin.Interface;
 
 namespace FluentConfig
@@ -64,7 +66,7 @@ namespace FluentConfig
         /// CPH global for FluentConfig menu/DLL prefs (window geometry, DllCheck throttle, etc.).
         /// Mirrored in DllCheck examples (which cannot reference this assembly).
         /// </summary>
-        public const string GeneralSettingsGlobal = "FluentConfig_General_Settings";
+        public const string GeneralSettingsGlobal = "fluentconfig_settings";
 
         static FluentConfig()
         {
@@ -79,6 +81,133 @@ namespace FluentConfig
         public static void SetWindowClosedCallback(Action<double, double, double, double> callback) => FluentConfigApp.SetWindowClosedCallback(callback);
         public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0") => FluentConfigApp.AlreadyOpened(title, version);
         public static bool IsOpen => FluentConfigApp.IsOpen;
+
+        /// <summary>Slugify a menu title (e.g. "First Chatters" → "first_chatters").</summary>
+        public static string SlugFor(string title) => SettingsKeyHelper.Slugify(title);
+
+        /// <summary>Build <c>{slug}_{suffix}</c> for a menu title (e.g. counter/users state vars).</summary>
+        public static string KeyFor(string title, string suffix) => SettingsKeyHelper.KeyFor(title, suffix);
+
+        /// <summary>Settings-blob global key for a menu title (e.g. "First Chatters" → "first_chatters_settings").</summary>
+        public static string SettingsKeyFor(string title) => SettingsKeyHelper.SettingsKeyFor(title);
+
+        /// <summary>
+        /// Load a typed settings object from the CPH global for <paramref name="title"/>.
+        /// Missing/malformed fields keep the property defaults from <c>new T()</c>;
+        /// optional <paramref name="validate"/> runs afterward for domain clamping.
+        /// JSON keys are expected in snake_case (matching FluentConfig save keys).
+        /// </summary>
+        public static T LoadSettings<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
+            where T : new()
+        {
+            var result = new T();
+            if (cph == null)
+            {
+                validate?.Invoke(result);
+                return result;
+            }
+
+            string json = null;
+            try
+            {
+                json = cph.GetGlobalVar<string>(SettingsKeyHelper.SettingsKeyFor(title), true);
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal($"LoadSettings GetGlobalVar failed: {ex.Message}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                try
+                {
+                    var settings = new JsonSerializerSettings
+                    {
+                        ContractResolver = new DefaultContractResolver
+                        {
+                            NamingStrategy = new SnakeCaseNamingStrategy()
+                        },
+                        Error = (_, args) => { args.ErrorContext.Handled = true; }
+                    };
+                    JsonConvert.PopulateObject(json, result, settings);
+                }
+                catch (Exception ex)
+                {
+                    FluentConfigApp.LogInternal($"LoadSettings PopulateObject failed: {ex.Message}");
+                }
+            }
+
+            validate?.Invoke(result);
+            return result;
+        }
+
+        /// <summary>
+        /// Read a single JSON field (or nested path) from the settings blob for <paramref name="title"/>.
+        /// Useful for flat numbered keys (e.g. <c>points_1</c>) that do not map cleanly onto a typed property.
+        /// </summary>
+        public static TValue GetSetting<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonKey,
+            TValue defaultValue = default)
+        {
+            if (cph == null || string.IsNullOrEmpty(jsonKey))
+                return defaultValue;
+
+            var mgr = new SettingsManager(cph, SettingsKeyHelper.SettingsKeyFor(title), FluentConfigApp.LogInternal);
+            mgr.Load();
+            return mgr.GetValue(jsonKey, defaultValue);
+        }
+    }
+
+    /// <summary>
+    /// Short alias for <see cref="FluentConfig"/> runtime helpers.
+    /// Prefer <c>Fc.KeyFor</c> / <c>Fc.LoadSettings</c> in action scripts
+    /// (avoids the awkward <c>FluentConfig.FluentConfig</c> qualification).
+    /// </summary>
+    public static class Fc
+    {
+        public static string SlugFor(string title) => FluentConfig.SlugFor(title);
+        public static string KeyFor(string title, string suffix) => FluentConfig.KeyFor(title, suffix);
+        public static string SettingsKeyFor(string title) => FluentConfig.SettingsKeyFor(title);
+
+        public static T LoadSettings<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
+            where T : new()
+            => FluentConfig.LoadSettings(cph, title, validate);
+
+        public static TValue GetSetting<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonKey,
+            TValue defaultValue = default)
+            => FluentConfig.GetSetting(cph, title, jsonKey, defaultValue);
+
+        public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0")
+            => FluentConfig.AlreadyOpened(title, version);
+
+        public static bool IsOpen => FluentConfig.IsOpen;
+        public static string GetVersion() => FluentConfig.GetVersion();
+
+        /// <summary>
+        /// Open a settings window for this title (focus if already open, otherwise create/build/show).
+        /// Preferred entry for menu actions; see <see cref="FluentConfigUi.Create"/> for the granular builder.
+        /// </summary>
+        public static void Open(
+            IInlineInvokeProxy cph,
+            string title,
+            string version,
+            Action<FluentConfigUi> build,
+            string iconPath = null)
+            => FluentConfigUi.ShowOrFocus(cph, title, version, build, iconPath);
+
+        /// <summary>Same as <see cref="Open"/>; kept for callers that already use this name.</summary>
+        public static void ShowOrFocus(
+            IInlineInvokeProxy cph,
+            string title,
+            string version,
+            Action<FluentConfigUi> build,
+            string iconPath = null)
+            => Open(cph, title, version, build, iconPath);
     }
 
     /// <summary>
@@ -87,7 +216,7 @@ namespace FluentConfig
     /// <remarks>
     /// Recommended authoring pattern: a plain static <c>ExtensionInfo</c> class per extension
     /// with <c>Title</c> / <c>Version</c> / <c>IconPath</c> constants, then call
-    /// <see cref="ShowOrFocus"/> (or the granular Create/Section/Show API).
+    /// <see cref="Fc.Open"/> (or the granular Create/Section/Show API).
     /// </remarks>
     public class FluentConfigUi
     {
@@ -102,7 +231,7 @@ namespace FluentConfig
         }
 
         /// <param name="cph">Streamer.bot IInlineInvokeProxy (CPH).</param>
-        /// <param name="title">Window title and settings key prefix.</param>
+        /// <param name="title">Window title; also slugified into the settings global key (<c>{slug}_settings</c>).</param>
         /// <param name="version">Display version.</param>
         /// <param name="plainWindow">Ignored in the WebView2 host (kept for API compatibility).</param>
         public static FluentConfigUi Create(IInlineInvokeProxy cph, string title, string version, bool plainWindow = false)
