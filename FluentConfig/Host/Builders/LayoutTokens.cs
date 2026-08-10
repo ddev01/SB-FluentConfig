@@ -6,7 +6,7 @@ using FluentConfig.Protocol;
 namespace FluentConfig
 {
     /// <summary>
-    /// Parses Tailwind-flavored layout tokens into structured wire specs.
+    /// Parses Tailwind class-name tokens into structured wire specs.
     /// Size tokens resolve to final CSS values on the host (Svelte is a thin pass-through).
     /// </summary>
     public static class LayoutTokens
@@ -14,12 +14,18 @@ namespace FluentConfig
         private static readonly Regex GridCols = new Regex(@"^grid-cols-(\d+)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
         private static readonly Regex GapToken = new Regex(@"^gap-(\d+)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
         private static readonly Regex ItemsToken = new Regex(@"^items-(start|center|end|stretch|baseline)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+        private static readonly Regex ColSpan = new Regex(@"^col-span-(\d+)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
         private static readonly Regex ScaleNumber = new Regex(@"^(\d+)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
-        private static readonly Regex LiteralUnit = new Regex(@"^(\d+(?:\.\d+)?)(px|rem)$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
+        private static readonly Regex Arbitrary = new Regex(@"^\[(.+)\]$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
-        private static readonly string[] KeywordTokens =
+        private static readonly string[] WidthKeywords =
         {
             "fit", "full", "1/2", "1/3", "2/3", "1/4", "3/4",
+        };
+
+        private static readonly string[] MinMaxKeywords =
+        {
+            "fit", "full", "min", "max",
         };
 
         /// <summary>Parses a Grid container spec such as <c>"grid-cols-2 gap-3 items-center"</c>.</summary>
@@ -89,7 +95,8 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Parses a compound Size spec such as <c>"fit min-w-20 max-w-96 grow"</c> into a
+        /// Parses a compound Size spec of Tailwind class names, e.g.
+        /// <c>"w-fit min-w-20 max-w-96 col-span-2 grow"</c>, into a
         /// <see cref="LayoutHint"/> with host-resolved CSS values.
         /// </summary>
         public static LayoutHint ParseSize(string spec)
@@ -122,23 +129,39 @@ namespace FluentConfig
                     continue;
                 }
 
+                var colSpan = ColSpan.Match(part);
+                if (colSpan.Success)
+                {
+                    int n = int.Parse(colSpan.Groups[1].Value, CultureInfo.InvariantCulture);
+                    if (n < 1)
+                        throw new InvalidOperationException($"Unrecognized size token '{part}'. col-span must be >= 1.");
+                    hint.Span = n;
+                    continue;
+                }
+
                 if (part.StartsWith("min-w-", StringComparison.Ordinal))
                 {
-                    hint.MinWidth = ResolveSizeToken(part.Substring("min-w-".Length), allowScale: true, part);
+                    hint.MinWidth = ResolveMinMaxSuffix(part.Substring("min-w-".Length), part);
                     continue;
                 }
                 if (part.StartsWith("max-w-", StringComparison.Ordinal))
                 {
-                    hint.MaxWidth = ResolveSizeToken(part.Substring("max-w-".Length), allowScale: true, part);
+                    hint.MaxWidth = ResolveMinMaxSuffix(part.Substring("max-w-".Length), part);
+                    continue;
+                }
+                if (part.StartsWith("w-", StringComparison.Ordinal))
+                {
+                    hint.Width = ResolveWidthSuffix(part.Substring("w-".Length), part);
                     continue;
                 }
 
-                // Bare width token (keywords, fractions, px/rem literals). Scale numbers alone are not widths.
-                hint.Width = ResolveSizeToken(part, allowScale: false, part);
+                throw new InvalidOperationException(
+                    $"Unrecognized size token '{part}'. Expected Tailwind classes: " +
+                    "w-fit|w-full|w-1/2|…|w-[…], min-w-* / max-w-*, col-span-N, grow|grow-0|shrink|shrink-0.");
             }
 
             if (hint.Width == null && hint.MinWidth == null && hint.MaxWidth == null &&
-                !hint.Grow.HasValue && !hint.Shrink.HasValue)
+                !hint.Span.HasValue && !hint.Grow.HasValue && !hint.Shrink.HasValue)
             {
                 throw new InvalidOperationException(
                     $"Size spec '{spec}' did not produce any layout properties.");
@@ -147,43 +170,56 @@ namespace FluentConfig
             return hint;
         }
 
-        /// <summary>
-        /// Resolves a size suffix to a CSS value.
-        /// Scale (<c>N</c> → <c>{N*4}px</c>) is only allowed for min-w/max-w.
-        /// </summary>
-        public static string ResolveSizeToken(string suffix, bool allowScale, string originalToken = null)
+        private static string ResolveWidthSuffix(string suffix, string originalToken)
         {
             if (string.IsNullOrWhiteSpace(suffix))
-                throw new InvalidOperationException(
-                    $"Unrecognized size token '{originalToken ?? suffix}'.");
+                throw Unrecognized(originalToken);
 
-            var t = suffix.Trim();
-            var label = originalToken ?? t;
-
-            foreach (var known in KeywordTokens)
+            foreach (var known in WidthKeywords)
             {
-                if (string.Equals(known, t, StringComparison.Ordinal))
+                if (string.Equals(known, suffix, StringComparison.Ordinal))
                     return KeywordToCss(known);
             }
 
-            var literal = LiteralUnit.Match(t);
-            if (literal.Success)
-                return literal.Groups[1].Value + literal.Groups[2].Value;
+            var arb = Arbitrary.Match(suffix);
+            if (arb.Success)
+                return arb.Groups[1].Value;
 
-            if (allowScale)
+            throw Unrecognized(originalToken);
+        }
+
+        private static string ResolveMinMaxSuffix(string suffix, string originalToken)
+        {
+            if (string.IsNullOrWhiteSpace(suffix))
+                throw Unrecognized(originalToken);
+
+            foreach (var known in MinMaxKeywords)
             {
-                var scale = ScaleNumber.Match(t);
-                if (scale.Success)
-                {
-                    int n = int.Parse(scale.Groups[1].Value, CultureInfo.InvariantCulture);
-                    return (n * 4).ToString(CultureInfo.InvariantCulture) + "px";
-                }
+                if (string.Equals(known, suffix, StringComparison.Ordinal))
+                    return MinMaxKeywordToCss(known);
             }
 
-            throw new InvalidOperationException(
-                $"Unrecognized size token '{label}'. Expected fit, full, 1/2, 1/3, 2/3, 1/4, 3/4, " +
-                "a px/rem literal (e.g. 120px, 5rem)" +
-                (allowScale ? ", or a Tailwind scale number (e.g. 20 → 80px)." : "."));
+            // Also allow width fractions on min/max as a convenience mapped to % —
+            // prefer arbitrary min-w-[50%] for strict Tailwind; fractions mirror w-*.
+            foreach (var known in WidthKeywords)
+            {
+                if (string.Equals(known, suffix, StringComparison.Ordinal) &&
+                    known != "fit" && known != "full")
+                    return KeywordToCss(known);
+            }
+
+            var arb = Arbitrary.Match(suffix);
+            if (arb.Success)
+                return arb.Groups[1].Value;
+
+            var scale = ScaleNumber.Match(suffix);
+            if (scale.Success)
+            {
+                int n = int.Parse(scale.Groups[1].Value, CultureInfo.InvariantCulture);
+                return (n * 4).ToString(CultureInfo.InvariantCulture) + "px";
+            }
+
+            throw Unrecognized(originalToken);
         }
 
         private static string KeywordToCss(string keyword)
@@ -200,6 +236,24 @@ namespace FluentConfig
                 default: return keyword;
             }
         }
+
+        private static string MinMaxKeywordToCss(string keyword)
+        {
+            switch (keyword)
+            {
+                case "fit": return "fit-content";
+                case "full": return "100%";
+                case "min": return "min-content";
+                case "max": return "max-content";
+                default: return keyword;
+            }
+        }
+
+        private static InvalidOperationException Unrecognized(string token) =>
+            new InvalidOperationException(
+                $"Unrecognized size token '{token}'. Expected Tailwind classes: " +
+                "w-fit|w-full|w-1/2|w-1/3|w-2/3|w-1/4|w-3/4|w-[…], " +
+                "min-w-N|min-w-fit|min-w-full|min-w-[…], max-w-*, col-span-N, grow|grow-0|shrink|shrink-0.");
 
         internal static string OperatorString(Comparator op)
         {

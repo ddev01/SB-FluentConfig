@@ -37,7 +37,6 @@ namespace FluentConfig
         private Comparator? _showWhenOp;
         private int? _showWhenValue;
         private string _showWhenCompareKey;
-        private int? _span;
         private LayoutHint _sizeHint;
 
         private bool? _defaultBool;
@@ -123,7 +122,6 @@ namespace FluentConfig
             _showWhenOp = null;
             _showWhenValue = null;
             _showWhenCompareKey = null;
-            _span = null;
             _sizeHint = null;
             _defaultBool = null;
             _defaultString = null;
@@ -196,16 +194,16 @@ namespace FluentConfig
                     };
                 }
 
-                if (_span.HasValue || _sizeHint != null)
+                if (_sizeHint != null)
                 {
                     node.Layout = new LayoutHint
                     {
-                        Span = _span,
-                        Width = _sizeHint?.Width,
-                        MinWidth = _sizeHint?.MinWidth,
-                        MaxWidth = _sizeHint?.MaxWidth,
-                        Grow = _sizeHint?.Grow,
-                        Shrink = _sizeHint?.Shrink,
+                        Span = _sizeHint.Span,
+                        Width = _sizeHint.Width,
+                        MinWidth = _sizeHint.MinWidth,
+                        MaxWidth = _sizeHint.MaxWidth,
+                        Grow = _sizeHint.Grow,
+                        Shrink = _sizeHint.Shrink,
                     };
                 }
 

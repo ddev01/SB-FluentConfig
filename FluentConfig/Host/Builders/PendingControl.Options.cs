@@ -93,13 +93,6 @@ namespace FluentConfig
             _showWhenCompareKey = compareKey.Trim();
         }
 
-        public void Span(int columns)
-        {
-            if (columns < 1)
-                throw new ArgumentOutOfRangeException(nameof(columns), "Span must be >= 1.");
-            _span = columns;
-        }
-
         public void Size(string spec)
         {
             var hint = LayoutTokens.ParseSize(spec);
@@ -108,6 +101,12 @@ namespace FluentConfig
             {
                 throw new InvalidOperationException(
                     $".Size(\"{spec}\") uses grow/shrink, which only apply directly inside a Row(...) container.");
+            }
+            if (hint.Span.HasValue &&
+                !string.Equals(_target.ContainerMode, "grid", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    $".Size(\"{spec}\") uses col-span, which only apply directly inside a Grid(...) container.");
             }
             _sizeHint = hint;
         }

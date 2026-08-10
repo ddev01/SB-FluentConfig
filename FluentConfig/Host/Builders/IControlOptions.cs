@@ -22,7 +22,6 @@ namespace FluentConfig
         void ShowWhen(string key);
         void ShowWhen(string key, Comparator op, int value);
         void ShowWhen(string key, Comparator op, string compareKey);
-        void Span(int columns);
         void Size(string spec);
         void Options(string[] options);
         void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions);
