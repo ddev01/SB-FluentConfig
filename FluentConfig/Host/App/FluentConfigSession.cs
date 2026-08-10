@@ -27,10 +27,6 @@ namespace FluentConfig
         /// </summary>
         public static string DefaultRepoUrl => FluentConfigBuildInfo.RepoUrl;
 
-        /// <summary>FluentConfig repo URL injected into every UiDocument (footer GitHub link).</summary>
-        [Obsolete("Use DefaultRepoUrl or instance SetRepoUrl / FluentConfigUi.RepoUrl.")]
-        public static string RepoUrl => DefaultRepoUrl;
-
         private static readonly object HostExitHookLock = new object();
         private static bool _hostExitHookRegistered;
         private static volatile bool _hostExitInProgress;

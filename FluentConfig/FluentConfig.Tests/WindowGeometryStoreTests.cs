@@ -78,26 +78,6 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
-        public void WindowGeometry_Load_FallsBackToLegacyWindowGlobal()
-        {
-            var cph = new Mock<IInlineInvokeProxy>();
-            cph.Setup(x => x.GetGlobalVar<string>(GeneralSettingsStore.GlobalKey, true)).Returns((string)null);
-            var legacy = new JObject
-            {
-                ["left"] = 10,
-                ["top"] = 20,
-                ["width"] = 640,
-                ["height"] = 480,
-                ["state"] = "Normal",
-            }.ToString();
-            cph.Setup(x => x.GetGlobalVar<string>(GeneralSettingsStore.LegacyWindowKey("Test"), true)).Returns(legacy);
-
-            var data = WindowGeometryStore.Load(cph.Object, "Test");
-            Assert.NotNull(data);
-            Assert.Equal(640, data.Width);
-        }
-
-        [Fact]
         public void WindowPrefs_Save_PreservesGeometryOnSameEntry()
         {
             string saved = null;
@@ -127,34 +107,6 @@ namespace FluentConfig.Tests
             Assert.NotNull(window);
             Assert.True(window.Value<bool>("dontRemindDiscard"));
             Assert.Equal(800, window.Value<double>("width"));
-        }
-
-        [Fact]
-        public void DllCheckLastUtc_ReadsFromGeneralSettings()
-        {
-            var cph = new Mock<IInlineInvokeProxy>();
-            var json = new JObject
-            {
-                ["dll_check_last_utc"] = "2026-01-01T00:00:00.0000000Z",
-            }.ToString();
-            cph.Setup(x => x.GetGlobalVar<string>(GeneralSettingsStore.GlobalKey, true)).Returns(json);
-
-            var loaded = GeneralSettingsStore.LoadDllCheckLastUtc(cph.Object);
-            Assert.NotNull(loaded);
-            Assert.Equal(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), loaded.Value);
-        }
-
-        [Fact]
-        public void DllCheckLastUtc_FallsBackToLegacyGlobal()
-        {
-            var cph = new Mock<IInlineInvokeProxy>();
-            cph.Setup(x => x.GetGlobalVar<string>(GeneralSettingsStore.GlobalKey, true)).Returns((string)null);
-            cph.Setup(x => x.GetGlobalVar<string>(GeneralSettingsStore.LegacyDllCheckLastUtcKey, true))
-                .Returns("2026-02-01T00:00:00.0000000Z");
-
-            var loaded = GeneralSettingsStore.LoadDllCheckLastUtc(cph.Object);
-            Assert.NotNull(loaded);
-            Assert.Equal(new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc), loaded.Value);
         }
     }
 

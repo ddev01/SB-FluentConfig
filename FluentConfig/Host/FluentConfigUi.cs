@@ -62,12 +62,6 @@ namespace FluentConfig
         /// </summary>
         public const string MinStreamerBotVersion = "1.0.0";
 
-        /// <summary>
-        /// CPH global for FluentConfig menu/DLL prefs (window geometry, DllCheck throttle, etc.).
-        /// Mirrored in DllCheck examples (which cannot reference this assembly).
-        /// </summary>
-        public const string GeneralSettingsGlobal = "fluentconfig_settings";
-
         static FluentConfig()
         {
             WebView2AssemblyResolve.EnsureInitialized();

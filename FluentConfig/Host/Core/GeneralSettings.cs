@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -15,11 +14,6 @@ namespace FluentConfig.Core
     {
         internal const string GlobalKey = "fluentconfig_settings";
         internal const string WindowsKey = "windows";
-        internal const string DllCheckLastUtcKey = "dll_check_last_utc";
-
-        internal static string LegacyWindowKey(string title) => "FluentConfig_Window_" + (title ?? "Settings");
-        internal static string LegacyPrefsKey(string title) => "FluentConfig_Prefs_" + (title ?? "Settings");
-        internal const string LegacyDllCheckLastUtcKey = "FluentConfig_DllCheck_LastUtc";
 
         internal static JObject LoadRoot(IInlineInvokeProxy cph)
         {
@@ -73,7 +67,7 @@ namespace FluentConfig.Core
         }
 
         /// <summary>
-        /// Loads the per-title window entry from general settings, or merges legacy per-key globals.
+        /// Loads the per-title window entry from general settings (<c>windows.{title}</c>).
         /// </summary>
         internal static JObject LoadWindowEntry(IInlineInvokeProxy cph, string title)
         {
@@ -87,38 +81,7 @@ namespace FluentConfig.Core
                 if (windows != null && windows[title] is JObject entry && entry.HasValues)
                     return (JObject)entry.DeepClone();
 
-                var merged = new JObject();
-                try
-                {
-                    string legacyGeom = cph.GetGlobalVar<string>(LegacyWindowKey(title), true);
-                    if (!string.IsNullOrWhiteSpace(legacyGeom))
-                    {
-                        var geom = ParseObject(legacyGeom);
-                        foreach (var prop in geom.Properties())
-                            merged[prop.Name] = prop.Value;
-                    }
-                }
-                catch
-                {
-                    // Ignore legacy read failures.
-                }
-
-                try
-                {
-                    string legacyPrefs = cph.GetGlobalVar<string>(LegacyPrefsKey(title), true);
-                    if (!string.IsNullOrWhiteSpace(legacyPrefs))
-                    {
-                        var prefs = ParseObject(legacyPrefs);
-                        if (prefs["dontRemindDiscard"] != null)
-                            merged["dontRemindDiscard"] = prefs["dontRemindDiscard"];
-                    }
-                }
-                catch
-                {
-                    // Ignore legacy read failures.
-                }
-
-                return merged.HasValues ? merged : null;
+                return null;
             }
             catch
             {
@@ -144,54 +107,6 @@ namespace FluentConfig.Core
             }
         }
 
-        internal static DateTime? LoadDllCheckLastUtc(IInlineInvokeProxy cph)
-        {
-            if (cph == null)
-                return null;
-
-            try
-            {
-                var root = LoadRoot(cph);
-                var fromGeneral = ParseUtc(root.Value<string>(DllCheckLastUtcKey));
-                if (fromGeneral.HasValue)
-                    return fromGeneral;
-
-                string legacy = cph.GetGlobalVar<string>(LegacyDllCheckLastUtcKey, true);
-                return ParseUtc(legacy);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        internal static void SetDllCheckLastUtc(IInlineInvokeProxy cph, DateTime utc)
-        {
-            if (cph == null)
-                return;
-
-            try
-            {
-                var root = LoadRoot(cph);
-                root[DllCheckLastUtcKey] = utc.ToUniversalTime()
-                    .ToString("o", CultureInfo.InvariantCulture);
-                SaveRoot(cph, root);
-            }
-            catch
-            {
-                // Persistence is best-effort.
-            }
-        }
-
-        internal static bool IsWithinDailyThrottle(DateTime? lastCheckUtc, DateTime? utcNow = null)
-        {
-            if (!lastCheckUtc.HasValue)
-                return false;
-
-            var now = utcNow ?? DateTime.UtcNow;
-            return now - lastCheckUtc.Value.ToUniversalTime() < TimeSpan.FromHours(24);
-        }
-
         private static JObject ParseObject(string json)
         {
             using (var reader = new JsonTextReader(new StringReader(json))
@@ -201,24 +116,6 @@ namespace FluentConfig.Core
             {
                 return JObject.Load(reader);
             }
-        }
-
-        private static DateTime? ParseUtc(string raw)
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-                return null;
-
-            if (!DateTime.TryParse(
-                    raw,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.RoundtripKind,
-                    out var parsed))
-                return null;
-
-            if (parsed.Kind == DateTimeKind.Unspecified)
-                parsed = DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
-
-            return parsed.ToUniversalTime();
         }
     }
 }

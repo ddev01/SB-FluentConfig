@@ -18,12 +18,7 @@ namespace FluentConfig
             "<p>Release HTML bundle is not embedded. Build with <code>-c Release</code> after " +
             "<code>bun install</code> in <code>FluentConfig/web</code>, or run a DEBUG build against " +
             "<code>http://localhost:5173</code>.</p>" +
-            "<script>" +
-            "function postReady(){" +
-            "  try{ window.chrome.webview.postMessage(JSON.stringify({kind:'event',event:'web.ready'})); }catch(e){}" +
-            "}" +
-            "if(window.chrome&&window.chrome.webview){ postReady(); }" +
-            "</script></body></html>";
+            "</body></html>";
 
         /// <summary>
         /// Full HTML document for <c>NavigateToString</c>. Prefer the embedded Vite bundle when present.
