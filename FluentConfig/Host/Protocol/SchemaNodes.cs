@@ -414,7 +414,7 @@ namespace FluentConfig.Protocol
 
     /// <summary>
     /// Pill list with per-item nested sub-panels expressed as schema nodes — never UI-framework containers.
-    /// Fixes the old WithSectionsPanel/OnPillAdded raw-Panel leak: item children are SchemaNode trees.
+    /// Item children are SchemaNode trees (see <c>ItemTemplate</c>), not raw Panel callbacks.
     /// </summary>
     public sealed class PillInputNode : SchemaNode
     {

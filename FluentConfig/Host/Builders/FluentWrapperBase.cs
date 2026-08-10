@@ -61,12 +61,10 @@ namespace FluentConfig
         public TWrapper OnClick(Action<UiContext> callback) => Option(o => o.OnClick(callback));
         public TWrapper WithPermanentOption(bool value) => Option(o => o.WithPermanentOption(value));
         public TWrapper WithStepper(bool value = true) => Option(o => o.WithStepper(value));
-        /// <summary>Nested pill item schema via fluent sub-builder (replaces WithSectionsPanel Panel leak).</summary>
+        /// <summary>Nested pill item schema via fluent sub-builder.</summary>
         public TWrapper ItemTemplate(Action<PanelBuilder> build) => Option(o => o.ItemTemplate(build));
         /// <summary>Alias for <see cref="ItemTemplate"/>.</summary>
         public TWrapper WithItemTemplate(Action<PanelBuilder> build) => ItemTemplate(build);
-        /// <summary>Backward-compatible alias: same as <see cref="ItemTemplate"/> (no Panel args).</summary>
-        public TWrapper WithSectionsPanel(Action<PanelBuilder> build) => ItemTemplate(build);
         public TWrapper OnPillAdded(Action<string, CallbackContext> callback) => Option(o => o.OnPillAdded(callback));
         public TWrapper OnPillRemoved(Action<string, CallbackContext> callback) => Option(o => o.OnPillRemoved(callback));
 

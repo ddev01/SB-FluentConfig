@@ -42,7 +42,6 @@ namespace FluentConfig
         void WithStepper(bool value = true);
         /// <summary>
         /// Defines nested per-pill schema via a fluent sub-builder (never a WPF Panel).
-        /// Replaces the old WithSectionsPanel(StackPanel, Panel, ...) leak.
         /// </summary>
         void ItemTemplate(Action<PanelBuilder> build);
         /// <summary>Invoked when a pill is added; receives item name + callback context (no Panel).</summary>
