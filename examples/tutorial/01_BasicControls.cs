@@ -1,7 +1,9 @@
-// Streamer.bot C# action – minimal FluentConfig example.
+// Tutorial 01 — Basic controls
+// Minimal FluentConfig menu: Toggle, Textbox, Slider.
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
-// See docs/REFERENCES.md for reference details.
+// See docs/setup/REFERENCES.md for reference details.
 //
+// Next: 02_Pages.cs
 
 using FluentConfig;
 
@@ -9,10 +11,10 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Simple Example", "1.0"))
+        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 01 Basic Controls", "1.0"))
             return true;
 
-        FluentConfigUi.Create(CPH, "Simple Example", "1.0")
+        FluentConfigUi.Create(CPH, "Tutorial 01 Basic Controls", "1.0")
             .Section("Settings", "Settings", s => s
                 .Intro("A minimal example with a few basic controls.")
                 .Toggle("Enable feature", "enabled")
@@ -30,17 +32,3 @@ public class CPHInline
         return true;
     }
 }
-
-
-.Section("Settings", "Settings", "grid-cols-2", s => s
-	.Column(, c => c
-	.Toggle("Enable feature", "enabled").width("1/2")
-	.Textbox("Name", "name").width("fit-content")
-	.Column(, c => c
-	.Toggle("Enable feature2", "enabled")
-	.Textbox("Name2", "name")
-	.column("col-span-2"c => c) 
-	.Toggle("Enable feature3", "enabled")
-	.Textbox("Name3", "name")
-	)
-	

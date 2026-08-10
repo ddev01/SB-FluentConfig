@@ -1,9 +1,9 @@
-// Streamer.bot C# action – extension update notice (notify-only in-menu modal).
-// Pair with DllCheckExample.cs in the same action chain (DllCheck → this menu).
+// Deployment 02 — Extension update notice (notify-only in-menu modal).
+// Pair with 01_DllCheck.cs in the same action chain (DllCheck → this menu).
 //
 // Setup: Execute C# Method + Run on UI thread.
 // Refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
-// See docs/EXTENSION_UPDATES.md and docs/REFERENCES.md.
+// See docs/guides/UPDATES.md and docs/setup/REFERENCES.md.
 
 using FluentConfig;
 

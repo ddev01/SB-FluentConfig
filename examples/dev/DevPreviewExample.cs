@@ -1,13 +1,16 @@
-// Streamer.bot C# action – mirrors the localhost:5173 mock bridge document.
+// Dev — FluentConfig contributor preview (not an authoring tutorial)
+// Mirrors the localhost:5173 mock bridge document for browser vs WebView2 comparison.
 // Same sections (General / Inputs / Lists), labels, saveKeys, and defaults as
-// FluentConfig/web/src/bridge/mockDocument.ts so you can compare browser vs WebView2.
+// FluentConfig/web/src/bridge/mockDocument.ts.
+//
+// Authors learning the API: start at examples/tutorial/01_BasicControls.cs instead.
 //
 // Setup: Execute C# Method + Run on UI thread.
 // Refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
-// See docs/REFERENCES.md.
+// See docs/setup/REFERENCES.md.
 //
 // Note: the mock's extension update modal is not included — that appears when
-// WithExtensionUpdateNotice finds a newer GitHub release (see examples/updater/).
+// WithExtensionUpdateNotice finds a newer GitHub release (see examples/deployment/).
 
 using FluentConfig;
 using System;

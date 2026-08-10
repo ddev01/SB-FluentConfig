@@ -1,7 +1,10 @@
-// Streamer.bot C# action – medium FluentConfig example.
+// Tutorial 03 — Dropdown, ShowWhen, and buttons
+// Dropdown, slider, conditional ShowWhen, and a Button with OnClick + Popup.
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
-// See docs/REFERENCES.md for reference details.
+// See docs/setup/REFERENCES.md for reference details.
 //
+// Previous: 02_Pages.cs · Next: 04_ConditionalVisibility.cs
+// Companion runtime reader: 10_ReadingSavedSettings.cs (reads this menu's saved JSON)
 
 using FluentConfig;
 using System;
@@ -10,12 +13,12 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Medium Example", "1.0"))
+        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 03 Dropdown And Buttons", "1.0"))
             return true;
 
         var modes = new[] { "Quiet", "Normal", "Loud" };
 
-        FluentConfigUi.Create(CPH, "Medium Example", "1.0")
+        FluentConfigUi.Create(CPH, "Tutorial 03 Dropdown And Buttons", "1.0")
             .Section("Main", "Main", s => s
                 .Intro("Demonstrates dropdown, slider, button, and conditional visibility.")
                 .Dropdown("Mode", "mode")

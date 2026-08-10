@@ -1,13 +1,13 @@
-// Streamer.bot C# action – FluentConfig.dll install + daily update check.
+// Deployment 01 — FluentConfig.dll install + daily update check.
 // NO FluentConfig.dll reference — Streamer.bot must compile this even when the DLL is missing.
-// Chain order: this action → menu action (with FluentConfig).
+// Chain order: this action → menu action (with FluentConfig), e.g. 02_ExtensionUpdateNotice.cs.
 //
 // Setup: Execute C# Code (default entry point) or Execute C# Method.
 // Refs (GAC / framework only — portable on import, no Find Refs for Newtonsoft):
 //   System.Net.Http, System.Windows.Forms
 //   (+ mscorlib / System usually auto-added)
 // First install: auto-download from GitHub; optional toast before download (no confirmation).
-// See docs/EXTENSION_UPDATES.md.
+// See docs/guides/UPDATES.md.
 
 using System;
 using System.Diagnostics;

@@ -1,10 +1,9 @@
-// Streamer.bot C# action – dynamic field count + grid layout.
+// Tutorial 05 — Layout and dynamic field count
+// Grid / Size (col-span, w-fit) + RepeatFor (integer-driven field count).
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
-// See docs/REFERENCES.md for reference details.
+// See docs/setup/REFERENCES.md and docs/guides/LAYOUT.md.
 //
-// Demonstrates:
-//   - RepeatFor: N points fields driven by max_count IntegerInput (live comparator visibility)
-//   - Grid / Size (col-span, w-fit): side-by-side toggles with a full-width row
+// Previous: 04_ConditionalVisibility.cs · Next: 06_DialogsAndFeedback.cs
 
 using FluentConfig;
 
@@ -12,10 +11,10 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Dynamic Count Layout", "1.0"))
+        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 05 Layout And RepeatFor", "1.0"))
             return true;
 
-        FluentConfigUi.Create(CPH, "Dynamic Count Layout", "1.0")
+        FluentConfigUi.Create(CPH, "Tutorial 05 Layout And RepeatFor", "1.0")
             .Section("Settings", "Settings", s => s
                 .Intro("First-Chatters-style points-per-place with a live count and a two-column layout.")
                 .IntegerInput("Max places", "max_count")

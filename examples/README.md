@@ -1,28 +1,44 @@
 # FluentConfig examples
 
 Copy-paste Streamer.bot C# Execute actions targeting the WebView2 host (`FluentConfig/Host`).
-Use **Execute C# Method** with **Run on UI thread** enabled. Assembly refs: see [docs/REFERENCES.md](../docs/REFERENCES.md).
+Use **Execute C# Method** with **Run on UI thread** enabled. Assembly refs: see [docs/setup/REFERENCES.md](../docs/setup/REFERENCES.md).
 
-Update paths (DllCheck vs extension modal) are documented in [docs/EXTENSION_UPDATES.md](../docs/EXTENSION_UPDATES.md).
+**Start here:** work through `tutorial/` in order (01 → 10). Each step builds on the last.
 
-## menu/
+Update paths (DllCheck vs extension modal): [docs/guides/UPDATES.md](../docs/guides/UPDATES.md).
 
-Settings UI examples — building and opening FluentConfig menus.
+## tutorial/ — guided path
+
+| Step | File | What you'll learn |
+|------|------|-------------------|
+| 01 | [01_BasicControls.cs](tutorial/01_BasicControls.cs) | Toggle, Textbox, Slider — the minimal menu |
+| 02 | [02_Pages.cs](tutorial/02_Pages.cs) | Multiple `Section` tabs (pages) |
+| 03 | [03_DropdownAndButtons.cs](tutorial/03_DropdownAndButtons.cs) | Dropdown, `ShowWhen`, Button + `OnClick` + Popup |
+| 04 | [04_ConditionalVisibility.cs](tutorial/04_ConditionalVisibility.cs) | `WithVisibility` / `WithVisibilityWhenOff` blocks |
+| 05 | [05_LayoutAndRepeatFor.cs](tutorial/05_LayoutAndRepeatFor.cs) | `Grid` / `Size` + `RepeatFor` dynamic field count |
+| 06 | [06_DialogsAndFeedback.cs](tutorial/06_DialogsAndFeedback.cs) | Popup, Toast, Confirm, Progress, Log |
+| 07 | [07_DropdownRefreshAndPairs.cs](tutorial/07_DropdownRefreshAndPairs.cs) | `Refresh()` and `WithPairValue` dropdowns |
+| 08 | [08_AdvancedControls.cs](tutorial/08_AdvancedControls.cs) | Exclusive toggles, DynamicTextboxes, repeatable rows |
+| 09 | [09_PillsAndNestedItems.cs](tutorial/09_PillsAndNestedItems.cs) | PillInput + nested `ItemTemplate` |
+| 10 | [10_ReadingSavedSettings.cs](tutorial/10_ReadingSavedSettings.cs) | Runtime action reading Tutorial 03's saved JSON |
+
+## reference/
 
 | File | Description |
 |------|-------------|
-| **SimpleExample.cs** | Minimal: toggle, textbox, slider. |
-| **MediumExample.cs** | Dropdown, slider, button, `ShowWhen`. |
-| **MediumValuesExample.cs** | Runtime action: read saved settings from Medium Example via `CPH.GetGlobalVar`. |
-| **CompleteExample.cs** | Full control surface with Pill / `WithVisibility` APIs. |
-| **DynamicCountLayoutExample.cs** | `RepeatFor` (integer-driven field count) + `Grid`/`Span` side-by-side layout. |
-| **DevPreviewExample.cs** | Mirrors `localhost:5173` mock document (General / Inputs / Lists). |
+| [FullControlShowcase.cs](reference/FullControlShowcase.cs) | Everything in one file — lookup after the tutorial |
 
-## updater/
+## deployment/
+
+Action chain order: **DllCheck → Menu**.
+
+| Step | File | Description |
+|------|------|-------------|
+| 01 | [01_DllCheck.cs](deployment/01_DllCheck.cs) | No FluentConfig ref — install + daily auto-stage of `FluentConfig.dll` |
+| 02 | [02_ExtensionUpdateNotice.cs](deployment/02_ExtensionUpdateNotice.cs) | Menu + `.WithExtensionUpdateNotice` (notify-only extension modal) |
+
+## dev/
 
 | File | Description |
 |------|-------------|
-| **DllCheckExample.cs** | No FluentConfig ref — install + daily auto-stage of `FluentConfig.dll`. |
-| **ExtensionUpdateExample.cs** | Menu + `.WithExtensionUpdateNotice` (latest or tagged) + optional mins / guide URL. |
-
-Action chain order: **DllCheck → Menu**. Call patterns match [PROTOCOL.md](../FluentConfig/PROTOCOL.md).
+| [DevPreviewExample.cs](dev/DevPreviewExample.cs) | Contributor tool — mirrors `localhost:5173` mock for browser vs WebView2 comparison. Not an authoring tutorial. |

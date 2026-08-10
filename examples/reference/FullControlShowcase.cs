@@ -1,16 +1,18 @@
-// Streamer.bot C# action – complete FluentConfig example.
+// Reference — Full control showcase
+// Everything in one file for lookup. Prefer examples/tutorial/ (01 → 10) for learning.
+//
 // Demonstrates all controls against the WebView2/schema host. Pill callbacks receive a fluent
 // sub-builder (schema nodes), never System.Windows.Controls.Panel. WithVisibility uses a named
 // inverted argument instead of a bare positional bool.
 //
 // Required references: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
-// See docs/REFERENCES.md.
+// See docs/setup/REFERENCES.md.
 //
 //   - PillInput.WithItemTemplate / OnPillAdded / OnPillRemoved (sub-builder, no Panel)
 //   - WithVisibility(saveKey, inverted: true, …) or WithVisibilityWhenOff(…)
 //   - ShowProgressWindow / Toast / Popup / ShowConfirmDialog surfaces (may be RPC-backed)
 //   - FluentConfigUi.ShowOrFocus collapses AlreadyOpened → Create → build → Show
-//   - ConnectionStatus + rich Intro() samples (see docs/EXTENSION_UPDATES.md for updates)
+//   - ConnectionStatus + rich Intro() samples (see docs/guides/UPDATES.md for updates)
 
 using FluentConfig;
 using System;
