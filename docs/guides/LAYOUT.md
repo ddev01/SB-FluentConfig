@@ -2,7 +2,7 @@
 
 Authoring guide for FluentConfig’s client-side layout APIs: **Grid**, **Row**, **Size**, comparator visibility, and **RepeatFor**.
 
-Wire shapes: [../FluentConfig/PROTOCOL.md](../FluentConfig/PROTOCOL.md). Runnable example: [`examples/menu/DynamicCountLayoutExample.cs`](../examples/menu/DynamicCountLayoutExample.cs).
+Wire shapes: [../../FluentConfig/PROTOCOL.md](../../FluentConfig/PROTOCOL.md). Runnable example: [`examples/tutorial/05_LayoutAndRepeatFor.cs`](../../examples/tutorial/05_LayoutAndRepeatFor.cs).
 
 ## Mental model
 
@@ -216,4 +216,9 @@ Max from driver’s `.Range` (or explicit `max:`). Indices `<=` min always visib
 - Remount the window when visibility/layout updates.
 - Replace `WithRepeatableRows` for user-managed lists.
 
-Protocol: [PROTOCOL.md — Layout / Visibility](../FluentConfig/PROTOCOL.md).
+Protocol: [PROTOCOL.md — Layout / Visibility](../../FluentConfig/PROTOCOL.md).
+
+## See also
+
+- [VISIBILITY.md](VISIBILITY.md)
+- [CONTROLS.md](CONTROLS.md)

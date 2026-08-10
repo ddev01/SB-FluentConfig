@@ -12,7 +12,7 @@ Open settings action chain
 
 Streamer.bot will not compile a C# action that references `FluentConfig.dll` if the file is missing. First-install and DLL updates therefore live in a **copy-paste DllCheck** action with **zero** FluentConfig references (and **zero** Newtonsoft — only GAC framework refs like `System.Net.Http` / `System.Windows.Forms`, so imports do not need Find Refs for machine-specific paths).
 
-See [`examples/updater/DllCheckExample.cs`](../examples/updater/DllCheckExample.cs).
+See [`examples/deployment/01_DllCheck.cs`](../../examples/deployment/01_DllCheck.cs).
 
 | Concern | Behavior |
 |---------|----------|
@@ -120,7 +120,7 @@ All return `null` on network/parse failure.
 
 ## See also
 
-- [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md)
-- [REFERENCES.md](REFERENCES.md)
-- `examples/updater/DllCheckExample.cs`
-- `examples/updater/ExtensionUpdateExample.cs`
+- [README.md](README.md) — guide index
+- [../setup/REFERENCES.md](../setup/REFERENCES.md)
+- [`examples/deployment/01_DllCheck.cs`](../../examples/deployment/01_DllCheck.cs)
+- [`examples/deployment/02_ExtensionUpdateNotice.cs`](../../examples/deployment/02_ExtensionUpdateNotice.cs)

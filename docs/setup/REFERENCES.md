@@ -31,7 +31,7 @@ A common pattern is two sub-actions:
 You do **not** need to add WebView2 assemblies as action references. Streamer.bot already
 loads its own WebView2 into the AppDomain; FluentConfig references those at compile time
 and does **not** deploy duplicate `Microsoft.Web.WebView2.*.dll` / `WebView2Loader.dll`
-into `dlls/` (doing so causes a version clash — see [../Host/PACKAGING.md](../Host/PACKAGING.md)).
+into `dlls/` (doing so causes a version clash — see [../../FluentConfig/Host/PACKAGING.md](../../FluentConfig/Host/PACKAGING.md)).
 
 ---
 
@@ -68,4 +68,4 @@ must be installed on the OS (typical on modern Windows).
 
 - **PillInput:** use `.ItemTemplate(pb => …)` (or `.WithSectionsPanel(pb => …)` alias). Callbacks no longer receive `Panel` / `StackPanel`. Prefer `{name}` placeholders in nested saveKeys.
 - **WithVisibility:** prefer `.WithVisibility("key", build, inverted: true)` or `.WithVisibilityWhenOff("key", build)` instead of a bare positional bool in the middle.
-- **Updater:** chain `DllCheckExample` → menu with `.WithExtensionUpdateNotice("owner/repo", "1.0.0")`. Low-level: `FluentConfig.Updater.GitHubUpdater`. See [EXTENSION_UPDATES.md](EXTENSION_UPDATES.md).
+- **Updater:** chain `examples/deployment/01_DllCheck` → menu with `.WithExtensionUpdateNotice("owner/repo", "1.0.0")`. Low-level: `FluentConfig.Updater.GitHubUpdater`. See [../guides/UPDATES.md](../guides/UPDATES.md).
