@@ -69,15 +69,15 @@ namespace FluentConfig.Tests
         }
 
         [Theory]
-        [InlineData("fit", "fit-content")]
-        [InlineData("full", "100%")]
-        [InlineData("1/2", "50%")]
-        [InlineData("1/3", "33.3333%")]
-        [InlineData("2/3", "66.6667%")]
-        [InlineData("1/4", "25%")]
-        [InlineData("3/4", "75%")]
-        [InlineData("120px", "120px")]
-        [InlineData("5rem", "5rem")]
+        [InlineData("w-fit", "fit-content")]
+        [InlineData("w-full", "100%")]
+        [InlineData("w-1/2", "50%")]
+        [InlineData("w-1/3", "33.3333%")]
+        [InlineData("w-2/3", "66.6667%")]
+        [InlineData("w-1/4", "25%")]
+        [InlineData("w-3/4", "75%")]
+        [InlineData("w-[120px]", "120px")]
+        [InlineData("w-[5rem]", "5rem")]
         public void ParseSize_WidthTokens_ResolveToCss(string token, string css)
         {
             var hint = LayoutTokens.ParseSize(token);
@@ -87,14 +87,22 @@ namespace FluentConfig.Tests
         [Fact]
         public void ParseSize_MinMaxScaleAndLiterals()
         {
-            var hint = LayoutTokens.ParseSize("fit min-w-20 max-w-96");
+            var hint = LayoutTokens.ParseSize("w-fit min-w-20 max-w-96");
             Assert.Equal("fit-content", hint.Width);
             Assert.Equal("80px", hint.MinWidth);
             Assert.Equal("384px", hint.MaxWidth);
 
-            var lit = LayoutTokens.ParseSize("min-w-80px max-w-5rem");
+            var lit = LayoutTokens.ParseSize("min-w-[80px] max-w-[5rem]");
             Assert.Equal("80px", lit.MinWidth);
             Assert.Equal("5rem", lit.MaxWidth);
+        }
+
+        [Fact]
+        public void ParseSize_ColSpan()
+        {
+            var hint = LayoutTokens.ParseSize("col-span-2 w-full");
+            Assert.Equal(2, hint.Span);
+            Assert.Equal("100%", hint.Width);
         }
 
         [Fact]
@@ -107,6 +115,13 @@ namespace FluentConfig.Tests
             var zero = LayoutTokens.ParseSize("grow-0 shrink");
             Assert.False(zero.Grow);
             Assert.True(zero.Shrink);
+        }
+
+        [Fact]
+        public void ParseSize_BareFraction_Throws()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() => LayoutTokens.ParseSize("1/2"));
+            Assert.Contains("1/2", ex.Message);
         }
 
         [Fact]
@@ -124,8 +139,8 @@ namespace FluentConfig.Tests
             ui.Section("G", "g", s => s
                 .Grid("grid-cols-2 gap-3 items-center", g => g
                     .Toggle("A", "a")
-                    .Toggle("B", "b").Span(2)
-                    .Textbox("Name", "name").Size("1/2")
+                    .Toggle("B", "b").Size("col-span-2")
+                    .Textbox("Name", "name").Size("w-1/2")
                 )
             );
 
@@ -216,6 +231,20 @@ namespace FluentConfig.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
             Assert.Contains("grow/shrink", ex.Message);
+        }
+
+        [Fact]
+        public void Size_ColSpanOutsideGrid_Throws()
+        {
+            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Layout ColSpan Bad", "1.0");
+            ui.Section("G", "g", s => s
+                .Textbox("Name", "name").Size("col-span-2")
+            );
+
+            var ex = Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
+            Assert.Contains("col-span", ex.Message);
+            Assert.Contains("Grid", ex.Message);
         }
     }
 }
