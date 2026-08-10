@@ -70,7 +70,6 @@ These won't necessarily crash anything today, but each is a real, reachable bug.
 | `web/src/lib/controls/DropdownControl.svelte:18-44` | After `dropdown.refresh`, if the current selection isn't in the new options list, the UI shows a placeholder while the underlying saved value(s) stay stale | Reconcile or explicitly clear the stored selection when it's no longer valid post-refresh |
 | `web/src/lib/controls/DynamicTextboxesControl.svelte:49`, `RepeatableRowsControl.svelte:98` | `{#each}` keyed by array index — removing/reordering an item can rebind the wrong DOM node/input state to a different logical row | Key by a stable id or content fingerprint instead of index |
 | `web/src/lib/visibility.ts:11-14` | Visibility checks only read `values`, never falling back to `node.defaultValue` — latent bug if a key is ever absent from the values blob (future `values.patch`/`schema.patch` paths) | Resolve an "effective value" (wire value ?? schema default) before evaluating the condition |
-| `examples/UpdaterExample.cs:39-55` | Mixes the notify-only `.WithExtensionUpdateNotice(...)` pattern with a manual button that calls the self-update-only `GitHubUpdater.CheckForUpdate`/`StageUpdate`/`UpdateHelperLauncher` APIs — contradicts `docs/EXTENSION_UPDATES.md`'s own two-path model and will teach plugin authors the wrong pattern | Split into two focused examples, or fix to use `CheckForTaggedRelease` + link-out consistently |
 
 **Effort for P1: M, roughly 2-4 days** including the added tests called out in the test plan below.
 
@@ -108,7 +107,7 @@ All of these have zero call sites found by repo-wide search. Recommended: remove
 **Host (C#):**
 - `Host/Core/FluentConfigWindowManager.cs:98-104` — `SnapshotWindows()`
 - `Host/App/UiContext.cs:21` — `SetPendingValues(JObject)`
-- `Host/App/FluentConfigSession.cs:141-146` — `CheckSelfUpdate` / `CheckExtensionUpdateNotice` (superseded by `Configure*` + `FluentConfigUi.WithUpdateCheck`)
+- `Host/App/FluentConfigSession.cs:141-146` — `CheckSelfUpdate` / `CheckExtensionUpdateNotice` (superseded by `Configure*` + `FluentConfigUi.WithExtensionUpdateNotice`)
 - `Host/Builders/FluentWrapperBase.cs:53`, `PendingControl.cs:385`, `IControlOptions.cs:35` — `ToggleDefault` (exact duplicate of `Default(bool)`)
 - `Host/Builders/ControlHostBuilder.cs:89`, `FluentWrapperBase.cs:73` — `Input()`/`BeginInput` (zero usage anywhere, overlaps `Textbox`)
 - `Host/Builders/SchemaNodeList.cs:14` — `Nodes` property (never read)
@@ -116,7 +115,6 @@ All of these have zero call sites found by repo-wide search. Recommended: remove
 - `Host/Protocol/ProtocolJson.cs:34` — `StringEnumConverter` registration (no enums exist under `Host/Protocol/`)
 - `Host/Host/EmbeddedHtml.cs:2-3` — unused `using System.IO;` / `using System.Reflection;`
 - `Host/Host/FluentConfigHostWindow.cs:29` — `_colorScheme` field (stored, never read after constructor — dead until a `.ColorScheme()` builder option ships)
-- `Host/PHASE2_SMOKE_ACTION.cs.txt` — legacy smoke-test action template, superseded by the perf benchmark templates + `SmokeHost`
 
 **Web (TS/Svelte):**
 - `web/src/protocol/messages.ts:94-98` — `BootstrapEvent` interface, exported but never imported

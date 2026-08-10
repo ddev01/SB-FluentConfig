@@ -36,7 +36,7 @@ See `FluentConfig/ARCHITECTURE.md` for module boundaries.
 | **Shared `CoreWebView2Environment`** | Process-lifetime reuse on UI thread; **no** background PreWarm thread |
 | **Mock bridge excluded from Release** | Vite alias `devMock.ts` → `devMock.empty.ts`; embed size gate ~158 KB in `vite.config.ts` |
 | **Deferred `NetworkBackground`** | Canvas arms after rAF ×2 + `requestIdleCallback` (`web/src/lib/NetworkBackground.svelte`) |
-| **Deferred `WithUpdateCheck`** | HTTP check after show; never blocks `Show()` |
+| **Deferred extension update notice** | HTTP check after show (`WithExtensionUpdateNotice` / `ConfigureExtensionUpdateNotice`); never blocks `Show()` |
 | **Header slimmed / removed** | In-app chrome reduced for smaller embed / less first-paint work |
 | **Benchmark harness** | `FluentConfig/scripts/perf-benchmark/` — WebSocket `DoAction` + `GetGlobal` poll |
 | **Baselines + docs** | `docs/performance/README.md`, `baselines/9472226-*.md` |
@@ -272,7 +272,7 @@ WORKING CONTEXT
 - Marks (script-start, web-ready, etc.) are elapsed from Show.begin, not phase durations.
 
 ALREADY DONE (do not redo)
-- FC_PERF_TRACE, FluentConfig_PerfLast, shared CoreWebView2Environment (no PreWarm thread), mock excluded from Release embed, deferred NetworkBackground, deferred WithUpdateCheck, perf harness, baseline docs.
+- FC_PERF_TRACE, FluentConfig_PerfLast, shared CoreWebView2Environment (no PreWarm thread), mock excluded from Release embed, deferred NetworkBackground, deferred WithExtensionUpdateNotice, perf harness, baseline docs.
 
 REJECTED (do not pursue)
 - Costura, ship WebView2 in dlls/, background PreWarm, Motion One, extra terser, WPF-UI FluentWindow, NavigateToString→virtual host without careful validation.

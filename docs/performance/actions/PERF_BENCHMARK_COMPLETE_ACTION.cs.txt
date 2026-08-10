@@ -254,8 +254,8 @@ public class CPHInline
         }
     }
 
-    // Keep ValueTuple usage in a helper (same pattern as PHASE2_SMOKE_ACTION) so the
-    // fluent chain stays readable. Needs C# 7+ / System.ValueTuple (net47+ SB).
+    // Keep ValueTuple usage in a helper so the fluent chain stays readable.
+    // Needs C# 7+ / System.ValueTuple (net47+ SB).
     private static System.Collections.Generic.IEnumerable<(string Value, string Display)> DeviceOptions()
     {
         return new[]

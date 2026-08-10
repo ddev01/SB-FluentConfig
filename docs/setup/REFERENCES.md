@@ -66,6 +66,6 @@ must be installed on the OS (typical on modern Windows).
 
 ## DSL changes vs old FluentConfig (authors)
 
-- **PillInput:** use `.ItemTemplate(pb => …)` (or `.WithSectionsPanel(pb => …)` alias). Callbacks no longer receive `Panel` / `StackPanel`. Prefer `{name}` placeholders in nested saveKeys.
+- **PillInput:** use `.ItemTemplate(pb => …)` (or `.WithItemTemplate(pb => …)`). Callbacks no longer receive `Panel` / `StackPanel`. Prefer `{name}` placeholders in nested saveKeys.
 - **WithVisibility:** prefer `.WithVisibility("key", build, inverted: true)` or `.WithVisibilityWhenOff("key", build)` instead of a bare positional bool in the middle.
 - **Updater:** chain `examples/deployment/01_DllCheck` → menu with `.WithExtensionUpdateNotice("owner/repo", "1.0.0")`. Low-level: `FluentConfig.Updater.GitHubUpdater`. See [../guides/UPDATES.md](../guides/UPDATES.md).
