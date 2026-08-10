@@ -27,7 +27,6 @@ public class CPHInline
     const string DllFileName = "FluentConfig.dll";
     const string HelperFileName = "FluentConfig.UpdaterHelper.exe";
     const string GeneralSettingsGlobal = "fluentconfig_settings";
-    const string LegacyDllCheckLastUtcGlobal = "FluentConfig_DllCheck_LastUtc";
     const string DllCheckLastUtcKey = "dll_check_last_utc";
     // ────────────────────────────────────────────────────────────────────
 
@@ -311,14 +310,10 @@ public class CPHInline
         try
         {
             var json = CPH.GetGlobalVar<string>(GeneralSettingsGlobal, true);
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                var fromGeneral = ExtractJsonStringValue(json, DllCheckLastUtcKey);
-                if (!string.IsNullOrWhiteSpace(fromGeneral))
-                    return fromGeneral;
-            }
+            if (string.IsNullOrWhiteSpace(json))
+                return null;
 
-            return CPH.GetGlobalVar<string>(LegacyDllCheckLastUtcGlobal, true);
+            return ExtractJsonStringValue(json, DllCheckLastUtcKey);
         }
         catch { return null; }
     }
