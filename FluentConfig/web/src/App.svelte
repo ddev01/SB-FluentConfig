@@ -185,7 +185,6 @@
           {#key activeSection.id}
             <div
               in:fadeIn={{ duration: 0.18 }}
-              out:fadeIn={{ duration: 0.12 }}
               role="tabpanel"
               id="fc-panel-{activeSection.id}"
               aria-labelledby="fc-tab-{activeSection.id}"
