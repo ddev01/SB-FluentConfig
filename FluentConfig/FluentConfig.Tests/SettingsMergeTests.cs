@@ -14,7 +14,7 @@ namespace FluentConfig.Tests
         private static SettingsManager CreateManager(JObject seed = null)
         {
             // null CPH: Save is a no-op; ReplaceSettings / GetSettings exercise the merge path.
-            var mgr = new SettingsManager(null, "FluentConfig_Settings_MergeTest");
+            var mgr = new SettingsManager(null, "mergetest_settings");
             if (seed != null)
                 mgr.ReplaceSettings((JObject)seed.DeepClone());
             return mgr;

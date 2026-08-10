@@ -11,9 +11,9 @@ namespace FluentConfig.Tests
     public class GeneralSettingsStoreTests
     {
         [Fact]
-        public void GlobalKey_IsFluentConfigGeneralSettings()
+        public void GlobalKey_IsFluentconfigSettings()
         {
-            Assert.Equal("FluentConfig_General_Settings", GeneralSettingsStore.GlobalKey);
+            Assert.Equal("fluentconfig_settings", GeneralSettingsStore.GlobalKey);
         }
 
         [Fact]
@@ -135,7 +135,7 @@ namespace FluentConfig.Tests
             var cph = new Mock<IInlineInvokeProxy>();
             var json = new JObject
             {
-                ["dllCheckLastUtc"] = "2026-01-01T00:00:00.0000000Z",
+                ["dll_check_last_utc"] = "2026-01-01T00:00:00.0000000Z",
             }.ToString();
             cph.Setup(x => x.GetGlobalVar<string>(GeneralSettingsStore.GlobalKey, true)).Returns(json);
 

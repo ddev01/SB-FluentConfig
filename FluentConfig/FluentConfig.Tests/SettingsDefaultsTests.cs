@@ -10,7 +10,8 @@ namespace FluentConfig.Tests
 {
     /// <summary>
     /// Opening the UI seeds missing schema defaults into the global var (overwrite-safe).
-    /// Runtime actions are expected to read via CPH.GetGlobalVar after the user opens the menu once.
+    /// Runtime actions are expected to read via <c>FluentConfig.LoadSettings&lt;T&gt;</c>
+    /// (or CPH.GetGlobalVar on <c>{slug}_settings</c>) after the user opens the menu once.
     /// </summary>
     public class SettingsDefaultsTests
     {
@@ -29,7 +30,7 @@ namespace FluentConfig.Tests
         {
             var store = new ConcurrentDictionary<string, string>(System.StringComparer.Ordinal);
             var cph = Phase2HostSmokeTests.CreateMockCph(store);
-            var key = "FluentConfig_Settings_Defaults Seed";
+            var key = "defaults_seed_settings";
             store[key] = new JObject { ["volume"] = 90 }.ToString();
 
             var ui = FluentConfigUi.Create(cph.Object, "Defaults Seed", "1.0");

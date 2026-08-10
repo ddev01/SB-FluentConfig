@@ -81,7 +81,7 @@ namespace FluentConfig.Tests
                     )
             );
 
-            var key = "FluentConfig_Settings_Name Placeholder";
+            var key = "name_placeholder_settings";
             store[key] = new JObject
             {
                 ["items"] = new JArray("say \"hello\"", @"path\to\item", "literal{name}here"),

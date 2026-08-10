@@ -81,7 +81,7 @@ namespace FluentConfig.Tests
             Assert.Equal(false, settings["smoke_enabled"]?.Value<bool>());
             Assert.Equal("after-edit", settings["smoke_name"]?.ToString());
 
-            var key = store.Keys.FirstOrDefault(k => k.Contains("Phase2 Persist"));
+            var key = store.Keys.FirstOrDefault(k => k == "phase2_persist_settings");
             Assert.False(string.IsNullOrEmpty(key));
             var persisted = JObject.Parse(store[key]);
             Assert.Equal("after-edit", persisted["smoke_name"]?.ToString());
