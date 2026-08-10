@@ -26,8 +26,9 @@ public class CPHInline
     const string MinStreamerBotVersion = "1.0.0";
     const string DllFileName = "FluentConfig.dll";
     const string HelperFileName = "FluentConfig.UpdaterHelper.exe";
-    const string GeneralSettingsGlobal = "FluentConfig_General_Settings";
+    const string GeneralSettingsGlobal = "fluentconfig_settings";
     const string LegacyDllCheckLastUtcGlobal = "FluentConfig_DllCheck_LastUtc";
+    const string DllCheckLastUtcKey = "dll_check_last_utc";
     // ────────────────────────────────────────────────────────────────────
 
     static readonly HttpClient Http = CreateHttp();
@@ -312,7 +313,7 @@ public class CPHInline
             var json = CPH.GetGlobalVar<string>(GeneralSettingsGlobal, true);
             if (!string.IsNullOrWhiteSpace(json))
             {
-                var fromGeneral = ExtractJsonStringValue(json, "dllCheckLastUtc");
+                var fromGeneral = ExtractJsonStringValue(json, DllCheckLastUtcKey);
                 if (!string.IsNullOrWhiteSpace(fromGeneral))
                     return fromGeneral;
             }
@@ -331,17 +332,17 @@ public class CPHInline
             {
                 CPH.SetGlobalVar(
                     GeneralSettingsGlobal,
-                    "{\"dllCheckLastUtc\":\"" + EscapeJsonString(utc) + "\"}",
+                    "{\"dll_check_last_utc\":\"" + EscapeJsonString(utc) + "\"}",
                     true);
                 return;
             }
 
-            var re = new Regex("\"dllCheckLastUtc\"\\s*:\\s*\"[^\"]*\"");
+            var re = new Regex("\"dll_check_last_utc\"\\s*:\\s*\"[^\"]*\"");
             if (re.IsMatch(json))
             {
                 CPH.SetGlobalVar(
                     GeneralSettingsGlobal,
-                    re.Replace(json, "\"dllCheckLastUtc\":\"" + EscapeJsonString(utc) + "\""),
+                    re.Replace(json, "\"dll_check_last_utc\":\"" + EscapeJsonString(utc) + "\""),
                     true);
                 return;
             }
@@ -349,7 +350,7 @@ public class CPHInline
             if (json.StartsWith("{") && json.EndsWith("}"))
                 CPH.SetGlobalVar(
                     GeneralSettingsGlobal,
-                    "{\"dllCheckLastUtc\":\"" + EscapeJsonString(utc) + "\"," + json.Substring(1),
+                    "{\"dll_check_last_utc\":\"" + EscapeJsonString(utc) + "\"," + json.Substring(1),
                     true);
         }
         catch { }
