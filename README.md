@@ -6,7 +6,9 @@ A library for building plugin settings UIs inside Streamer.bot. Tabbed panels, t
 
 <img src="assets/preview.png" alt="FluentConfig settings UI" height="350px" width="auto" />
 
-Configuring a Streamer.bot plugin shouldn't require editing code. Chains of "Set Argument" subactions are tedious and error-prone. Asking end users to open raw C# is unrealistic for most of them. FluentConfig bridges that gap: end users get an easy-to-use GUI, and you define it with a simple, readable API. Here's what that looks like in practice:
+Configuring a Streamer.bot plugin shouldn't require editing code. Chains of "Set Argument" subactions are tedious and error-prone. Asking end users to open raw C# is unrealistic for most of them. FluentConfig bridges that gap: end users get an easy-to-use GUI, and you define it with a simple, readable API.
+
+**It really is this simple:**
 
 ```csharp
 FluentConfigUi.Create(CPH, "My Extension", "1.0")
@@ -19,6 +21,8 @@ FluentConfigUi.Create(CPH, "My Extension", "1.0")
 
 Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`FluentConfig_Settings_{title}`).
 
+Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tutorial/01_BasicControls.cs) → 10 step by step.
+
 **Reading values at runtime** depends on context:
 
 | Context | API |
@@ -29,7 +33,7 @@ Each method call adds a control. Options chain onto it. That's the whole model. 
 
 ## Quick Start
 
-The fastest path is to import an example from [examples/](examples/). It comes preconfigured with everything that's easy to get wrong:
+The fastest path is to import an example from [examples/tutorial/](examples/tutorial/). It comes preconfigured with everything that's easy to get wrong:
 
 **Execute C# Method subaction with `Run on UI thread` enabled.** This is the most important part, and it requires a specific two-subaction setup. Your plugin logic lives inside a disabled **Execute C# Code** subaction so it doesn't auto-run when a trigger fires. Then a separate **Execute C# Method** subaction calls the main function from that file, with **Run on UI thread** turned on. That toggle only exists on Execute C# Method, not on Execute C# Code, which is why both subactions are needed. Without `Run on UI thread`, the host window won't display correctly or will throw errors.
 
@@ -42,7 +46,7 @@ The fastest path is to import an example from [examples/](examples/). It comes p
 1. Copy `FluentConfig.dll` (and `Newtonsoft.Json.dll` if needed) into your Streamer.bot `dlls/` folder. Do **not** copy WebView2 DLLs — Streamer.bot already loads them.
 2. Create an **Execute C# Code** subaction with your plugin code and **disable** it so it doesn't run on trigger.
 3. Create an **Execute C# Method** subaction, point it at the code file from step 2, select your main method, and enable **Run on UI thread**.
-4. Add assembly references as documented in [docs/REFERENCES.md](docs/REFERENCES.md). Use GAC paths, not version-specific Reference Assembly folders.
+4. Add assembly references as documented in [docs/setup/REFERENCES.md](docs/setup/REFERENCES.md). Use GAC paths, not version-specific Reference Assembly folders.
 5. Write your UI using the fluent API shown above.
 
 ## Building
@@ -68,7 +72,7 @@ Outputs land in `FluentConfig/Host/bin/{Debug|Release}/net481/FluentConfig.dll`.
 | [FluentConfig/PROTOCOL.md](FluentConfig/PROTOCOL.md) | Host ↔ web wire contract |
 | [FluentConfig/UpdaterHelper/](FluentConfig/UpdaterHelper/) | Optional stage-and-swap helper exe |
 | [docs/](docs/) | Plugin author docs |
-| [examples/](examples/) | Copy-paste Streamer.bot actions |
+| [examples/](examples/) | Guided tutorial + reference / deployment examples |
 | [decompile/](decompile/) | Local reference dumps (gitignored) |
 
 ## Documentation
@@ -77,26 +81,29 @@ See the index at [docs/README.md](docs/README.md). Highlights:
 
 | Document | Contents |
 |----------|----------|
-| [docs/PLUGIN_DEVELOPER_GUIDE.md](docs/PLUGIN_DEVELOPER_GUIDE.md) | Integration guide: Create, Section, Show, pills, updater |
-| [docs/EXTENSION_UPDATES.md](docs/EXTENSION_UPDATES.md) | Self-update vs notify-only extension update paths |
-| [docs/REFERENCES.md](docs/REFERENCES.md) | Assembly reference setup for Streamer.bot C# actions |
+| [docs/guides/README.md](docs/guides/README.md) | Author landing page + quick start |
+| [docs/guides/CONTROLS.md](docs/guides/CONTROLS.md) | Control catalog |
+| [docs/guides/LAYOUT.md](docs/guides/LAYOUT.md) | Grid / Row / Size / RepeatFor |
+| [docs/guides/UPDATES.md](docs/guides/UPDATES.md) | Self-update vs notify-only extension update paths |
+| [docs/setup/REFERENCES.md](docs/setup/REFERENCES.md) | Assembly reference setup for Streamer.bot C# actions |
 | [docs/performance/README.md](docs/performance/README.md) | Cold/warm open baselines and how to remeasure |
 | [FluentConfig/PROTOCOL.md](FluentConfig/PROTOCOL.md) | Host ↔ web message contract |
 | [FluentConfig/Host/PACKAGING.md](FluentConfig/Host/PACKAGING.md) | Deploy footprint (FluentConfig.dll + Newtonsoft; WebView2 from Streamer.bot) |
 | [FluentConfig/ARCHITECTURE.md](FluentConfig/ARCHITECTURE.md) | Module boundaries and design notes |
-| [FluentConfig/README.md](FluentConfig/README.md) | Host/web package overview |
-| [examples/README.md](examples/README.md) | Example action index |
+| [examples/README.md](examples/README.md) | Guided example index |
 
 ## Examples
 
-See [examples/README.md](examples/README.md) for the full index. Highlights:
+See [examples/README.md](examples/README.md) for the full guided path. Highlights:
 
 | Example | What it shows |
 |---------|--------------|
-| `menu/SimpleExample.cs` | Minimal setup: toggle, textbox, slider |
-| `menu/MediumExample.cs` | Dropdown, slider, button, `ShowWhen` visibility |
-| `menu/MediumValuesExample.cs` | Read saved Medium settings from a runtime action |
-| `menu/DevPreviewExample.cs` | Mirrors the localhost mock document for in-SB comparison |
-| `menu/CompleteExample.cs` | Broad control surface (including Pill / schema nesting) |
-| `updater/DllCheckExample.cs` | Install + daily FluentConfig.dll check (no FluentConfig ref) |
-| `updater/ExtensionUpdateExample.cs` | In-menu extension update modal (`WithExtensionUpdateNotice`) |
+| `tutorial/01_BasicControls.cs` | Minimal setup: toggle, textbox, slider |
+| `tutorial/02_Pages.cs` | Multiple Section tabs |
+| `tutorial/03_DropdownAndButtons.cs` | Dropdown, ShowWhen, Button + Popup |
+| `tutorial/05_LayoutAndRepeatFor.cs` | Grid / Size + RepeatFor |
+| `tutorial/09_PillsAndNestedItems.cs` | PillInput + nested ItemTemplate |
+| `tutorial/10_ReadingSavedSettings.cs` | Read saved settings from a runtime action |
+| `reference/FullControlShowcase.cs` | Everything in one file (lookup) |
+| `deployment/01_DllCheck.cs` | Install + daily FluentConfig.dll check |
+| `deployment/02_ExtensionUpdateNotice.cs` | In-menu extension update modal |
