@@ -8,14 +8,14 @@ using Streamer.bot.Plugin.Interface;
 namespace FluentConfig.Core
 {
     /// <summary>
-    /// Shared FluentConfig menu/DLL preferences in CPH global <c>FluentConfig_General_Settings</c>.
+    /// Shared FluentConfig menu/DLL preferences in CPH global <c>fluentconfig_settings</c>.
     /// Per-title window geometry and UI prefs live under <c>windows.{title}</c>.
     /// </summary>
     internal static class GeneralSettingsStore
     {
-        internal const string GlobalKey = "FluentConfig_General_Settings";
+        internal const string GlobalKey = "fluentconfig_settings";
         internal const string WindowsKey = "windows";
-        internal const string DllCheckLastUtcKey = "dllCheckLastUtc";
+        internal const string DllCheckLastUtcKey = "dll_check_last_utc";
 
         internal static string LegacyWindowKey(string title) => "FluentConfig_Window_" + (title ?? "Settings");
         internal static string LegacyPrefsKey(string title) => "FluentConfig_Prefs_" + (title ?? "Settings");

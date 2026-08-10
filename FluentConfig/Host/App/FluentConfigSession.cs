@@ -78,7 +78,7 @@ namespace FluentConfig
             _cph = cph;
             _title = title ?? "Settings";
             _version = version ?? "1.0";
-            _settingsKey = "FluentConfig_Settings_" + _title;
+            _settingsKey = SettingsKeyHelper.SettingsKeyFor(_title);
             _settingsManager = new SettingsManager(cph, _settingsKey, Log);
             _perfTracer = new PerformanceTracer(Log);
         }
