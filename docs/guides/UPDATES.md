@@ -88,7 +88,7 @@ If a min gate fails, `Show()` aborts with a MessageBox **before** the window ope
 1. Export or note settings if needed.
 2. Import the new action bundle in Streamer.bot.
 3. Replace/disable the old action group.
-4. Re-open the menu — CPH settings under `FluentConfig_Settings_{title}` are preserved when the **title** is unchanged.
+4. Re-open the menu — CPH settings under `{slug}_settings` are preserved when the **title** (and therefore the slug) is unchanged.
 
 ## Quick comparison
 
@@ -97,7 +97,7 @@ If a min gate fails, `Show()` aborts with a MessageBox **before** the window ope
 | Where | DllCheck action (no FluentConfig ref) | `.WithExtensionUpdateNotice` on menu |
 | GitHub lookup | `releases/latest` + `.dll` asset | `releases/latest` **or** tagged `{prefix}-v*` |
 | User action | Auto-stage; restart Streamer.bot | Modal → guide / release → manual re-import |
-| Throttle | Daily (`FluentConfig_General_Settings` → `dllCheckLastUtc`) | Daily (`FluentConfig_UpdatePrefs_{title}`) |
+| Throttle | Daily (`fluentconfig_settings` → `dll_check_last_utc`) | Daily (`FluentConfig_UpdatePrefs_{title}`) |
 
 ## Low-level API (no UI)
 

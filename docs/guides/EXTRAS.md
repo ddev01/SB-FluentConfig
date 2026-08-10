@@ -21,7 +21,7 @@ IReadOnlyList<string> all = KnownBots.GetKnownBots(); // sorted copy
 
 FluentConfig uses native WPF chrome with a dark title bar (DWM immersive mode) matching the web UI. A default FluentConfig icon is embedded; override with `.Icon(@"C:\path\to\icon.ico")` on the root builder.
 
-Window size and position are saved automatically on close to the CPH global `FluentConfig_General_Settings` (`windows.{title}`) and restored on the next open (clamped to visible screens). Optional callbacks:
+Window size and position are saved automatically on close to the CPH global `fluentconfig_settings` (`windows.{title}`) and restored on the next open (clamped to visible screens). Optional callbacks:
 
 ```csharp
 FluentConfig.FluentConfig.SetWindowClosedCallback((width, height) => { /* legacy size-only */ });

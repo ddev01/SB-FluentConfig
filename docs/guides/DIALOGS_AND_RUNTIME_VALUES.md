@@ -35,18 +35,22 @@ Runnable examples:
 
 | Context | API |
 |---------|-----|
-| After the user opens/saves the UI | `CPH.GetGlobalVar<string>("FluentConfig_Settings_{title}", true)` then parse JSON |
+| After the user opens/saves the UI | `Fc.LoadSettings<T>(CPH, title)` (or `Fc.GetSetting<T>` / `Fc.SettingsKeyFor(title)`) |
 | Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)` |
 | Pill `OnAdded` / `OnRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
 
 ### Runtime action (outside the UI)
 
-Settings persist as JSON under `FluentConfig_Settings_{title}`. The **title** must match the menu's title exactly:
+Settings persist as JSON under `{slug}_settings` (title slugified to snake_case). The **title** must match the menu's title:
 
 ```csharp
-string json = CPH.GetGlobalVar<string>("FluentConfig_Settings_My Extension", true);
-var settings = JObject.Parse(json);
-string mode = settings["mode"]?.Value<string>() ?? "Normal";
+using FluentConfig;
+
+private const string Title = "My Extension"; // → my_extension_settings
+
+var settings = Fc.LoadSettings<MySettings>(CPH, Title);
+// Or a single field:
+string mode = Fc.GetSetting(CPH, Title, "mode", "Normal");
 ```
 
 See [examples/tutorial/10_ReadingSavedSettings.cs](../../examples/tutorial/10_ReadingSavedSettings.cs) for a full companion action.

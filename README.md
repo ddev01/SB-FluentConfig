@@ -19,7 +19,7 @@ FluentConfigUi.Create(CPH, "My Extension", "1.0")
     .Show();
 ```
 
-Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`FluentConfig_Settings_{title}`).
+Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`{slug}_settings`, e.g. `"First Chatters"` → `first_chatters_settings`).
 
 Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tutorial/01_BasicControls.cs) → 10 step by step.
 
@@ -27,7 +27,7 @@ Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tu
 
 | Context | API |
 |---------|-----|
-| After the user opens/saves the UI | `CPH.GetGlobalVar<string>("FluentConfig_Settings_{title}", true)` then parse JSON |
+| After the user opens/saves the UI | `Fc.LoadSettings<T>(CPH, title)` (or `Fc.GetSetting<T>` / `Fc.SettingsKeyFor(title)`) |
 | Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)` |
 | Pill `OnAdded` / `OnRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
 
