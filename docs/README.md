@@ -6,7 +6,7 @@ Host-side documentation for the WebView2 FluentConfig library.
 |-----|----------|
 | [REFERENCES.md](REFERENCES.md) | Streamer.bot C# action assembly references + Run on UI thread |
 | [PLUGIN_DEVELOPER_GUIDE.md](PLUGIN_DEVELOPER_GUIDE.md) | Authoring extensions against the host DSL |
-| [LAYOUT.md](LAYOUT.md) | Grid / Row / Width / Span / RepeatFor / comparator visibility |
+| [LAYOUT.md](LAYOUT.md) | Grid / Row / Size (1:1 Tailwind) / RepeatFor / comparator visibility |
 | [EXTENSION_UPDATES.md](EXTENSION_UPDATES.md) | Self-update vs notify-only extension updates |
 | [performance/README.md](performance/README.md) | Cold/warm open baselines |
 | [../FluentConfig/PROTOCOL.md](../FluentConfig/PROTOCOL.md) | Host ↔ web message contract |

@@ -4,7 +4,7 @@
 //
 // Demonstrates:
 //   - RepeatFor: N points fields driven by max_count IntegerInput (live comparator visibility)
-//   - Grid / Span: side-by-side toggles with a full-width row
+//   - Grid / Size (col-span, w-fit): side-by-side toggles with a full-width row
 
 using FluentConfig;
 
@@ -32,7 +32,7 @@ public class CPHInline
                     .Textbox("Announcement prefix", "announce_prefix")
                         .Hint("Shown before the winner list.")
                         .Default("Winners:")
-                        .Span(2)
+                        .Size("col-span-2")
                 )
             )
             .Section("Points", "Points", s => s
@@ -42,6 +42,7 @@ public class CPHInline
                         .Hint($"Awarded to the {Ordinal(i)} chatter.")
                         .Range(0, 100000)
                         .Default(i == 1 ? 100 : i == 2 ? 50 : 25)
+                        .Size("w-fit")
                 )
             )
             .Show();

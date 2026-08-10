@@ -102,7 +102,7 @@ When `operator` is set (`gte` | `lte` | `gt` | `lt`), the legacy `equals` path i
 
 ### Layout (Grid / Row)
 
-A `group` may carry a `grid` spec (CSS grid or flex row). Any `SchemaNode` may carry a `layout` hint. Host fluent API uses Tailwind-flavored compound specs (`Grid("grid-cols-2 gap-3 items-center", …)`, `.Size("fit min-w-20")`); the wire carries **host-resolved CSS values** — never literal Tailwind class strings.
+A `group` may carry a `grid` spec (CSS grid or flex row). Any `SchemaNode` may carry a `layout` hint. Host fluent API uses **1:1 Tailwind class names** in compound specs (`Grid("grid-cols-2 gap-3 items-center", …)`, `.Size("w-fit min-w-20 col-span-2")`); the wire carries **host-resolved CSS values** — never literal Tailwind class strings.
 
 ```json
 {

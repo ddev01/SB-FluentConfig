@@ -64,24 +64,24 @@ When an integer setting drives how many related fields appear, use `RepeatFor` (
     .IntegerInput($"Points for place #{i}", $"points_{i}")
         .Range(0, 100000)
         .Default(i == 1 ? 100 : 25)
-        .Size("fit")
+        .Size("w-fit")
 )
 ```
 
 Comparator gates: `.ShowWhen("max_count", Comparator.GreaterOrEqual, 5)`. Example: [`DynamicCountLayoutExample.cs`](../examples/menu/DynamicCountLayoutExample.cs).
 
-## Layout: Grid, Row, Size, Span
+## Layout: Grid, Row, Size
 
-Side-by-side controls and per-control sizing. Compound token specs (same style as Grid), default gap (`3` = 12px), Size vs Span: **[LAYOUT.md](LAYOUT.md)**.
+Side-by-side controls and per-control sizing via **1:1 Tailwind class names**. Default gap (`3` = 12px): **[LAYOUT.md](LAYOUT.md)**.
 
 ```csharp
 .Grid("grid-cols-2 gap-3 items-center", g => g
     .Toggle("Announce", "announce").Default(true)
     .Toggle("Reset daily", "reset_daily").Default(false)
-    .Textbox("Prefix", "announce_prefix").Span(2)
+    .Textbox("Prefix", "announce_prefix").Size("col-span-2")
 )
 
-.IntegerInput("Count", "max_count").Range(1, 10).Size("fit min-w-20")
+.IntegerInput("Count", "max_count").Range(1, 10).Size("w-fit min-w-20")
 .Row("gap-2 items-center", r => r
     .Textbox("Name", "name").Size("grow")
     .Button("Go").Text("Run").Size("shrink-0")
