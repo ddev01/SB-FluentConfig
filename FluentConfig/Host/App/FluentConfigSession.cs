@@ -6,6 +6,7 @@ using System.Threading;
 using System.Windows;
 using FluentConfig.Core;
 using FluentConfig.Protocol;
+using FluentConfig.Runtime;
 using FluentConfig.Updater;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
@@ -166,11 +167,12 @@ namespace FluentConfig
 
         internal void LogExistingSettings()
         {
-            // Load from CPH â€” in-memory may still be empty when called from the build delegate
+            // Load from CPH — in-memory may still be empty when called from the build delegate
             // before Show() (common pattern: .LogExistingSettings() inside ShowOrFocus).
             var settings = _settingsManager.Load();
             _latestValues = settings ?? new JObject();
-            Log($"[FluentConfig] Existing settings for '{_title}': {settings}");
+            var redacted = SettingsRedaction.RedactObject(settings);
+            Log($"[FluentConfig] Existing settings for '{_title}': {redacted}");
         }
 
         /// <summary>

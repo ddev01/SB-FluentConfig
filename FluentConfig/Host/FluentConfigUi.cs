@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using FluentConfig.Core;
 using FluentConfig.Protocol;
+using FluentConfig.Runtime;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using Streamer.bot.Plugin.Interface;
 
@@ -115,15 +118,7 @@ namespace FluentConfig
             {
                 try
                 {
-                    var settings = new JsonSerializerSettings
-                    {
-                        ContractResolver = new DefaultContractResolver
-                        {
-                            NamingStrategy = new SnakeCaseNamingStrategy()
-                        },
-                        Error = (_, args) => { args.ErrorContext.Handled = true; }
-                    };
-                    JsonConvert.PopulateObject(json, result, settings);
+                    JsonConvert.PopulateObject(json, result, CreateSnakeCaseSettings());
                 }
                 catch (Exception ex)
                 {
@@ -148,10 +143,194 @@ namespace FluentConfig
             if (cph == null || string.IsNullOrEmpty(jsonKey))
                 return defaultValue;
 
-            var mgr = new SettingsManager(cph, SettingsKeyHelper.SettingsKeyFor(title), FluentConfigApp.LogInternal);
+            var mgr = OpenSettingsManager(cph, title);
             mgr.Load();
             return mgr.GetValue(jsonKey, defaultValue);
         }
+
+        /// <summary>
+        /// Write a single JSON field (or nested path) on the settings blob and persist.
+        /// Other keys are preserved (read-modify-write).
+        /// </summary>
+        public static void SetSetting<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonKey,
+            TValue value)
+        {
+            if (cph == null || string.IsNullOrEmpty(jsonKey))
+                return;
+
+            var mgr = OpenSettingsManager(cph, title);
+            mgr.Load();
+            mgr.SetValue(jsonKey, value);
+            mgr.Save(mgr.GetSettings());
+        }
+
+        /// <summary>
+        /// Load the settings blob, apply <paramref name="mutate"/>, and persist in one write.
+        /// Useful for resetting several keys without opening the UI.
+        /// </summary>
+        public static void SaveSettings(IInlineInvokeProxy cph, string title, Action<JObject> mutate)
+        {
+            if (cph == null || mutate == null)
+                return;
+
+            var mgr = OpenSettingsManager(cph, title);
+            mgr.Load();
+            var current = mgr.GetSettings() ?? new JObject();
+            mutate(current);
+            mgr.ReplaceSettings(current);
+            mgr.Save(current);
+        }
+
+        /// <summary>
+        /// True when the <c>{slug}_settings</c> global exists and is non-blank
+        /// (user has opened/saved the menu at least once).
+        /// </summary>
+        public static bool HasSavedSettings(IInlineInvokeProxy cph, string title)
+        {
+            if (cph == null)
+                return false;
+            try
+            {
+                var raw = cph.GetGlobalVar<string>(SettingsKeyHelper.SettingsKeyFor(title), true);
+                return !string.IsNullOrWhiteSpace(raw);
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal($"HasSavedSettings failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Data-blob global key for a menu title (e.g. "First Chatters" → "first_chatters_data").</summary>
+        public static string DataKeyFor(string title) => SettingsKeyHelper.KeyFor(title, "data");
+
+        /// <summary>
+        /// Load a typed runtime state object from the <c>{slug}_data</c> global.
+        /// Missing/malformed fields keep property defaults from <c>new T()</c>.
+        /// </summary>
+        public static T LoadData<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
+            where T : new()
+        {
+            var result = new T();
+            if (cph == null)
+            {
+                validate?.Invoke(result);
+                return result;
+            }
+
+            string json = null;
+            try
+            {
+                json = cph.GetGlobalVar<string>(DataKeyFor(title), true);
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal($"LoadData GetGlobalVar failed: {ex.Message}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                try
+                {
+                    JsonConvert.PopulateObject(json, result, CreateSnakeCaseSettings());
+                }
+                catch (Exception ex)
+                {
+                    FluentConfigApp.LogInternal($"LoadData PopulateObject failed: {ex.Message}");
+                }
+            }
+
+            validate?.Invoke(result);
+            return result;
+        }
+
+        /// <summary>Serialize <paramref name="data"/> to the <c>{slug}_data</c> persisted global.</summary>
+        public static void SaveData<T>(IInlineInvokeProxy cph, string title, T data)
+        {
+            if (cph == null)
+                return;
+            try
+            {
+                var json = data == null
+                    ? "{}"
+                    : JsonConvert.SerializeObject(data, CreateSnakeCaseSettings());
+                cph.SetGlobalVar(DataKeyFor(title), json, true);
+            }
+            catch (Exception ex)
+            {
+                FluentConfigApp.LogInternal($"SaveData failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>Read a nested path from the <c>{slug}_data</c> blob.</summary>
+        public static TValue GetData<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonPath,
+            TValue defaultValue = default)
+        {
+            if (cph == null || string.IsNullOrEmpty(jsonPath))
+                return defaultValue;
+
+            var mgr = OpenDataManager(cph, title);
+            mgr.Load();
+            return mgr.GetValue(jsonPath, defaultValue);
+        }
+
+        /// <summary>Write a nested path on the <c>{slug}_data</c> blob and persist.</summary>
+        public static void SetData<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonPath,
+            TValue value)
+        {
+            if (cph == null || string.IsNullOrEmpty(jsonPath))
+                return;
+
+            var mgr = OpenDataManager(cph, title);
+            mgr.Load();
+            mgr.SetValue(jsonPath, value);
+            mgr.Save(mgr.GetSettings());
+        }
+
+        /// <summary>Create a structured logger for an extension action script.</summary>
+        public static ExtensionLogger Logger(
+            IInlineInvokeProxy cph,
+            string title,
+            string version,
+            IEnumerable<string> extraSensitiveKeys = null)
+            => new ExtensionLogger(cph, title, version, GetVersion(), extraSensitiveKeys);
+
+        /// <summary>Capture common Streamer.bot event args for the current action.</summary>
+        public static EventContext CaptureEvent(IInlineInvokeProxy cph)
+            => EventContext.Capture(cph);
+
+        /// <summary>Fill <c>%user%</c> / <c>{user}</c> placeholders from an event snapshot.</summary>
+        public static string ApplyTemplate(string template, EventContext ev)
+            => MessageTemplates.Apply(template, ev);
+
+        /// <summary>Fill <c>%key%</c> / <c>{key}</c> placeholders from a dictionary.</summary>
+        public static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> vars)
+            => MessageTemplates.Apply(template, vars);
+
+        private static SettingsManager OpenSettingsManager(IInlineInvokeProxy cph, string title)
+            => new SettingsManager(cph, SettingsKeyHelper.SettingsKeyFor(title), FluentConfigApp.LogInternal);
+
+        private static SettingsManager OpenDataManager(IInlineInvokeProxy cph, string title)
+            => new SettingsManager(cph, DataKeyFor(title), FluentConfigApp.LogInternal);
+
+        private static JsonSerializerSettings CreateSnakeCaseSettings()
+            => new JsonSerializerSettings
+            {
+                ContractResolver = new DefaultContractResolver
+                {
+                    NamingStrategy = new SnakeCaseNamingStrategy()
+                },
+                Error = (_, args) => { args.ErrorContext.Handled = true; }
+            };
     }
 
     /// <summary>
@@ -175,6 +354,58 @@ namespace FluentConfig
             string jsonKey,
             TValue defaultValue = default)
             => FluentConfig.GetSetting(cph, title, jsonKey, defaultValue);
+
+        public static void SetSetting<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonKey,
+            TValue value)
+            => FluentConfig.SetSetting(cph, title, jsonKey, value);
+
+        public static void SaveSettings(IInlineInvokeProxy cph, string title, Action<JObject> mutate)
+            => FluentConfig.SaveSettings(cph, title, mutate);
+
+        public static bool HasSavedSettings(IInlineInvokeProxy cph, string title)
+            => FluentConfig.HasSavedSettings(cph, title);
+
+        public static string DataKeyFor(string title) => FluentConfig.DataKeyFor(title);
+
+        public static T LoadData<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
+            where T : new()
+            => FluentConfig.LoadData(cph, title, validate);
+
+        public static void SaveData<T>(IInlineInvokeProxy cph, string title, T data)
+            => FluentConfig.SaveData(cph, title, data);
+
+        public static TValue GetData<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonPath,
+            TValue defaultValue = default)
+            => FluentConfig.GetData(cph, title, jsonPath, defaultValue);
+
+        public static void SetData<TValue>(
+            IInlineInvokeProxy cph,
+            string title,
+            string jsonPath,
+            TValue value)
+            => FluentConfig.SetData(cph, title, jsonPath, value);
+
+        public static ExtensionLogger Logger(
+            IInlineInvokeProxy cph,
+            string title,
+            string version,
+            IEnumerable<string> extraSensitiveKeys = null)
+            => FluentConfig.Logger(cph, title, version, extraSensitiveKeys);
+
+        public static EventContext CaptureEvent(IInlineInvokeProxy cph)
+            => FluentConfig.CaptureEvent(cph);
+
+        public static string ApplyTemplate(string template, EventContext ev)
+            => FluentConfig.ApplyTemplate(template, ev);
+
+        public static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> vars)
+            => FluentConfig.ApplyTemplate(template, vars);
 
         public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0")
             => FluentConfig.AlreadyOpened(title, version);
