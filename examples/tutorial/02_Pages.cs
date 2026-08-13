@@ -11,10 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 02 Pages", "1.0"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "Tutorial 02 Pages", "1.0")
+        Fc.Open(CPH, "Tutorial 02 Pages", "1.0", ui => ui
             .Section("General", "General", s => s
                 .Intro("First page — general options.")
                 .Toggle("Enable feature", "enabled")
@@ -31,8 +28,7 @@ public class CPHInline
                     .Default(3)
                 .Textbox("Notes", "notes")
                     .Hint("Free-form notes (not used by the runtime).")
-                    .Default(""))
-            .Show();
+                    .Default("")));
 
         return true;
     }

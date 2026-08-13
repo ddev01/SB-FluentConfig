@@ -33,7 +33,7 @@ public class CPHInline
             + ExtensionInfo.Repo
             + ")");
 
-        FluentConfigUi.ShowOrFocus(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
+        Fc.Open(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
             // Default: GitHub releases/latest (one extension per repo).
             .WithExtensionUpdateNotice(
                 ExtensionInfo.Repo,

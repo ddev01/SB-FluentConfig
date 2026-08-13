@@ -11,10 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 08 Advanced Controls", "1.0"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "Tutorial 08 Advanced Controls", "1.0")
+        Fc.Open(CPH, "Tutorial 08 Advanced Controls", "1.0", ui => ui
             .Section("Advanced", "Advanced", a => a
                 .Intro("Exclusive toggles, dynamic textbox list, and repeatable rows.")
                 .Toggle("Mode", "mode_index")
@@ -37,8 +34,7 @@ public class CPHInline
                     .IntegerInput("Amount", "amount")
                         .Range(0, 999)
                         .Default(10)
-                ))
-            .Show();
+                )));
 
         return true;
     }

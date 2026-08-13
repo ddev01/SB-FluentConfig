@@ -13,12 +13,9 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 03 Dropdown And Buttons", "1.0"))
-            return true;
-
         var modes = new[] { "Quiet", "Normal", "Loud" };
 
-        FluentConfigUi.Create(CPH, "Tutorial 03 Dropdown And Buttons", "1.0")
+        Fc.Open(CPH, "Tutorial 03 Dropdown And Buttons", "1.0", ui => ui
             .Section("Main", "Main", s => s
                 .Intro("Demonstrates dropdown, slider, button, and conditional visibility.")
                 .Dropdown("Mode", "mode")
@@ -46,8 +43,7 @@ public class CPHInline
                         string mode = ui.Pending<string>("mode");
                         int level = ui.Pending<int>("level");
                         ui.Popup("Current values", $"Mode: {mode}\nLevel: {level}");
-                    }))
-            .Show();
+                    })));
 
         return true;
     }

@@ -1,5 +1,5 @@
 // Reference — Full control showcase
-// Everything in one file for lookup. Prefer examples/tutorial/ (01 → 10) for learning.
+// Everything in one file for lookup. Prefer examples/tutorial/ (01 → 11) for learning.
 //
 // Demonstrates all controls against the WebView2/schema host. Pill callbacks receive a fluent
 // sub-builder (schema nodes), never System.Windows.Controls.Panel. WithVisibility uses a named
@@ -11,7 +11,7 @@
 //   - PillInput.WithItemTemplate / OnPillAdded / OnPillRemoved (sub-builder, no Panel)
 //   - WithVisibility(saveKey, inverted: true, …) or WithVisibilityWhenOff(…)
 //   - ShowProgressWindow / Toast / Popup / ShowConfirmDialog surfaces (may be RPC-backed)
-//   - FluentConfigUi.ShowOrFocus collapses AlreadyOpened → Create → build → Show
+//   - Fc.Open collapses AlreadyOpened → Create → build → Show
 //   - ConnectionStatus + rich Intro() samples (see docs/guides/UPDATES.md for updates)
 
 using FluentConfig;
@@ -57,7 +57,7 @@ public class CPHInline
 
             var options = new[] { "Option A", "Option B", "Option C" };
 
-            FluentConfigUi.ShowOrFocus(CPH, "FluentConfig Complete Example", "1.0", ui => ui
+            Fc.Open(CPH, "FluentConfig Complete Example", "1.0", ui => ui
                 .Section("General settings", "General", g => g
                     .Intro(
                         "## Complete example\n\n"
@@ -110,6 +110,23 @@ public class CPHInline
                         .Hint("Connection timeout. Use full unit names: 30seconds, 5minutes, etc.")
                         .WithPermanentOption(false)
                         .Default("30seconds")
+                    .Grid("grid-cols-2 gap-3", grid => grid
+                        .Toggle("Announce winners", "announce")
+                            .Default(true)
+                        .Toggle("Reset daily", "reset_daily")
+                            .Default(false)
+                        .Textbox("Announcement prefix", "announce_prefix")
+                            .Default("Winners:")
+                            .Size("col-span-2")
+                    )
+                    .Row("gap-2 items-center", row => row
+                        .Textbox("Command prefix", "command_prefix")
+                            .Default("!")
+                            .Size("grow")
+                        .Toggle("Require prefix", "require_prefix")
+                            .Default(true)
+                            .Size("shrink-0")
+                    )
                     .Toggle("Min points required", "minpointsrequired")
                         .Hint("When on, the min points slider below is visible.")
                     .Slider("Min points", "minpoints")
@@ -120,8 +137,8 @@ public class CPHInline
                 )
                 .Section("Buttons & dialogs", "Buttons", b => b
                     .Intro("Click buttons to test Pending values, confirm, progress, Toast, and Log.")
-                    .Button("Test GetPendingValue & popup")
-                        .Hint("Reads multiple control types from General/Dropdowns and shows in a popup.")
+                    .Button("Test Pending & popup")
+                        .Hint("Reads multiple control types from General/Dropdowns via Pending and shows in a popup.")
                         .Text("Show values")
                         .Color("#714bfd")
                         .OnClick(ui =>

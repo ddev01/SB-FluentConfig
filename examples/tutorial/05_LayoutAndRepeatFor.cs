@@ -1,5 +1,5 @@
 // Tutorial 05 — Layout and dynamic field count
-// Grid / Size (col-span, w-fit) + RepeatFor (integer-driven field count).
+// Grid / Row / Size (col-span, grow, w-fit) + RepeatFor (integer-driven field count).
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/setup/REFERENCES.md and docs/guides/LAYOUT.md.
 //
@@ -11,16 +11,14 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 05 Layout And RepeatFor", "1.0"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "Tutorial 05 Layout And RepeatFor", "1.0")
+        Fc.Open(CPH, "Tutorial 05 Layout And RepeatFor", "1.0", ui => ui
             .Section("Settings", "Settings", s => s
-                .Intro("First-Chatters-style points-per-place with a live count and a two-column layout.")
+                .Intro("Grid columns, a flex Row, and RepeatFor for a live field count.")
                 .IntegerInput("Max places", "max_count")
                     .Hint("How many place/points fields to show (1–10).")
                     .Range(1, 10)
                     .Default(3)
+                    .Size("w-fit")
                 .Grid("grid-cols-2 gap-3", g => g
                     .Toggle("Announce winners", "announce")
                         .Hint("Post a chat message when places fill.")
@@ -33,6 +31,16 @@ public class CPHInline
                         .Default("Winners:")
                         .Size("col-span-2")
                 )
+                .Row("gap-2 items-center", r => r
+                    .Textbox("Command prefix", "command_prefix")
+                        .Hint("Grows to fill leftover space in the row.")
+                        .Default("!")
+                        .Size("grow")
+                    .Toggle("Require prefix", "require_prefix")
+                        .Hint("Does not shrink when the textbox grows.")
+                        .Default(true)
+                        .Size("shrink-0")
+                )
             )
             .Section("Points", "Points", s => s
                 .Intro("Points awarded per place. Extra fields appear as you raise Max places.")
@@ -43,8 +51,7 @@ public class CPHInline
                         .Default(i == 1 ? 100 : i == 2 ? 50 : 25)
                         .Size("w-fit")
                 )
-            )
-            .Show();
+            ));
 
         return true;
     }

@@ -13,10 +13,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 06 Dialogs And Feedback", "1.0"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "Tutorial 06 Dialogs And Feedback", "1.0")
+        Fc.Open(CPH, "Tutorial 06 Dialogs And Feedback", "1.0", ui => ui
             .Section("Dialogs", "Dialogs", b => b
                 .Intro("Click buttons to exercise Popup, Confirm, Progress, Toast, and Log.")
                 .Textbox("Sample name", "sample_name")
@@ -76,8 +73,7 @@ public class CPHInline
                     .Hint("Writes a line to the log callback (visible in Streamer.bot logs if wired).")
                     .Text("Log")
                     .Color("#636b9a")
-                    .OnClick(ui => ui.Log("Test log message from button click")))
-            .Show();
+                    .OnClick(ui => ui.Log("Test log message from button click"))));
 
         return true;
     }

@@ -21,7 +21,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        FluentConfigUi.ShowOrFocus(CPH, "FluentConfig Dev Preview", "0.1.0-dev", ui => ui
+        Fc.Open(CPH, "FluentConfig Dev Preview", "0.1.0-dev", ui => ui
             .Section("General", "General", g => g
                 .Intro(
                     "# Dev preview\n\n"

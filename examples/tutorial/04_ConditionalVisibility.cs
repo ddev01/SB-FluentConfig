@@ -11,10 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 04 Conditional Visibility", "1.0"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "Tutorial 04 Conditional Visibility", "1.0")
+        Fc.Open(CPH, "Tutorial 04 Conditional Visibility", "1.0", ui => ui
             .Section("Visibility", "Visibility", s => s
                 .Intro(
                     "Block-level visibility.\n\n"
@@ -40,8 +37,7 @@ public class CPHInline
                     .Textbox("Free tier setting", "free_tier_setting")
                         .Hint("This shows when premium_mode is OFF.")
                         .Default("default for free")
-                ))
-            .Show();
+                )));
 
         return true;
     }

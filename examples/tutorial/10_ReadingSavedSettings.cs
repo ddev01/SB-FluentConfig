@@ -11,6 +11,7 @@
 // See docs/guides/DIALOGS_AND_RUNTIME_VALUES.md.
 //
 // Previous: 09_PillsAndNestedItems.cs
+// Next: 11_RuntimeHelpers.cs
 
 using FluentConfig;
 using System;
@@ -29,17 +30,13 @@ public class CPHInline
 
     public bool Execute()
     {
-        var settings = Fc.LoadSettings<Settings>(CPH, MenuTitle);
-
-        // Detect "never saved" by checking the global key directly (LoadSettings always
-        // returns a populated defaults object).
-        string key = Fc.SettingsKeyFor(MenuTitle);
-        string raw = CPH.GetGlobalVar<string>(key, true);
-        if (string.IsNullOrWhiteSpace(raw))
+        if (!Fc.HasSavedSettings(CPH, MenuTitle))
         {
             CPH.LogInfo("[Tutorial10] No saved settings — open Tutorial 03 and Save first.");
             return true;
         }
+
+        var settings = Fc.LoadSettings<Settings>(CPH, MenuTitle);
 
         CPH.LogInfo($"[Tutorial10] mode={settings.Mode}, level={settings.Level}, show_advanced={settings.ShowAdvanced}, advanced_offset={settings.AdvancedOffset}");
 

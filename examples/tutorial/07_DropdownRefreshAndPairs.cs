@@ -11,12 +11,9 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 07 Dropdown Refresh And Pairs", "1.0"))
-            return true;
-
         var options = new[] { "Option A", "Option B", "Option C" };
 
-        FluentConfigUi.Create(CPH, "Tutorial 07 Dropdown Refresh And Pairs", "1.0")
+        Fc.Open(CPH, "Tutorial 07 Dropdown Refresh And Pairs", "1.0", ui => ui
             .Section("Dropdowns", "Dropdowns", d => d
                 .Intro("Dropdown with Refresh; pair-value dropdown (display name + stored ID).")
                 .Dropdown("Choice", "dropdown_choice")
@@ -39,8 +36,7 @@ public class CPHInline
                         string id = ui.Pending<string>("device_id");
                         string choice = ui.Pending<string>("dropdown_choice");
                         ui.Popup("Dropdown values", $"Choice: '{choice}'\nDevice display: '{display}'\nDevice ID: '{id}'");
-                    }))
-            .Show();
+                    })));
 
         return true;
     }

@@ -11,10 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        if (FluentConfig.FluentConfig.AlreadyOpened("Tutorial 09 Pills And Nested Items", "1.0"))
-            return true;
-
-        FluentConfigUi.Create(CPH, "Tutorial 09 Pills And Nested Items", "1.0")
+        Fc.Open(CPH, "Tutorial 09 Pills And Nested Items", "1.0", ui => ui
             .Section("Pills", "Pills", p => p
                 .Intro(
                     "PillInput with a schema itemTemplate.\n\n"
@@ -38,8 +35,7 @@ public class CPHInline
                     .OnPillRemoved((itemName, ctx) =>
                     {
                         ctx.RemoveSettingsKeys(itemName + "_enabled", itemName + "_value");
-                    }))
-            .Show();
+                    })));
 
         return true;
     }
