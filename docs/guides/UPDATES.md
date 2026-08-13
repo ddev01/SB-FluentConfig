@@ -25,7 +25,7 @@ Edit the constants at the top of DllCheck when publishing (`UpdateRepo`, `MinStr
 ```csharp
 FluentConfig.FluentConfig.UpdateRepo
 FluentConfig.FluentConfig.MinStreamerBotVersion
-FluentConfig.FluentConfig.GetVersion()
+Fc.GetVersion()
 ```
 
 DllCheck remains the runtime path — it cannot load those constants from the DLL.
@@ -69,7 +69,7 @@ static class ExtensionInfo
     public const string UpdateGuideUrl = null;           // optional; else release page
 }
 
-FluentConfigUi.ShowOrFocus(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
+Fc.Open(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
     .WithExtensionUpdateNotice(
         ExtensionInfo.Repo,
         ExtensionInfo.Version,

@@ -9,6 +9,7 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 
 | API | Role |
 |-----|------|
+| `Fc.Open(cph, title, version, build)` | Preferred menu entry (focus or create) |
 | `Section(label, id, build)` | Tab / page |
 | `Intro(markdown)` | Rich markdown blurb at the top of a section |
 | `Title(text)` | In-section heading |
@@ -62,4 +63,5 @@ Each method call adds a control. Options chain onto the control just added. That
 - [VISIBILITY.md](VISIBILITY.md)
 - [LAYOUT.md](LAYOUT.md)
 - [PILLS.md](PILLS.md)
+- [DIALOGS_AND_RUNTIME_VALUES.md](DIALOGS_AND_RUNTIME_VALUES.md) — Button `OnClick`, runtime reads
 - [examples/reference/FullControlShowcase.cs](../../examples/reference/FullControlShowcase.cs)

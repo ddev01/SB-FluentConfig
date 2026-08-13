@@ -2,7 +2,7 @@
 
 Plugin-author documentation for the WebView2 FluentConfig library.
 
-**New here?** Start with the [root README quick start](../README.md#quick-start), then work through [examples/tutorial/](../examples/tutorial/) (01 → 10).
+**New here?** Start with the [root README quick start](../README.md#quick-start), then work through [examples/tutorial/](../examples/tutorial/) (01 → 11).
 
 ## Guides
 
@@ -49,7 +49,7 @@ docs/
   performance/  Cold/warm open baselines
   internal/     Non-user docs (audits, handoffs)
 examples/
-  tutorial/     Guided 01 → 10 path
+  tutorial/     Guided 01 → 11 path
   reference/    Full control showcase
   deployment/   DllCheck + extension update notice
   dev/          Contributor mock-parity preview

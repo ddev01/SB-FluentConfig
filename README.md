@@ -11,25 +11,27 @@ Configuring a Streamer.bot plugin shouldn't require editing code. Chains of "Set
 **It really is this simple:**
 
 ```csharp
-FluentConfigUi.Create(CPH, "My Extension", "1.0")
+Fc.Open(CPH, "My Extension", "1.0", ui => ui
     .Section("General", "general", s => s
         .Toggle("Enable feature", "enabled")
         .Textbox("Username", "username")
-        .Slider("Volume", "volume").Range(0, 100).Default(50))
-    .Show();
+        .Slider("Volume", "volume").Range(0, 100).Default(50)));
 ```
 
 Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`{slug}_settings`, e.g. `"First Chatters"` → `first_chatters_settings`).
 
-Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tutorial/01_BasicControls.cs) → 10 step by step.
+Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tutorial/01_BasicControls.cs) → 11 step by step.
 
 **Reading values at runtime** depends on context:
 
 | Context | API |
 |---------|-----|
 | After the user opens/saves the UI | `Fc.LoadSettings<T>(CPH, title)` (or `Fc.GetSetting<T>` / `Fc.SettingsKeyFor(title)`) |
+| Write a setting from an action | `Fc.SetSetting` / `Fc.SaveSettings` / `Fc.HasSavedSettings` |
+| Runtime state (not the menu) | `Fc.LoadData<T>` / `Fc.SaveData` → `{slug}_data` |
+| Event args + chat templates | `Fc.CaptureEvent` / `Fc.ApplyTemplate` / `Fc.Logger` |
 | Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)` |
-| Pill `OnAdded` / `OnRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
+| Pill `OnPillAdded` / `OnPillRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
 
 ## Quick Start
 
@@ -101,9 +103,10 @@ See [examples/README.md](examples/README.md) for the full guided path. Highlight
 | `tutorial/01_BasicControls.cs` | Minimal setup: toggle, textbox, slider |
 | `tutorial/02_Pages.cs` | Multiple Section tabs |
 | `tutorial/03_DropdownAndButtons.cs` | Dropdown, ShowWhen, Button + Popup |
-| `tutorial/05_LayoutAndRepeatFor.cs` | Grid / Size + RepeatFor |
+| `tutorial/05_LayoutAndRepeatFor.cs` | Grid / Row / Size + RepeatFor |
 | `tutorial/09_PillsAndNestedItems.cs` | PillInput + nested ItemTemplate |
 | `tutorial/10_ReadingSavedSettings.cs` | Read saved settings from a runtime action |
+| `tutorial/11_RuntimeHelpers.cs` | Logger, templates, SetSetting, `{slug}_data` |
 | `reference/FullControlShowcase.cs` | Everything in one file (lookup) |
 | `deployment/01_DllCheck.cs` | Install + daily FluentConfig.dll check |
 | `deployment/02_ExtensionUpdateNotice.cs` | In-menu extension update modal |

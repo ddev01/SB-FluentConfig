@@ -2,7 +2,7 @@
 
 Authoring guide for FluentConfig’s client-side layout APIs: **Grid**, **Row**, **Size**, comparator visibility, and **RepeatFor**.
 
-Wire shapes: [../../FluentConfig/PROTOCOL.md](../../FluentConfig/PROTOCOL.md). Runnable example: [`examples/tutorial/05_LayoutAndRepeatFor.cs`](../../examples/tutorial/05_LayoutAndRepeatFor.cs).
+Wire shapes: [../../FluentConfig/PROTOCOL.md](../../FluentConfig/PROTOCOL.md). Runnable example: [`examples/tutorial/05_LayoutAndRepeatFor.cs`](../../examples/tutorial/05_LayoutAndRepeatFor.cs) (`Grid`, `Row`, `Size`, `RepeatFor`).
 
 ## Mental model
 
