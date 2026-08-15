@@ -51,7 +51,9 @@
   });
 
   // Read values so visibility re-evaluates reactively when settings change.
-  let visible = $derived(isVisible(node.visibility, appStore.values));
+  let visible = $derived(
+    isVisible(node.visibility, appStore.values, undefined, appStore.document?.sections),
+  );
 
   let layoutStyle = $derived.by(() => {
     const layout = node.layout;

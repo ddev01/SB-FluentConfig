@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { DropdownNode } from '../../protocol';
   import { RpcMethods } from '../../protocol';
   import type { DropdownRefreshResult } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
+  import { resolveDropdownRefresh } from '../dropdownRefresh';
   import FieldShell from './FieldShell.svelte';
   import SelectMenu from './SelectMenu.svelte';
 
@@ -12,10 +14,20 @@
 
   let { node }: Props = $props();
   const fieldId = $derived(node.id ?? node.saveKey);
+  const searchable = $derived(!!node.searchable);
+  const allowCustom = $derived(!!node.allowCustom);
+  const multiple = $derived(!!node.multiple);
 
   let refreshing = $state(false);
 
+  onMount(() => {
+    if (node.refreshable && !(node.options?.length ?? 0)) {
+      void refresh();
+    }
+  });
+
   let selectedValue = $derived.by(() => {
+    if (multiple) return '';
     if (node.valueSaveKey) {
       const pair = appStore.getValue(node.valueSaveKey);
       if (pair != null && pair !== '') return String(pair);
@@ -27,21 +39,35 @@
       return String(display);
     }
     if (node.defaultByValue) return node.defaultByValue;
+    if (node.defaultValue) return node.defaultValue;
     if (node.defaultIndex !== undefined && node.options?.[node.defaultIndex]) {
       return node.options[node.defaultIndex]!.value;
     }
     return node.options?.[0]?.value ?? '';
   });
 
+  let selectedValues = $derived.by(() => {
+    if (!multiple) return [] as string[];
+    const raw = appStore.getValue(node.saveKey);
+    if (Array.isArray(raw)) return raw.map((x) => String(x));
+    if (typeof raw === 'string' && raw) return [raw];
+    if (node.defaultValues?.length) return [...node.defaultValues];
+    return [];
+  });
+
   function onChange(newValue: string): void {
     const opt = node.options?.find((o) => o.value === newValue);
-    if (!opt) return;
+    if (!opt && !allowCustom) return;
     if (node.valueSaveKey) {
-      appStore.setValue(node.saveKey, opt.display);
-      appStore.setValue(node.valueSaveKey, opt.value);
+      appStore.setValue(node.saveKey, opt?.display ?? newValue);
+      appStore.setValue(node.valueSaveKey, opt?.value ?? newValue);
     } else {
-      appStore.setValue(node.saveKey, opt.value);
+      appStore.setValue(node.saveKey, opt?.value ?? newValue);
     }
+  }
+
+  function onChangeValues(next: string[]): void {
+    appStore.setValue(node.saveKey, next);
   }
 
   async function refresh(): Promise<void> {
@@ -53,23 +79,30 @@
       );
       appStore.patchDropdownOptions(node.saveKey, result.options);
 
-      // If the current selection is no longer in the options list, clear it.
       const opts = result.options ?? [];
-      const stillValid = opts.some(
-        (o) => o.value === selectedValue || o.display === selectedValue,
-      );
-      if (!stillValid && opts.length > 0) {
-        const first = opts[0]!;
+      const decision = resolveDropdownRefresh({
+        allowCustom,
+        multiple,
+        current: multiple ? selectedValues : selectedValue,
+        options: opts,
+      });
+      if (decision.action === 'keep') return;
+      if (decision.action === 'keepValues') {
+        appStore.setValue(node.saveKey, decision.values);
+        return;
+      }
+      if (decision.action === 'snap') {
+        const first = decision.option;
         if (node.valueSaveKey) {
           appStore.setValue(node.saveKey, first.display);
           appStore.setValue(node.valueSaveKey, first.value);
         } else {
           appStore.setValue(node.saveKey, first.value);
         }
-      } else if (!stillValid) {
-        appStore.setValue(node.saveKey, '');
-        if (node.valueSaveKey) appStore.setValue(node.valueSaveKey, '');
+        return;
       }
+      appStore.setValue(node.saveKey, multiple ? [] : '');
+      if (node.valueSaveKey) appStore.setValue(node.valueSaveKey, '');
     } catch (err) {
       appStore.pushToast(err instanceof Error ? err.message : 'Refresh failed');
     } finally {
@@ -79,13 +112,18 @@
 </script>
 
 <FieldShell label={node.label} hint={node.hint} forId={fieldId}>
-  <div class="flex gap-2">
+  <div class="flex items-end gap-2">
     <SelectMenu
       id={fieldId}
       value={selectedValue}
+      values={selectedValues}
       options={node.options ?? []}
       ariaLabel={node.label}
+      searchable={searchable}
+      allowCustom={allowCustom}
+      multiple={multiple}
       onchange={onChange}
+      onchangeValues={onChangeValues}
     />
     {#if node.refreshable}
       <button type="button" class="fc-btn" disabled={refreshing} onclick={refresh}>

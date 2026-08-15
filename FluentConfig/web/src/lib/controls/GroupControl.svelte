@@ -11,12 +11,14 @@
   /**
    * RepeatFor wraps indices above the driver's min in a visibility group
    * (`id` = `repeat_{driver}_{i}`). Those gates must stay visually flat so
-   * gated rows align with ungated siblings. Plain WithVisibility groups
-   * (typically `vis_*`) keep the indented left-border stack.
+   * gated rows align with ungated siblings. Toggle WithVisibility groups
+   * omit `indented` and keep the left-border stack. Value-equals / comparator
+   * groups set `indented: false`.
    */
   const isRepeatForGate = $derived(
     typeof node.id === 'string' && node.id.startsWith('repeat_'),
   );
+  const isFlat = $derived(node.indented === false || isRepeatForGate);
 
   const gridStyle = $derived.by(() => {
     const grid = node.grid;
@@ -53,7 +55,7 @@
   <div style={gridStyle}>
     {@render children()}
   </div>
-{:else if isRepeatForGate}
+{:else if isFlat}
   {@render children()}
 {:else}
   <div class="space-y-1 border-l-2 border-fc-accent/25 pl-3">

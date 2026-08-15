@@ -152,6 +152,12 @@ export interface DropdownNode extends SchemaNodeBase {
   refreshable?: boolean;
   defaultIndex?: number;
   defaultByValue?: string;
+  /** Explicit default string (.Default(string) / AllowCustom). */
+  defaultValue?: string;
+  searchable?: boolean;
+  allowCustom?: boolean;
+  multiple?: boolean;
+  defaultValues?: string[];
 }
 
 export interface ColorPickerNode extends SchemaNodeBase {
@@ -271,6 +277,11 @@ export interface GroupNode extends SchemaNodeBase {
   children: SchemaNode[];
   /** When set, children render in a CSS grid/flex container instead of the indented stack. */
   grid?: GridSpec;
+  /**
+   * Left-rail chrome. Omitted/`true` = indented rail (toggle gates).
+   * `false` = flat (value-equals, comparator, RepeatFor).
+   */
+  indented?: boolean;
 }
 
 export interface PillItemSchema {
