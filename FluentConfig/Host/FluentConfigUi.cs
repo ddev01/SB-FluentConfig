@@ -316,6 +316,31 @@ namespace FluentConfig
         public static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> vars)
             => MessageTemplates.Apply(template, vars);
 
+        /// <summary>
+        /// Distinct, trimmed, non-empty Twitch reward group names from <c>CPH.TwitchGetRewards()</c>.
+        /// Case-insensitive distinct, stable ordinal-ignore-case sort. Never null.
+        /// </summary>
+        public static string[] TwitchRewardGroups(IInlineInvokeProxy cph)
+        {
+            if (cph == null) return Array.Empty<string>();
+            var rewards = cph.TwitchGetRewards();
+            if (rewards == null || rewards.Count == 0) return Array.Empty<string>();
+
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var reward in rewards)
+            {
+                if (reward == null) continue;
+                var group = reward.Group;
+                if (string.IsNullOrWhiteSpace(group)) continue;
+                set.Add(group.Trim());
+            }
+
+            var arr = new string[set.Count];
+            set.CopyTo(arr);
+            Array.Sort(arr, StringComparer.OrdinalIgnoreCase);
+            return arr;
+        }
+
         private static SettingsManager OpenSettingsManager(IInlineInvokeProxy cph, string title)
             => new SettingsManager(cph, SettingsKeyHelper.SettingsKeyFor(title), FluentConfigApp.LogInternal);
 
@@ -406,6 +431,9 @@ namespace FluentConfig
 
         public static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> vars)
             => FluentConfig.ApplyTemplate(template, vars);
+
+        public static string[] TwitchRewardGroups(IInlineInvokeProxy cph)
+            => FluentConfig.TwitchRewardGroups(cph);
 
         public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0")
             => FluentConfig.AlreadyOpened(title, version);
