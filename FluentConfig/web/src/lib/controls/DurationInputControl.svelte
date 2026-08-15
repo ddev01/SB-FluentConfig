@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { DurationInputNode } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
+  import { formatDuration, parseDuration } from '../duration';
+  import Checkbox from '../Checkbox.svelte';
   import FieldShell from './FieldShell.svelte';
   import SelectMenu from './SelectMenu.svelte';
 
@@ -18,64 +20,46 @@
     { id: 'days', suffix: 'days', label: 'Days' },
   ] as const;
 
-  function parse(raw: string): { amount: number; unit: string; permanent: boolean } {
-    if (raw === 'permanent') return { amount: 0, unit: 'seconds', permanent: true };
-    const m = /^(\d+)(seconds|minutes|hours|days)$/.exec(raw);
-    if (m) return { amount: Number(m[1]), unit: m[2]!, permanent: false };
-    return { amount: 30, unit: 'seconds', permanent: false };
-  }
-
   let stored = $derived(
     String(appStore.getValue(node.saveKey) ?? node.defaultValue ?? '30seconds'),
   );
-  let parsed = $derived(parse(stored));
+  let parsed = $derived(parseDuration(stored));
 
   function write(amount: number, unit: string, permanent: boolean): void {
-    if (permanent) {
-      appStore.setValue(node.saveKey, 'permanent');
-      return;
-    }
-    const n = Math.max(0, Math.floor(amount));
-    appStore.setValue(node.saveKey, `${n}${unit}`);
+    appStore.setValue(node.saveKey, formatDuration(amount, unit, permanent));
   }
 </script>
 
 <FieldShell label={node.label} hint={node.hint} forId={fieldId}>
   <div class="flex flex-wrap items-center gap-2">
     {#if node.permanentOption}
-      <label class="flex items-center gap-2 text-sm text-fc-text-muted">
-        <input
-          type="checkbox"
-          class="rounded-fc border-fc-border-strong bg-fc-surface text-fc-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
-          checked={parsed.permanent}
-          onchange={(e) => {
-            const on = (e.currentTarget as HTMLInputElement).checked;
-            write(parsed.amount || 30, parsed.unit, on);
-          }}
-        />
+      <Checkbox
+        checked={parsed.permanent}
+        onchange={(on) => write(parsed.amount || 30, parsed.unit, on)}
+      >
         Permanent
-      </label>
+      </Checkbox>
     {/if}
-    <input
-      id={fieldId}
-      type="number"
-      min="0"
-      class="fc-input w-24 tabular-nums"
-      disabled={parsed.permanent}
-      value={parsed.permanent ? '' : parsed.amount}
-      oninput={(e) => {
-        const n = Number((e.currentTarget as HTMLInputElement).value);
-        if (!Number.isNaN(n)) write(n, parsed.unit, false);
-      }}
-    />
-    <div class="w-32">
-      <SelectMenu
-        value={parsed.unit}
-        options={units.map((u) => ({ value: u.suffix, display: u.label }))}
-        disabled={parsed.permanent}
-        ariaLabel="Duration unit"
-        onchange={(unit) => write(parsed.amount || 0, unit, false)}
+    {#if !parsed.permanent}
+      <input
+        id={fieldId}
+        type="number"
+        min="0"
+        class="fc-input w-24 tabular-nums"
+        value={parsed.amount}
+        oninput={(e) => {
+          const n = Number((e.currentTarget as HTMLInputElement).value);
+          if (!Number.isNaN(n)) write(n, parsed.unit, false);
+        }}
       />
-    </div>
+      <div class="w-32">
+        <SelectMenu
+          value={parsed.unit}
+          options={units.map((u) => ({ value: u.suffix, display: u.label }))}
+          ariaLabel="Duration unit"
+          onchange={(unit) => write(parsed.amount || 0, unit, false)}
+        />
+      </div>
+    {/if}
   </div>
 </FieldShell>

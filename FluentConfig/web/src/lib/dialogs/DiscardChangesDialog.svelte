@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import Checkbox from '../Checkbox.svelte';
   import { fadeIn, scaleIn } from '../motion';
   import { formatDiffValue, type DiffEntry } from '../diff';
 
@@ -114,14 +115,9 @@
       {/if}
     </div>
 
-    <label class="mt-4 flex cursor-pointer items-center gap-2 text-sm text-fc-text-muted">
-      <input
-        type="checkbox"
-        class="size-4 rounded border-fc-border accent-fc-accent"
-        bind:checked={dontRemind}
-      />
-      Don't remind me again
-    </label>
+    <div class="mt-4">
+      <Checkbox bind:checked={dontRemind}>Don't remind me again</Checkbox>
+    </div>
 
     <div class="mt-5 flex flex-wrap justify-end gap-2">
       <button
