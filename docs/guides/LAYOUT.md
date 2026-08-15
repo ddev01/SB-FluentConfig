@@ -52,7 +52,7 @@ All of this is **client-side only**: changing a driver value or layout does not 
 | `gap-N` | No | Default **3** |
 | `items-start\|center\|end\|stretch\|baseline` | No | CSS `align-items` |
 
-Empty Grid spec throws. Plain `WithVisibility` groups (no `grid`) keep the indented stack.
+Empty Grid spec throws. Toggle `WithVisibility` groups (no `grid`) keep the indented stack. Value-equals / comparator groups are flat (`indented: false`).
 
 ---
 

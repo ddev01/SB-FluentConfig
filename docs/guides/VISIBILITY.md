@@ -15,6 +15,16 @@ Single-control `ShowWhen`: [examples/tutorial/03_DropdownAndButtons.cs](../../ex
     .ShowWhen("show_advanced")
 ```
 
+Value-equals (dropdown or any saved value — not a numeric comparator):
+
+```csharp
+.Dropdown("Mode", "mode").Options(new[] { "quiet", "normal", "loud" })
+.Textbox("Shout", "shout_text").ShowWhen("mode", "loud")
+.Textbox("Not free", "paid_note").ShowWhenNot("mode", "free")
+```
+
+Wire: `{ "saveKey": "mode", "equals": "loud" }`. Invert with `.ShowWhenNot` (`inverted: true`). An optional `int` overload matches dropdown `"1"` to `1`.
+
 Comparator form (numeric driver):
 
 ```csharp
@@ -29,7 +39,9 @@ Comparator form (numeric driver):
 | `GreaterThan` | `gt` |
 | `LessThan` | `lt` |
 
-## Block — `WithVisibility` / `WithVisibilityWhenOff`
+Do not use nested comparators to fake equality. Do not add `Comparator.Equal`.
+
+## Block — `WithVisibility` / `WithVisibilityWhenOff` / `WithVisibilityWhenNot`
 
 ```csharp
 .Toggle("Show extras", "show_extra")
@@ -43,6 +55,20 @@ Comparator form (numeric driver):
 ```
 
 Prefer the named form (`.WithVisibilityWhenOff` or `inverted: true`) over a bare positional bool.
+
+Value-equals block (flat chrome — no extra left rail; a nested `Grid` is unchanged):
+
+```csharp
+.WithVisibility("mode", "quiet", inner => inner
+    .Grid("grid-cols-2 items-center", g => g
+        .Textbox("Whisper prefix", "whisper_prefix")
+        .Textbox("Whisper suffix", "whisper_suffix")))
+
+.WithVisibilityWhenNot("mode", "free", inner => inner
+    .Textbox("Paid-only", "paid_only"))
+```
+
+Rare: keep a rail on a value gate with `VisibilityChrome.Indented` as the last argument (not a `bool`).
 
 ## Notes
 

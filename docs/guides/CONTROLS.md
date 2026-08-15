@@ -23,7 +23,8 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 | `Toggle` | `.Hint`, `.Default`, `.ShowWhen`, `.WithExclusive`, `.MaxSelected` | 01, 08 |
 | `Textbox` | `.Hint`, `.Default`, `.Password()`, `.Multiline()` | 01 |
 | `Slider` | `.Range`, `.Default`, `.Step`, `.ShowWhen` | 01 |
-| `Dropdown` | `.Options`, `.DefaultIndex` / `.DefaultByValue`, `.Refresh`, `.WithPairValue` | 03, 07 |
+| `Dropdown` | `.Options`, `.DefaultIndex` / `.DefaultByValue`, `.Refresh`, `.WithPairValue`, `.Searchable()`, `.AllowCustom()`, `.Multiple()` | 03, 07 |
+| `Combobox` | Same as Dropdown with `.Searchable()` implied | 07 |
 | `IntegerInput` | `.Range`, `.Default`, `.WithStepper()`, `.Size` | 05 |
 | `NumberInput` | `.Range`, `.Step`, `.Default`, `.WithStepper()` | reference |
 | `DurationInput` | `.Default("30seconds")`, `.WithPermanentOption` | reference |
@@ -42,7 +43,25 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 | `.Size(tokens)` | Per-control width / span / grow | [LAYOUT.md](LAYOUT.md) |
 | `RepeatFor(driverKey, build)` | Integer-driven field count | [LAYOUT.md](LAYOUT.md) |
 | `WithRepeatableRows(key, build)` | User-managed list of structured rows | 08 |
-| `WithVisibility` / `WithVisibilityWhenOff` | Block-level show/hide | [VISIBILITY.md](VISIBILITY.md) |
+| `WithVisibility` / `WithVisibilityWhenOff` / `WithVisibilityWhenNot` | Block-level show/hide | [VISIBILITY.md](VISIBILITY.md) |
+
+## Searchable dropdown / combobox
+
+`.Searchable()` filters options as the user types. `.AllowCustom()` commits values not in the list (kept across Refresh). `.Multiple()` stores `string[]` (incompatible with `.WithPairValue`). `.Combobox(label, key)` is a dropdown with searchable on.
+
+```csharp
+.Combobox("Auto-end timer", "timer_id")
+    .AllowCustom()
+    .RefreshPairs(() => new[] { ("timer-a", "Timer A"), ("timer-b", "Timer B") })
+
+.Dropdown("Include groups", "include_groups")
+    .Searchable()
+    .Multiple()
+    .AllowCustom()
+    .Refresh(() => new[] { "vip", "sub" }) // or Fc.TwitchRewardGroups(CPH)
+```
+
+Refresh data is always author-supplied. Streamer.bot has no timer list API; do not expect `Fc.ListTimers`.
 
 ## Chaining model
 

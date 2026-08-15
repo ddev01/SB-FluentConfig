@@ -1,5 +1,5 @@
-// Tutorial 07 — Refreshable and pair-value dropdowns
-// Dropdown.Refresh() to reload options, and WithPairValue to store display name + ID.
+// Tutorial 07 — Refreshable, pair-value, and searchable dropdowns
+// Dropdown.Refresh() to reload options, WithPairValue for display+ID, Searchable/AllowCustom/Multiple.
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/setup/REFERENCES.md and docs/guides/CONTROLS.md.
 //
@@ -15,7 +15,10 @@ public class CPHInline
 
         Fc.Open(CPH, "Tutorial 07 Dropdown Refresh And Pairs", "1.0", ui => ui
             .Section("Dropdowns", "Dropdowns", d => d
-                .Intro("Dropdown with Refresh; pair-value dropdown (display name + stored ID).")
+                .Intro(
+                    "Dropdown with Refresh; pair-value dropdown (display name + stored ID);\n"
+                    + "searchable combobox (type to filter, optional custom value).\n\n"
+                    + "Refresh callbacks are author-supplied. There is no built-in timer list helper.")
                 .Dropdown("Choice", "dropdown_choice")
                     .Hint("Select an option. Click Refresh to reload the list.")
                     .Options(options)
@@ -26,6 +29,17 @@ public class CPHInline
                     .WithPairValue("device_id")
                     .Options(new[] { ("id1", "Device A"), ("id2", "Device B"), ("id3", "Device C") })
                     .DefaultByValue("id2")
+                .Combobox("Auto-end timer", "timer_id")
+                    .Hint("Type to filter, or paste a custom id. Refresh uses a fake list you supply.")
+                    .AllowCustom()
+                    .RefreshPairs(() => new[] { ("timer-a", "Timer A"), ("timer-b", "Timer B") })
+                    .Default("timer-a")
+                .Dropdown("Include groups", "include_groups")
+                    .Hint("Pick one or more group names; type a custom name if needed.")
+                    .Searchable()
+                    .Multiple()
+                    .AllowCustom()
+                    .Options(new[] { "vip", "sub", "mod" })
                 .Button("Show pair values")
                     .Hint("Reads both the display key and the paired ID key.")
                     .Text("Show values")

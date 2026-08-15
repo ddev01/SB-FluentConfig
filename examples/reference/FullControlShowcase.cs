@@ -208,6 +208,11 @@ public class CPHInline
                         .WithPairValue("device_id")
                         .Options(new[] { ("id1", "Device A"), ("id2", "Device B"), ("id3", "Device C") })
                         .DefaultByValue("id2")
+                    .Dropdown("Mode", "showcase_mode")
+                        .Options(new[] { "quiet", "normal", "loud" })
+                        .DefaultByValue("normal")
+                    .Textbox("Shout", "showcase_shout")
+                        .ShowWhen("showcase_mode", "loud")
                 )
                 .Section("Advanced controls", "Advanced", a => a
                     .Intro("Exclusive toggles, dynamic textbox list, WithVisibility, WithRepeatableRows.")
