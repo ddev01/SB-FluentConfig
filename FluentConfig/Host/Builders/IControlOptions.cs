@@ -12,6 +12,7 @@ namespace FluentConfig
         void Hint(string text);
         void Default(bool value);
         void Default(string value);
+        void Default(string[] values);
         void Default(int value);
         void Default(double value);
         void Range(int min, int max);
@@ -20,6 +21,10 @@ namespace FluentConfig
         void Password();
         void Multiline();
         void ShowWhen(string key);
+        void ShowWhen(string key, string equalsValue);
+        void ShowWhen(string key, int equalsValue);
+        void ShowWhenNot(string key, string equalsValue);
+        void ShowWhenNot(string key, int equalsValue);
         void ShowWhen(string key, Comparator op, int value);
         void ShowWhen(string key, Comparator op, string compareKey);
         void Size(string spec);
@@ -33,6 +38,9 @@ namespace FluentConfig
         void DefaultIndices(int[] indices);
         void Refresh(Func<string[]> callback);
         void RefreshPairs(Func<IEnumerable<(string Value, string Display)>> callback);
+        void Searchable();
+        void AllowCustom();
+        void Multiple();
         void Preset(string[] values);
         void AllowDuplicates(bool value);
         void Color(string hex);

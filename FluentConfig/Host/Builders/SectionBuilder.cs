@@ -75,7 +75,8 @@ namespace FluentConfig
                     Value = value,
                 },
                 "vis_" + (key ?? "group") + "_" + LayoutTokens.OperatorString(op) + "_" + value,
-                build);
+                build,
+                indented: false);
             return this;
         }
 
@@ -94,12 +95,57 @@ namespace FluentConfig
                     CompareKey = compareKey,
                 },
                 "vis_" + (key ?? "group") + "_" + LayoutTokens.OperatorString(op) + "_" + (compareKey ?? "key"),
-                build);
+                build,
+                indented: false);
             return this;
         }
 
         /// <summary>Adds a group visible only when the toggle is OFF.</summary>
         public SectionBuilder WithVisibilityWhenOff(string toggleKey, Action<PanelBuilder> build) => WithVisibility(toggleKey, build, inverted: true);
+
+        /// <summary>Group visible when <paramref name="key"/> equals a saved string (dropdown, etc.).</summary>
+        public SectionBuilder WithVisibility(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: false, build, chrome);
+            return this;
+        }
+
+        /// <summary>Group visible when <paramref name="key"/> equals a numeric saved value.</summary>
+        public SectionBuilder WithVisibility(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: false, build, chrome);
+            return this;
+        }
+
+        /// <summary>Group visible when <paramref name="key"/> does not equal the string.</summary>
+        public SectionBuilder WithVisibilityWhenNot(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: true, build, chrome);
+            return this;
+        }
+
+        /// <summary>Group visible when <paramref name="key"/> does not equal the number.</summary>
+        public SectionBuilder WithVisibilityWhenNot(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: true, build, chrome);
+            return this;
+        }
 
         /// <summary>Adds a repeatable-rows control with a relative row schema.</summary>
         public SectionBuilder WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow)

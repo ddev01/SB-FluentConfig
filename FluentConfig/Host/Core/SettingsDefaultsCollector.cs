@@ -95,8 +95,23 @@ namespace FluentConfig.Core
         private static void CollectDropdown(DropdownNode dropdown, Dictionary<string, JToken> result)
         {
             if (!HasKey(dropdown.SaveKey)) return;
+
+            if (dropdown.Multiple == true)
+            {
+                if (dropdown.DefaultValues != null)
+                    Put(result, dropdown.SaveKey, JArray.FromObject(dropdown.DefaultValues));
+                else
+                    Put(result, dropdown.SaveKey, new JArray());
+                return;
+            }
+
             var options = dropdown.Options;
-            if (options == null || options.Count == 0) return;
+            if (options == null || options.Count == 0)
+            {
+                if (!string.IsNullOrEmpty(dropdown.DefaultValue))
+                    Put(result, dropdown.SaveKey, dropdown.DefaultValue);
+                return;
+            }
 
             DropdownOption opt = null;
             if (!string.IsNullOrEmpty(dropdown.DefaultByValue))
@@ -116,6 +131,15 @@ namespace FluentConfig.Core
                 if (i >= 0 && i < options.Count)
                     opt = options[i];
             }
+
+            if (opt == null && !string.IsNullOrEmpty(dropdown.DefaultValue))
+            {
+                Put(result, dropdown.SaveKey, dropdown.DefaultValue);
+                return;
+            }
+
+            if (opt == null && options.Count > 0)
+                opt = options[0];
 
             if (opt == null) return;
 

@@ -28,7 +28,8 @@ namespace FluentConfig
                     Inverted = inverted,
                 },
                 "vis_" + (toggleKey ?? "group"),
-                build);
+                build,
+                indented: null);
         }
 
         public static void AddVisibilityGroup(
@@ -37,7 +38,8 @@ namespace FluentConfig
             Action flushPending,
             VisibilityCondition visibility,
             string groupId,
-            Action<PanelBuilder> build)
+            Action<PanelBuilder> build,
+            bool? indented = false)
         {
             flushPending();
             if (build == null)
@@ -51,7 +53,37 @@ namespace FluentConfig
                 Id = groupId ?? "vis_group",
                 Visibility = visibility,
                 Children = list.ToList(),
+                Indented = indented,
             });
+        }
+
+        internal static bool? IndentedFromChrome(VisibilityChrome chrome) =>
+            chrome == VisibilityChrome.Indented ? true : (bool?)false;
+
+        public static void AddEqualsVisibilityGroup(
+            FluentConfigSession session,
+            SchemaNodeList nodes,
+            Action flushPending,
+            string key,
+            object equalsValue,
+            bool inverted,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome)
+        {
+            var token = equalsValue?.ToString() ?? "null";
+            AddVisibilityGroup(
+                session,
+                nodes,
+                flushPending,
+                new VisibilityCondition
+                {
+                    SaveKey = key,
+                    EqualsValue = equalsValue,
+                    Inverted = inverted,
+                },
+                "vis_" + (key ?? "group") + "_" + token,
+                build,
+                IndentedFromChrome(chrome));
         }
 
         public static void AddRepeatableRows(
@@ -173,6 +205,7 @@ namespace FluentConfig
                             Inverted = false,
                         },
                         Children = children,
+                        Indented = false,
                     });
                 }
             }

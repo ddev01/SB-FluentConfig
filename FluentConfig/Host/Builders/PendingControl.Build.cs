@@ -156,22 +156,10 @@ namespace FluentConfig
                 opts = _options.Select(o => new DropdownOption { Value = o, Display = o }).ToList();
             }
 
-            var node = new DropdownNode
-            {
-                Id = _saveKey,
-                Label = _label,
-                SaveKey = _saveKey,
-                Hint = _hint,
-                Options = opts,
-                ValueSaveKey = _valueKey,
-                Refreshable = _refresh != null || _refreshPairs != null,
-                DefaultIndex = _defaultIndex,
-                DefaultByValue = _defaultByValue,
-            };
-
+            Func<IList<DropdownOption>> refreshFn = null;
             if (_refresh != null || _refreshPairs != null)
             {
-                _session.RegisterDropdownRefresh(_saveKey, () =>
+                refreshFn = () =>
                 {
                     if (_refreshPairs != null)
                     {
@@ -180,8 +168,32 @@ namespace FluentConfig
                     }
                     var arr = _refresh?.Invoke() ?? Array.Empty<string>();
                     return arr.Select(o => new DropdownOption { Value = o, Display = o }).ToList();
-                });
+                };
+
+                _session?.RegisterDropdownRefresh(_saveKey, refreshFn);
+
+                // Refresh-only dropdowns (no static .Options) start empty unless seeded here.
+                if (opts == null || opts.Count == 0)
+                    opts = refreshFn();
             }
+
+            var node = new DropdownNode
+            {
+                Id = _saveKey,
+                Label = _label,
+                SaveKey = _saveKey,
+                Hint = _hint,
+                Options = opts,
+                ValueSaveKey = _valueKey,
+                Refreshable = refreshFn != null,
+                DefaultIndex = _defaultIndex,
+                DefaultByValue = _defaultByValue,
+                DefaultValue = _defaultString,
+                Searchable = _searchable ? true : (bool?)null,
+                AllowCustom = _allowCustom ? true : (bool?)null,
+                Multiple = _multiple ? true : (bool?)null,
+                DefaultValues = _defaultStrings,
+            };
 
             return node;
         }

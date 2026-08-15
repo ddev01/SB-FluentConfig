@@ -37,6 +37,8 @@ namespace FluentConfig
         private Comparator? _showWhenOp;
         private int? _showWhenValue;
         private string _showWhenCompareKey;
+        private object _showWhenEquals;
+        private bool _showWhenInverted;
         private LayoutHint _sizeHint;
 
         private bool? _defaultBool;
@@ -60,6 +62,10 @@ namespace FluentConfig
         private int[] _defaultIndices;
         private Func<string[]> _refresh;
         private Func<IEnumerable<(string Value, string Display)>> _refreshPairs;
+        private bool _searchable;
+        private bool _allowCustom;
+        private bool _multiple;
+        private string[] _defaultStrings;
         private string[] _preset;
         private bool _allowDuplicates = true;
         private string _colorHex;
@@ -89,6 +95,11 @@ namespace FluentConfig
         public void BeginFilepath(string label, string key) { Reset(Kind.Filepath, label, RequireSaveKey(key)); }
         public void BeginColorPicker(string label, string key) { Reset(Kind.ColorPicker, label, RequireSaveKey(key)); }
         public void BeginDropdown(string label, string key) { Reset(Kind.Dropdown, label, RequireSaveKey(key)); }
+        public void BeginCombobox(string label, string key)
+        {
+            Reset(Kind.Dropdown, label, RequireSaveKey(key));
+            _searchable = true;
+        }
         public void BeginDynamicTextboxes(string label, string key) { Reset(Kind.DynamicTextboxes, label, RequireSaveKey(key)); }
         public void BeginPillInput(string label, string key) { Reset(Kind.PillInput, label, RequireSaveKey(key)); }
 
@@ -122,6 +133,8 @@ namespace FluentConfig
             _showWhenOp = null;
             _showWhenValue = null;
             _showWhenCompareKey = null;
+            _showWhenEquals = null;
+            _showWhenInverted = false;
             _sizeHint = null;
             _defaultBool = null;
             _defaultString = null;
@@ -144,6 +157,10 @@ namespace FluentConfig
             _defaultIndices = null;
             _refresh = null;
             _refreshPairs = null;
+            _searchable = false;
+            _allowCustom = false;
+            _multiple = false;
+            _defaultStrings = null;
             _preset = null;
             _allowDuplicates = true;
             _colorHex = null;
@@ -169,6 +186,8 @@ namespace FluentConfig
             if (_kind == Kind.Toggle && _exclusiveOptions != null && _exclusiveOptions.Length > 0 && _defaultBool.HasValue)
                 throw new InvalidOperationException(
                     "Cannot combine .Default(bool) with .WithExclusive(...). Use .DefaultIndex / .DefaultIndices instead.");
+            if (_kind == Kind.Dropdown && _multiple && !string.IsNullOrEmpty(_valueKey))
+                throw new InvalidOperationException(".Multiple() cannot be combined with .WithPairValue(...).");
             var node = BuildNode();
             if (node != null)
             {
@@ -189,8 +208,8 @@ namespace FluentConfig
                     node.Visibility = new VisibilityCondition
                     {
                         SaveKey = _saveKeyPath(_showWhenKey),
-                        EqualsValue = true,
-                        Inverted = false,
+                        EqualsValue = _showWhenEquals ?? true,
+                        Inverted = _showWhenInverted,
                     };
                 }
 

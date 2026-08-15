@@ -169,6 +169,22 @@ namespace FluentConfig.Protocol
 
         [JsonProperty("defaultByValue")]
         public string DefaultByValue { get; set; }
+
+        /// <summary>Explicit default string (AllowCustom / .Default(string)).</summary>
+        [JsonProperty("defaultValue")]
+        public string DefaultValue { get; set; }
+
+        [JsonProperty("searchable")]
+        public bool? Searchable { get; set; }
+
+        [JsonProperty("allowCustom")]
+        public bool? AllowCustom { get; set; }
+
+        [JsonProperty("multiple")]
+        public bool? Multiple { get; set; }
+
+        [JsonProperty("defaultValues")]
+        public IList<string> DefaultValues { get; set; }
     }
 
     public sealed class DropdownOption
@@ -410,6 +426,13 @@ namespace FluentConfig.Protocol
         /// <summary>When set, children render in a CSS grid/flex container instead of the indented stack.</summary>
         [JsonProperty("grid")]
         public GridSpec Grid { get; set; }
+
+        /// <summary>
+        /// Left-rail chrome. Null/omitted = rail (toggle gates). <c>false</c> = flat (value-equals, comparator, RepeatFor).
+        /// Must serialize as <c>false</c> when flat — do not mark DefaultValueHandling.Ignore.
+        /// </summary>
+        [JsonProperty("indented")]
+        public bool? Indented { get; set; }
     }
 
     /// <summary>

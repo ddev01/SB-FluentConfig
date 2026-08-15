@@ -65,7 +65,8 @@ namespace FluentConfig
                     Value = value,
                 },
                 "vis_" + (key ?? "group") + "_" + LayoutTokens.OperatorString(op) + "_" + value,
-                build);
+                build,
+                indented: false);
             return this;
         }
 
@@ -84,11 +85,52 @@ namespace FluentConfig
                     CompareKey = compareKey,
                 },
                 "vis_" + (key ?? "group") + "_" + LayoutTokens.OperatorString(op) + "_" + (compareKey ?? "key"),
-                build);
+                build,
+                indented: false);
             return this;
         }
 
         public PanelBuilder WithVisibilityWhenOff(string toggleKey, Action<PanelBuilder> build) => WithVisibility(toggleKey, build, inverted: true);
+
+        public PanelBuilder WithVisibility(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: false, build, chrome);
+            return this;
+        }
+
+        public PanelBuilder WithVisibility(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: false, build, chrome);
+            return this;
+        }
+
+        public PanelBuilder WithVisibilityWhenNot(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: true, build, chrome);
+            return this;
+        }
+
+        public PanelBuilder WithVisibilityWhenNot(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            SchemaBuilderHelpers.AddEqualsVisibilityGroup(Session, Nodes, FlushPending, key, equalsValue, inverted: true, build, chrome);
+            return this;
+        }
 
         /// <summary>Adds a repeatable-rows control with a relative row schema.</summary>
         public PanelBuilder WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow)

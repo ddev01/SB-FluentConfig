@@ -68,6 +68,50 @@ namespace FluentConfig
             return Next();
         }
 
+        public PanelFluentWrapper WithVisibility(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibility(key, equalsValue, build, chrome);
+            return Next();
+        }
+
+        public PanelFluentWrapper WithVisibility(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibility(key, equalsValue, build, chrome);
+            return Next();
+        }
+
+        public PanelFluentWrapper WithVisibilityWhenNot(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibilityWhenNot(key, equalsValue, build, chrome);
+            return Next();
+        }
+
+        public PanelFluentWrapper WithVisibilityWhenNot(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibilityWhenNot(key, equalsValue, build, chrome);
+            return Next();
+        }
+
         public PanelFluentWrapper WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow)
         {
             Host.FlushPending();

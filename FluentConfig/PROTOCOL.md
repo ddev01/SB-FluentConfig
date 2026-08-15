@@ -78,7 +78,10 @@ Every `SchemaNode` may include:
 ```
 
 `ShowWhen(key)` → `{ saveKey: key, equals: true }`.  
-`WithVisibility(key, inverted: true, …)` → a `group` node with `{ saveKey: key, equals: true, inverted: true }`.
+`ShowWhen(key, "random")` → `{ saveKey: key, equals: "random" }` (`equals` may be boolean, string, or number).  
+`ShowWhenNot(key, "free")` → `{ saveKey: key, equals: "free", inverted: true }`.  
+`WithVisibility(key, inverted: true, …)` → a `group` node with `{ saveKey: key, equals: true, inverted: true }`.  
+`WithVisibility(key, "random", …)` → a `group` with `{ saveKey: key, equals: "random" }` and `"indented": false` (flat chrome). Toggle groups omit `indented` (left rail).
 
 #### Comparator operators (additive)
 
@@ -92,7 +95,7 @@ When `operator` is set (`gte` | `lte` | `gt` | `lt`), the legacy `equals` path i
 "visibility": { "saveKey": "a", "operator": "gte", "compareKey": "b" }
 ```
 
-`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, behavior is identical to today's equals gate.
+`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, the equals path matches by type: boolean (`===`, no `"true"` coercion), number (`toNumber(actual) === expected`), string (`String(actual) === expected`, no trim), null (missing/null actual). Missing live values fall back to the driver control's schema default (dropdown `defaultByValue` / first option, toggle `defaultValue`).
 
 `ShowWhen(key, Comparator.GreaterOrEqual, 4)` and `WithVisibility(key, Comparator.GreaterOrEqual, 4, …)` emit this shape.
 
@@ -135,7 +138,7 @@ A `group` may carry a `grid` spec (CSS grid or flex row). Any `SchemaNode` may c
 - per-node `layout.width` / `minWidth` / `maxWidth`: resolved CSS strings (e.g. `fit-content`, `50%`, `80px`)
 - per-node `layout.grow` / `shrink`: booleans → `flex-grow` / `flex-shrink` `1`/`0` (Row children only)
 
-Plain `WithVisibility` groups (no `grid`) keep the indented left-border stack.
+A `group` may set `indented`: omitted/`true` = left-border rail (toggle `WithVisibility`); `false` = flat children (value-equals, comparator, RepeatFor). `grid` still wins over chrome. Legacy RepeatFor documents without `indented` stay flat via `id` prefix `repeat_`.
 
 ---
 
@@ -185,6 +188,8 @@ Plain `WithVisibility` groups (no `grid`) keep the indented left-border stack.
   ]
 }
 ```
+
+Optional flags (omitted when false): `searchable`, `allowCustom`, `multiple`. `multiple` stores `string[]` in `saveKey` and cannot be combined with `valueSaveKey`.
 
 ### 3. Pill input (nested schema — not a Panel)
 
@@ -324,7 +329,7 @@ Response (host → web):
 | textbox / filepath / color / duration | `string` |
 | slider / integer number-input | `number` (int) |
 | number-input double/float | `number` |
-| dropdown | `string` (display); with pair-value also value in `valueSaveKey` |
+| dropdown | `string` (display); with pair-value also value in `valueSaveKey`; `multiple` → `string[]` |
 | dynamic-textboxes / pill-input | `string[]` |
 | repeatable-rows | array of objects under `saveKey` |
 | button / description / title / separator / update-notice | no settings value |

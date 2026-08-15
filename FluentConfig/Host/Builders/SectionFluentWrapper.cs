@@ -68,6 +68,50 @@ namespace FluentConfig
             return Next();
         }
 
+        public SectionFluentWrapper WithVisibility(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibility(key, equalsValue, build, chrome);
+            return Next();
+        }
+
+        public SectionFluentWrapper WithVisibility(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibility(key, equalsValue, build, chrome);
+            return Next();
+        }
+
+        public SectionFluentWrapper WithVisibilityWhenNot(
+            string key,
+            string equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibilityWhenNot(key, equalsValue, build, chrome);
+            return Next();
+        }
+
+        public SectionFluentWrapper WithVisibilityWhenNot(
+            string key,
+            int equalsValue,
+            Action<PanelBuilder> build,
+            VisibilityChrome chrome = VisibilityChrome.Flat)
+        {
+            Host.FlushPending();
+            Host.WithVisibilityWhenNot(key, equalsValue, build, chrome);
+            return Next();
+        }
+
         public SectionFluentWrapper WithRepeatableRows(string saveKey, Action<PanelBuilder> buildRow)
         {
             Host.FlushPending();

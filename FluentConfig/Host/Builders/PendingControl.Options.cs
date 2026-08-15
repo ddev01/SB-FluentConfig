@@ -27,8 +27,17 @@ namespace FluentConfig
         }
         public void Default(string value)
         {
-            RequireKind(nameof(Default), Kind.Textbox, Kind.DurationInput, Kind.Filepath, Kind.ColorPicker, Kind.NumberInput, Kind.IntegerInput);
+            RequireKind(nameof(Default), Kind.Textbox, Kind.DurationInput, Kind.Filepath, Kind.ColorPicker, Kind.NumberInput, Kind.IntegerInput, Kind.Dropdown);
             _defaultString = value;
+            if (_kind == Kind.Dropdown && !_multiple && string.IsNullOrEmpty(_defaultByValue))
+                _defaultByValue = value;
+        }
+        public void Default(string[] values)
+        {
+            RequireKind(nameof(Default), Kind.Dropdown);
+            if (!_multiple)
+                throw new InvalidOperationException(".Default(string[]) requires .Multiple().");
+            _defaultStrings = values ?? Array.Empty<string>();
         }
         public void Default(int value)
         {
@@ -69,10 +78,37 @@ namespace FluentConfig
         }
         public void ShowWhen(string key)
         {
+            SetEqualsShowWhen(key, true, inverted: false);
+        }
+
+        public void ShowWhen(string key, string equalsValue)
+        {
+            SetEqualsShowWhen(key, equalsValue, inverted: false);
+        }
+
+        public void ShowWhen(string key, int equalsValue)
+        {
+            SetEqualsShowWhen(key, equalsValue, inverted: false);
+        }
+
+        public void ShowWhenNot(string key, string equalsValue)
+        {
+            SetEqualsShowWhen(key, equalsValue, inverted: true);
+        }
+
+        public void ShowWhenNot(string key, int equalsValue)
+        {
+            SetEqualsShowWhen(key, equalsValue, inverted: true);
+        }
+
+        private void SetEqualsShowWhen(string key, object equalsValue, bool inverted)
+        {
             _showWhenKey = key;
             _showWhenOp = null;
             _showWhenValue = null;
             _showWhenCompareKey = null;
+            _showWhenEquals = equalsValue;
+            _showWhenInverted = inverted;
         }
 
         public void ShowWhen(string key, Comparator op, int value)
@@ -81,6 +117,8 @@ namespace FluentConfig
             _showWhenOp = op;
             _showWhenValue = value;
             _showWhenCompareKey = null;
+            _showWhenEquals = null;
+            _showWhenInverted = false;
         }
 
         public void ShowWhen(string key, Comparator op, string compareKey)
@@ -91,6 +129,8 @@ namespace FluentConfig
             _showWhenOp = op;
             _showWhenValue = null;
             _showWhenCompareKey = compareKey.Trim();
+            _showWhenEquals = null;
+            _showWhenInverted = false;
         }
 
         public void Size(string spec)
@@ -165,6 +205,21 @@ namespace FluentConfig
             RequireKind(nameof(RefreshPairs), Kind.Dropdown);
             _refresh = null;
             _refreshPairs = callback;
+        }
+        public void Searchable()
+        {
+            RequireKind(nameof(Searchable), Kind.Dropdown);
+            _searchable = true;
+        }
+        public void AllowCustom()
+        {
+            RequireKind(nameof(AllowCustom), Kind.Dropdown);
+            _allowCustom = true;
+        }
+        public void Multiple()
+        {
+            RequireKind(nameof(Multiple), Kind.Dropdown);
+            _multiple = true;
         }
         public void Preset(string[] values)
         {

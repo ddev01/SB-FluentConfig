@@ -92,6 +92,7 @@ namespace FluentConfig
         public TWrapper NumberInput(string label, string key) => Begin(p => p.BeginNumberInput(label, key));
         public TWrapper ColorPicker(string label, string key) => Begin(p => p.BeginColorPicker(label, key));
         public TWrapper Dropdown(string label, string key) => Begin(p => p.BeginDropdown(label, key));
+        public TWrapper Combobox(string label, string key) => Begin(p => p.BeginCombobox(label, key));
         public TWrapper DynamicTextboxes(string label, string key) => Begin(p => p.BeginDynamicTextboxes(label, key));
         public TWrapper PillInput(string label, string key) => Begin(p => p.BeginPillInput(label, key));
     }

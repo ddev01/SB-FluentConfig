@@ -33,6 +33,7 @@ namespace FluentConfig
         public TWrapper Hint(string text) => Option(o => o.Hint(text));
         public TWrapper Default(bool value) => Option(o => o.Default(value));
         public TWrapper Default(string value) => Option(o => o.Default(value));
+        public TWrapper Default(string[] values) => Option(o => o.Default(values));
         public TWrapper Default(int value) => Option(o => o.Default(value));
         public TWrapper Default(double value) => Option(o => o.Default(value));
         public TWrapper Range(int min, int max) => Option(o => o.Range(min, max));
@@ -41,6 +42,10 @@ namespace FluentConfig
         public TWrapper Password() => Option(o => o.Password());
         public TWrapper Multiline() => Option(o => o.Multiline());
         public TWrapper ShowWhen(string key) => Option(o => o.ShowWhen(key));
+        public TWrapper ShowWhen(string key, string equalsValue) => Option(o => o.ShowWhen(key, equalsValue));
+        public TWrapper ShowWhen(string key, int equalsValue) => Option(o => o.ShowWhen(key, equalsValue));
+        public TWrapper ShowWhenNot(string key, string equalsValue) => Option(o => o.ShowWhenNot(key, equalsValue));
+        public TWrapper ShowWhenNot(string key, int equalsValue) => Option(o => o.ShowWhenNot(key, equalsValue));
         public TWrapper ShowWhen(string key, Comparator op, int value) => Option(o => o.ShowWhen(key, op, value));
         public TWrapper ShowWhen(string key, Comparator op, string compareKey) => Option(o => o.ShowWhen(key, op, compareKey));
         public TWrapper Size(string spec) => Option(o => o.Size(spec));
@@ -54,6 +59,9 @@ namespace FluentConfig
         public TWrapper DefaultIndices(int[] indices) => Option(o => o.DefaultIndices(indices));
         public TWrapper Refresh(Func<string[]> callback) => Option(o => o.Refresh(callback));
         public TWrapper Refresh(Func<IEnumerable<(string Value, string Display)>> callback) => Option(o => o.RefreshPairs(callback));
+        public TWrapper Searchable() => Option(o => o.Searchable());
+        public TWrapper AllowCustom() => Option(o => o.AllowCustom());
+        public TWrapper Multiple() => Option(o => o.Multiple());
         public TWrapper Preset(string[] values) => Option(o => o.Preset(values));
         public TWrapper AllowDuplicates(bool value = true) => Option(o => o.AllowDuplicates(value));
         public TWrapper Color(string hex) => Option(o => o.Color(hex));
@@ -78,6 +86,7 @@ namespace FluentConfig
         public TWrapper NumberInput(string label, string key) => Control(h => h.NumberInput(label, key));
         public TWrapper ColorPicker(string label, string key) => Control(h => h.ColorPicker(label, key));
         public TWrapper Dropdown(string label, string key) => Control(h => h.Dropdown(label, key));
+        public TWrapper Combobox(string label, string key) => Control(h => h.Combobox(label, key));
         public TWrapper DynamicTextboxes(string label, string key) => Control(h => h.DynamicTextboxes(label, key));
         public TWrapper PillInput(string label, string key) => Control(h => h.PillInput(label, key));
     }
