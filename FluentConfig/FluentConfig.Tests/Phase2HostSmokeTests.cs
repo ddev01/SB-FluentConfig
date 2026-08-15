@@ -111,6 +111,40 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
+        public void RefreshOnlyDropdown_SeedsInitialOptions()
+        {
+            var cph = CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Refresh Seed", "1.0");
+            ui.Section("G", "g", s => s
+                .Dropdown("Groups", "include_groups")
+                    .Refresh(() => new[] { "vip", "sub", "mod" })
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            var node = Assert.IsType<DropdownNode>(doc.Sections[0].Children.Single(n => n is DropdownNode));
+            Assert.True(node.Refreshable);
+            Assert.Equal(3, node.Options.Count);
+            Assert.Equal("vip", node.Options[0].Value);
+        }
+
+        [Fact]
+        public void DropdownWithStaticOptions_DoesNotSeedFromRefresh()
+        {
+            var cph = CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Static Options", "1.0");
+            ui.Section("G", "g", s => s
+                .Dropdown("Choice", "dropdown_choice")
+                    .Options(new[] { "A", "B" })
+                    .Refresh(() => new[] { "A", "B", "C" })
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            var node = Assert.IsType<DropdownNode>(doc.Sections[0].Children.Single(n => n is DropdownNode));
+            Assert.Equal(2, node.Options.Count);
+            Assert.Equal("A", node.Options[0].Value);
+        }
+
+        [Fact]
         public void WithVisibilityWhenOff_EmitsInvertedCondition()
         {
             var cph = CreateMockCph();

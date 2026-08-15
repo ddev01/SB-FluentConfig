@@ -97,5 +97,33 @@ namespace FluentConfig.Tests
             Assert.Equal("Device B", defaults["device_display"]?.Value<string>());
             Assert.Equal("id2", defaults["device_id"]?.Value<string>());
         }
+
+        [Fact]
+        public void Collector_Dropdown_SeedsFirstOptionWhenNoExplicitDefault()
+        {
+            var sections = new List<SectionSchema>
+            {
+                new SectionSchema
+                {
+                    Id = "g",
+                    Title = "G",
+                    Children = new List<SchemaNode>
+                    {
+                        new DropdownNode
+                        {
+                            SaveKey = "mode",
+                            Options = new List<DropdownOption>
+                            {
+                                new DropdownOption { Value = "quiet", Display = "quiet" },
+                                new DropdownOption { Value = "loud", Display = "loud" },
+                            },
+                        },
+                    },
+                },
+            };
+
+            var defaults = SettingsDefaultsCollector.Collect(sections, new JObject());
+            Assert.Equal("quiet", defaults["mode"]?.Value<string>());
+        }
     }
 }

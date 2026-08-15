@@ -92,6 +92,64 @@ namespace FluentConfig.Tests
             Assert.Equal(2, group.Visibility.Value);
             Assert.Null(group.Visibility.EqualsValue);
             Assert.Equal("extra", Assert.IsType<TextboxNode>(Assert.Single(group.Children)).SaveKey);
+            Assert.Equal(false, group.Indented);
+            var groupJson = JObject.Parse(ProtocolJson.Serialize(group));
+            Assert.Equal(false, groupJson["indented"]?.Value<bool>());
+        }
+
+        [Fact]
+        public void ShowWhen_StringEquals_EmitsEqualsWithoutOperator()
+        {
+            var list = new SchemaNodeList();
+            var pending = new PendingControl(session: null, list);
+            pending.BeginNumberInput("Multiplier", "multiplier");
+            pending.ShowWhen("default_mode", "random");
+            pending.Flush();
+
+            var jo = JObject.Parse(ProtocolJson.Serialize(Assert.Single(list.ToList())));
+            var vis = jo["visibility"] as JObject;
+            Assert.Equal("default_mode", vis["saveKey"]?.ToString());
+            Assert.Equal("random", vis["equals"]?.ToString());
+            Assert.Null(vis["operator"]);
+            Assert.Null(vis["value"]);
+        }
+
+        [Fact]
+        public void ShowWhenNot_EmitsInvertedEquals()
+        {
+            var list = new SchemaNodeList();
+            var pending = new PendingControl(session: null, list);
+            pending.BeginTextbox("Note", "note");
+            pending.ShowWhenNot("mode", "free");
+            pending.Flush();
+
+            var jo = JObject.Parse(ProtocolJson.Serialize(Assert.Single(list.ToList())));
+            var vis = jo["visibility"] as JObject;
+            Assert.Equal("free", vis["equals"]?.ToString());
+            Assert.Equal(true, vis["inverted"]?.Value<bool>());
+            Assert.Null(vis["operator"]);
+        }
+
+        [Fact]
+        public void WithVisibility_StringEquals_EmitsFlatGroup()
+        {
+            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "Equals Vis", "1.0");
+            ui.Section("G", "g", s => s
+                .Dropdown("Mode", "mode").Options(new[] { "quiet", "loud" })
+                .WithVisibility("mode", "quiet", inner => inner
+                    .Textbox("Whisper", "whisper")
+                )
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            var group = Assert.IsType<GroupNode>(
+                doc.Sections[0].Children.Single(n => n is GroupNode));
+            Assert.Equal("quiet", group.Visibility.EqualsValue?.ToString());
+            Assert.Null(group.Visibility.Operator);
+            Assert.Equal(false, group.Indented);
+            var json = ProtocolJson.Serialize(group);
+            Assert.Contains("\"indented\":false", json.Replace(" ", ""));
         }
     }
 }
