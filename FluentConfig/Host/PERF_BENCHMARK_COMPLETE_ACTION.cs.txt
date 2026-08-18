@@ -36,7 +36,7 @@ public class CPHInline
     {
         try
         {
-            FluentConfig.FluentConfig.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
+            Fc.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
 
             // Wall-clock marker before ShowOrFocus (pairs with FluentConfig_PerfLast).
             // If this line never appears in SB Log after DoAction, Method did not run
@@ -47,7 +47,7 @@ public class CPHInline
 
             // ShowOrFocus already does AlreadyOpened(title, version) → focus-or-create.
             // Title differs from "FluentConfig Perf Benchmark" — no window conflict.
-            FluentConfigUi.ShowOrFocus(CPH, Title, Version, ui => ui
+            Fc.Open(CPH, Title, Version, ui => ui
                 .Section("General settings", "General", g => g
                     .Intro(
                         "## Perf complete (worst-case)\n\n"

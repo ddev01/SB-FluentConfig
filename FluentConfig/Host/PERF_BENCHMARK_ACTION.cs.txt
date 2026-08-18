@@ -27,12 +27,12 @@ public class CPHInline
     {
         try
         {
-            FluentConfig.FluentConfig.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
+            Fc.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
 
-            // Wall-clock marker before ShowOrFocus (pairs with FluentConfig_PerfLast).
+            // Wall-clock marker before Fc.Open (pairs with FluentConfig_PerfLast).
             CPH.LogInfo("[MENU] trigger " + Title);
 
-            FluentConfigUi.ShowOrFocus(CPH, Title, Version, ui => ui
+            Fc.Open(CPH, Title, Version, ui => ui
                 .Section("Benchmark", "benchmark", s => s
                     .Intro("Minimal FluentConfig surface for cold/warm open timing. Close this window between harness runs."))
             );
