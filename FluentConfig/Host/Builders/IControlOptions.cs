@@ -46,6 +46,12 @@ namespace FluentConfig
         void Color(string hex);
         void Text(string caption);
         void OnClick(Action<UiContext> callback);
+        /// <summary>Filepath only: omit the built-in Browse button.</summary>
+        void HideBrowse();
+        /// <summary>Filepath only: non-empty values must exist on disk (default true). Empty stays allowed.</summary>
+        void MustExist(bool value = true);
+        /// <summary>Filepath only: allowed extensions (with or without a leading dot).</summary>
+        void Accept(params string[] extensions);
         void WithPermanentOption(bool value);
         void WithStepper(bool value = true);
         /// <summary>

@@ -60,6 +60,9 @@ namespace FluentConfig
                     case RpcMethods.FilepathBrowse:
                         HandleFilepathBrowse(msg);
                         break;
+                    case RpcMethods.FilepathValidate:
+                        HandleFilepathValidate(msg);
+                        break;
                     case RpcMethods.PillChanged:
                         HandlePillChanged(msg);
                         break;
@@ -93,7 +96,14 @@ namespace FluentConfig
         private void HandleSave(WireMessage msg)
         {
             var p = msg.Params?.ToObject<SaveParams>(ProtocolJson.CreateSerializer());
-            _latestValues = SettingsSync.ApplyAndSave(_settingsManager, p?.Values);
+            var incoming = p?.Values ?? new JObject();
+            var errors = FilepathValidation.ValidateAll(_filepathRules, incoming);
+            if (errors.Count > 0)
+            {
+                _bridge?.Send(WireMessage.ResponseError(msg.Id.Value, "validation", string.Join(" ", errors)));
+                return;
+            }
+            _latestValues = SettingsSync.ApplyAndSave(_settingsManager, incoming);
             _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value, new { ok = true }));
         }
 
@@ -101,8 +111,18 @@ namespace FluentConfig
         {
             var p = msg.Params?.ToObject<DropdownRefreshParams>(ProtocolJson.CreateSerializer());
             IList<DropdownOption> options = Array.Empty<DropdownOption>();
-            if (p != null && !string.IsNullOrEmpty(p.SaveKey) && _dropdownRefresh.TryGetValue(p.SaveKey, out var fn))
-                options = fn() ?? Array.Empty<DropdownOption>();
+            try
+            {
+                if (p != null
+                    && !string.IsNullOrEmpty(p.SaveKey)
+                    && ButtonClickRouting.TryResolve(_dropdownRefresh, p.SaveKey, out var fn, out _)
+                    && fn != null)
+                    options = fn() ?? Array.Empty<DropdownOption>();
+            }
+            catch (Exception ex)
+            {
+                Log($"[FluentConfig] dropdown.refresh failed: {ex.Message}");
+            }
             _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value, new DropdownRefreshResult { Options = options }));
         }
 
@@ -113,8 +133,9 @@ namespace FluentConfig
                 _latestValues = p.Values;
 
             Action<UiContext> cb = null;
+            string itemName = null;
             if (p != null && !string.IsNullOrEmpty(p.ButtonId))
-                _buttonClicks.TryGetValue(p.ButtonId, out cb);
+                ButtonClickRouting.TryResolve(_buttonClicks, p.ButtonId, out cb, out itemName);
 
             // Reply before running OnClick. Nested SendRequestAndWait (confirm/popup) inside
             // WebMessageReceived deadlocks — WebView2 won't deliver the dialog response until
@@ -123,7 +144,7 @@ namespace FluentConfig
 
             if (cb == null) return;
 
-            var ctx = new UiContext(this, _latestValues);
+            var ctx = new UiContext(this, _latestValues, p.ButtonId, itemName);
             var dispatcher = _window?.Dispatcher;
             if (dispatcher != null)
             {
@@ -154,11 +175,28 @@ namespace FluentConfig
 
         private void HandleFilepathBrowse(WireMessage msg)
         {
-            string path = null;
+            var p = msg.Params?.ToObject<FilepathBrowseParams>(ProtocolJson.CreateSerializer());
+            var rule = FilepathValidation.FindRule(_filepathRules, p?.SaveKey);
             var dlg = new OpenFileDialog();
+            dlg.Filter = FilepathValidation.DialogFilter(rule?.Label, rule?.Accept);
+            string path = null;
             if (dlg.ShowDialog(_window) == true)
                 path = dlg.FileName;
             _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value, new FilepathBrowseResult { Path = path }));
+        }
+
+        private void HandleFilepathValidate(WireMessage msg)
+        {
+            var p = msg.Params?.ToObject<FilepathValidateParams>(ProtocolJson.CreateSerializer());
+            var rule = FilepathValidation.FindRule(_filepathRules, p?.SaveKey);
+            bool mustExist = rule == null || rule.MustExist;
+            var accept = rule?.Accept;
+            var error = FilepathValidation.Check(p?.Path, mustExist, accept);
+            _bridge?.Send(WireMessage.ResponseResult(msg.Id.Value, new FilepathValidateResult
+            {
+                Ok = error == null,
+                Error = error,
+            }));
         }
 
         private void HandlePillChanged(WireMessage msg)
@@ -185,14 +223,21 @@ namespace FluentConfig
 
                 if (reg.ItemTemplate != null && p.Items != null)
                 {
-                    result.Items = p.Items
-                        .Where(n => !string.IsNullOrEmpty(n))
-                        .Select(n => new PillItemSchema
-                        {
-                            Name = n,
-                            Children = ExpandTemplate(reg.ItemTemplate, n),
-                        })
-                        .ToList();
+                    try
+                    {
+                        result.Items = p.Items
+                            .Where(n => !string.IsNullOrEmpty(n))
+                            .Select(n => new PillItemSchema
+                            {
+                                Name = n,
+                                Children = ExpandTemplate(reg.ItemTemplate, n),
+                            })
+                            .ToList();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"[FluentConfig] pill.changed expand failed: {ex.Message}");
+                    }
                 }
             }
 

@@ -43,6 +43,8 @@ namespace FluentConfig
         private readonly Dictionary<string, Func<IList<DropdownOption>>> _dropdownRefresh = new Dictionary<string, Func<IList<DropdownOption>>>(StringComparer.Ordinal);
         private readonly Dictionary<string, PillRegistration> _pills = new Dictionary<string, PillRegistration>(StringComparer.Ordinal);
         private readonly Dictionary<string, (double Min, double Max)> _declaredRanges = new Dictionary<string, (double Min, double Max)>(StringComparer.Ordinal);
+        private readonly List<FilepathRule> _filepathRules = new List<FilepathRule>();
+        internal string ItemTemplatePillKey;
 
         private HostBridge _bridge;
         private FluentConfigHostWindow _window;
@@ -62,6 +64,17 @@ namespace FluentConfig
         private bool _closeAlreadyConfirmed;
         /// <summary>True while a deferred native-close discard prompt is in flight.</summary>
         private bool _closePromptInFlight;
+        private int _itemTemplateDepth;
+
+        internal bool InItemTemplate => _itemTemplateDepth > 0;
+
+        internal void PushItemTemplateScope() => _itemTemplateDepth++;
+
+        internal void PopItemTemplateScope()
+        {
+            if (_itemTemplateDepth > 0)
+                _itemTemplateDepth--;
+        }
 
         private sealed class PillRegistration
         {
@@ -129,6 +142,14 @@ namespace FluentConfig
         {
             if (string.IsNullOrEmpty(saveKey)) return;
             _declaredRanges[saveKey] = (min, max);
+        }
+
+        internal void ClearFilepathRules() => _filepathRules.Clear();
+
+        internal void RegisterFilepathRule(FilepathRule rule)
+        {
+            if (rule != null && !string.IsNullOrEmpty(rule.SaveKey))
+                _filepathRules.Add(rule);
         }
 
         internal bool TryGetDeclaredRange(string saveKey, out double min, out double max)
@@ -266,6 +287,7 @@ namespace FluentConfig
 
         private UiDocument BuildDocument()
         {
+            _filepathRules.Clear();
             var sections = _deferredSections.Select(f => f()).ToList();
 
             // Update notices are pushed via update.available after a deferred HTTP check
@@ -317,15 +339,22 @@ namespace FluentConfig
                     var names = values?[pill.SaveKey] as JArray;
                     if (names != null && pill.ItemTemplate != null)
                     {
-                        pill.Items = names
-                            .Select(t => t?.ToString())
-                            .Where(n => !string.IsNullOrEmpty(n))
-                            .Select(n => new PillItemSchema
-                            {
-                                Name = n,
-                                Children = ExpandTemplate(pill.ItemTemplate, n),
-                            })
-                            .ToList();
+                        try
+                        {
+                            pill.Items = names
+                                .Select(t => t?.ToString())
+                                .Where(n => !string.IsNullOrEmpty(n))
+                                .Select(n => new PillItemSchema
+                                {
+                                    Name = n,
+                                    Children = ExpandTemplate(pill.ItemTemplate, n),
+                                })
+                                .ToList();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log($"[FluentConfig] pill expand failed: {ex.Message}");
+                        }
                     }
                 }
                 else if (node is GroupNode group)
@@ -403,6 +432,20 @@ namespace FluentConfig
                 SectionId = sectionId,
                 NodeId = nodeId,
                 Node = node,
+            }));
+        }
+
+        internal void PatchLiveValue<T>(string key, T value)
+        {
+            if (string.IsNullOrEmpty(key))
+                return;
+            _settingsManager.SetValue(key, value);
+            _settingsManager.Save(_settingsManager.GetSettings());
+            _latestValues = _settingsManager.GetSettings();
+            var token = value == null ? JValue.CreateNull() : JToken.FromObject(value);
+            _bridge?.Send(WireMessage.Push(PushEventNames.ValuesPatch, new ValuesPatchPayload
+            {
+                Paths = new JObject { [key] = token },
             }));
         }
     }

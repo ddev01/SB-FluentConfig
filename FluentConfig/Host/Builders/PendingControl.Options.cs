@@ -246,6 +246,21 @@ namespace FluentConfig
             RequireKind(nameof(OnClick), Kind.Button);
             _onClick = callback;
         }
+        public void HideBrowse()
+        {
+            RequireKind(nameof(HideBrowse), Kind.Filepath);
+            _hideBrowse = true;
+        }
+        public void MustExist(bool value = true)
+        {
+            RequireKind(nameof(MustExist), Kind.Filepath);
+            _mustExist = value;
+        }
+        public void Accept(params string[] extensions)
+        {
+            RequireKind(nameof(Accept), Kind.Filepath);
+            _accept = extensions;
+        }
         public void WithPermanentOption(bool value)
         {
             RequireKind(nameof(WithPermanentOption), Kind.DurationInput);

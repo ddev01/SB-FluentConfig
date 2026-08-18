@@ -21,6 +21,9 @@ namespace FluentConfig.Protocol
         /// <summary>Open a native file picker. Params: <see cref="FilepathBrowseParams"/>. Result: <see cref="FilepathBrowseResult"/>.</summary>
         public const string FilepathBrowse = "filepath.browse";
 
+        /// <summary>Check a filepath value (exists + optional extension). Params: <see cref="FilepathValidateParams"/>. Result: <see cref="FilepathValidateResult"/>.</summary>
+        public const string FilepathValidate = "filepath.validate";
+
         /// <summary>Pill list changed (add/remove/rename). Params: <see cref="PillChangedParams"/>. Result may include updated item schemas.</summary>
         public const string PillChanged = "pill.changed";
 
@@ -109,6 +112,24 @@ namespace FluentConfig.Protocol
         /// <summary>Selected path, or null/omitted if cancelled.</summary>
         [JsonProperty("path")]
         public string Path { get; set; }
+    }
+
+    public sealed class FilepathValidateParams
+    {
+        [JsonProperty("saveKey")]
+        public string SaveKey { get; set; }
+
+        [JsonProperty("path")]
+        public string Path { get; set; }
+    }
+
+    public sealed class FilepathValidateResult
+    {
+        [JsonProperty("ok")]
+        public bool Ok { get; set; }
+
+        [JsonProperty("error")]
+        public string Error { get; set; }
     }
 
     public sealed class PillChangedParams

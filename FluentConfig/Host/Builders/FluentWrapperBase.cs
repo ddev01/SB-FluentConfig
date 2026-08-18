@@ -67,6 +67,12 @@ namespace FluentConfig
         public TWrapper Color(string hex) => Option(o => o.Color(hex));
         public TWrapper Text(string caption) => Option(o => o.Text(caption));
         public TWrapper OnClick(Action<UiContext> callback) => Option(o => o.OnClick(callback));
+        /// <summary>Filepath only: omit the built-in Browse button (use your own Local / Giphy actions).</summary>
+        public TWrapper HideBrowse() => Option(o => o.HideBrowse());
+        /// <summary>Filepath only: non-empty values must exist on disk (default true).</summary>
+        public TWrapper MustExist(bool value = true) => Option(o => o.MustExist(value));
+        /// <summary>Filepath only: allowed extensions (gif, mp3, …).</summary>
+        public TWrapper Accept(params string[] extensions) => Option(o => o.Accept(extensions));
         public TWrapper WithPermanentOption(bool value) => Option(o => o.WithPermanentOption(value));
         public TWrapper WithStepper(bool value = true) => Option(o => o.WithStepper(value));
         /// <summary>Nested pill item schema via fluent sub-builder.</summary>

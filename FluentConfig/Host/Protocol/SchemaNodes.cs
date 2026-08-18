@@ -258,6 +258,18 @@ namespace FluentConfig.Protocol
 
         [JsonProperty("defaultValue")]
         public string DefaultValue { get; set; }
+
+        /// <summary>When true, omit the built-in Browse button (pair with adjacent action buttons).</summary>
+        [JsonProperty("hideBrowse")]
+        public bool HideBrowse { get; set; }
+
+        /// <summary>When true (default), a non-empty value must exist on disk. Empty is always allowed.</summary>
+        [JsonProperty("mustExist")]
+        public bool MustExist { get; set; } = true;
+
+        /// <summary>Allowed extensions including the dot (e.g. .gif, .mp3). Null = any.</summary>
+        [JsonProperty("accept")]
+        public IList<string> Accept { get; set; }
     }
 
     public sealed class DynamicTextboxesNode : SchemaNode

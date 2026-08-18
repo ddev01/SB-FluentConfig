@@ -77,6 +77,9 @@ namespace FluentConfig
         private Action<PanelBuilder> _itemTemplate;
         private Action<string, CallbackContext> _onPillAdded;
         private Action<string, CallbackContext> _onPillRemoved;
+        private bool _hideBrowse;
+        private bool _mustExist = true;
+        private string[] _accept;
         private string _buttonId;
 
         public PendingControl(FluentConfigSession session, SchemaNodeList target)
@@ -88,7 +91,14 @@ namespace FluentConfig
         public void BeginToggle(string label, string key) { Reset(Kind.Toggle, label, RequireSaveKey(key)); }
         public void BeginTextbox(string label, string key) { Reset(Kind.Textbox, label, RequireSaveKey(key)); }
         public void BeginSlider(string label, string key) { Reset(Kind.Slider, label, RequireSaveKey(key)); }
-        public void BeginButton(string label) { Reset(Kind.Button, label, null); _buttonId = StableButtonId(label); }
+        public void BeginButton(string label)
+        {
+            Reset(Kind.Button, label, null);
+            _buttonId = StableButtonId(label);
+            // Item templates expand {name} in leaf strings; keep it so each pill's click id is unique.
+            if (_session != null && _session.InItemTemplate)
+                _buttonId += "__{name}";
+        }
         public void BeginNumberInput(string label, string key) { Reset(Kind.NumberInput, label, RequireSaveKey(key)); _valueType = "double"; }
         public void BeginIntegerInput(string label, string key) { Reset(Kind.IntegerInput, label, RequireSaveKey(key)); _valueType = "int"; }
         public void BeginDurationInput(string label, string key) { Reset(Kind.DurationInput, label, RequireSaveKey(key)); }
@@ -165,6 +175,9 @@ namespace FluentConfig
             _allowDuplicates = true;
             _colorHex = null;
             _buttonText = null;
+            _hideBrowse = false;
+            _mustExist = true;
+            _accept = null;
             _onClick = null;
             _permanentOption = true;
             _stepper = false;

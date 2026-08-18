@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FluentConfig.Core;
 using FluentConfig.Protocol;
 
 namespace FluentConfig
@@ -94,7 +95,7 @@ namespace FluentConfig
                 Id = _buttonId,
                 Label = _label,
                 Hint = _hint,
-                Text = _buttonText ?? "OK",
+                Text = string.IsNullOrWhiteSpace(_buttonText) ? (_label ?? "OK") : _buttonText,
                 Color = _colorHex,
             };
             if (_onClick != null)
@@ -126,14 +127,30 @@ namespace FluentConfig
             PermanentOption = _permanentOption,
         };
 
-        private FilepathNode BuildFilepath() => new FilepathNode
+        private FilepathNode BuildFilepath()
         {
-            Id = _saveKey,
-            Label = _label,
-            SaveKey = _saveKey,
-            Hint = _hint,
-            DefaultValue = _defaultString,
-        };
+            var accept = FilepathValidation.NormalizeAccept(_accept);
+            var node = new FilepathNode
+            {
+                Id = _saveKey,
+                Label = _label,
+                SaveKey = _saveKey,
+                Hint = _hint,
+                DefaultValue = _defaultString,
+                HideBrowse = _hideBrowse,
+                MustExist = _mustExist,
+                Accept = accept,
+            };
+            _session.RegisterFilepathRule(new FilepathRule
+            {
+                SaveKey = _saveKey,
+                Label = _label,
+                MustExist = _mustExist,
+                Accept = accept,
+                PillSaveKey = _session.ItemTemplatePillKey,
+            });
+            return node;
+        }
 
         private ColorPickerNode BuildColorPicker() => new ColorPickerNode
         {
@@ -214,10 +231,21 @@ namespace FluentConfig
             if (_itemTemplate != null)
             {
                 var list = new SchemaNodeList();
-                var pb = new PanelBuilder(_session, list);
-                _itemTemplate(pb);
-                pb.FlushPending();
-                template = list.ToList();
+                var previousPill = _session.ItemTemplatePillKey;
+                _session.ItemTemplatePillKey = _saveKey;
+                _session.PushItemTemplateScope();
+                try
+                {
+                    var pb = new PanelBuilder(_session, list);
+                    _itemTemplate(pb);
+                    pb.FlushPending();
+                    template = list.ToList();
+                }
+                finally
+                {
+                    _session.PopItemTemplateScope();
+                    _session.ItemTemplatePillKey = previousPill;
+                }
             }
 
             var node = new PillInputNode
