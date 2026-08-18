@@ -5,11 +5,12 @@
   interface Props {
     label?: string;
     hint?: string;
+    error?: string;
     forId?: string;
     children: import('svelte').Snippet;
   }
 
-  let { label, hint, forId, children }: Props = $props();
+  let { label, hint, error, forId, children }: Props = $props();
 
   const fitCtx = getContext<{ style?: string } | undefined>(FIT_WIDTH_CONTEXT);
   let fitStyle = $derived(fitCtx?.style);
@@ -26,7 +27,9 @@
   {:else}
     {@render children()}
   {/if}
-  {#if hint}
+  {#if error}
+    <p class="mt-0.5 text-xs text-fc-danger" role="alert">{error}</p>
+  {:else if hint}
     <p class="fc-hint mt-0.5">{hint}</p>
   {/if}
 </div>

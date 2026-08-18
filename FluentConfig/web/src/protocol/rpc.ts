@@ -10,6 +10,7 @@ export const RpcMethods = {
   DropdownRefresh: 'dropdown.refresh',
   ButtonClick: 'button.click',
   FilepathBrowse: 'filepath.browse',
+  FilepathValidate: 'filepath.validate',
   PillChanged: 'pill.changed',
   UpdateStage: 'update.stage',
   UpdateDismiss: 'update.dismiss',
@@ -51,6 +52,16 @@ export interface FilepathBrowseParams {
 
 export interface FilepathBrowseResult {
   path?: string | null;
+}
+
+export interface FilepathValidateParams {
+  saveKey: string;
+  path: string;
+}
+
+export interface FilepathValidateResult {
+  ok: boolean;
+  error?: string | null;
 }
 
 export interface PillChangedParams {

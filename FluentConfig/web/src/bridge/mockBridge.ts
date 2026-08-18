@@ -162,6 +162,9 @@ export class MockWebView implements ChromeWebView {
       case RpcMethods.FilepathBrowse:
         return { path: 'C:\\Example\\export\\settings.json' };
 
+      case RpcMethods.FilepathValidate:
+        return { ok: true };
+
       case RpcMethods.ButtonClick: {
         const p = params as { buttonId?: string };
         if (p.buttonId === 'btn-progress') {

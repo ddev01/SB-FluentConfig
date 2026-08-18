@@ -187,6 +187,12 @@ export interface FilepathNode extends SchemaNodeBase {
   saveKey: string;
   hint?: string;
   defaultValue?: string;
+  /** When true, omit the built-in Browse button. */
+  hideBrowse?: boolean;
+  /** When false, skip existence check. Default true. Empty path is always allowed. */
+  mustExist?: boolean;
+  /** Allowed extensions including the dot (e.g. ".gif"). */
+  accept?: string[];
 }
 
 export interface DynamicTextboxesNode extends SchemaNodeBase {

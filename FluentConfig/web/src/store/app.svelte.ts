@@ -332,7 +332,10 @@ class AppStore {
       }, 2000);
       return true;
     } catch (err) {
-      this.saveMessage = err instanceof Error ? err.message : 'Save failed';
+      const raw = err instanceof Error ? err.message : 'Save failed';
+      const split = raw.indexOf(': ');
+      this.saveMessage = split >= 0 ? raw.slice(split + 2) : raw;
+      this.pushToast(this.saveMessage);
       return false;
     } finally {
       this.saving = false;
