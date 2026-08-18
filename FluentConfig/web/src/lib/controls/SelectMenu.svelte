@@ -49,6 +49,7 @@
   let open = $state(false);
   let activeIndex = $state(-1);
   let filterText = $state('');
+  let suppressOpenOnFocus = false;
   let containerEl = $state<HTMLDivElement | null>(null);
   let triggerEl = $state<HTMLButtonElement | HTMLInputElement | null>(null);
   let optionEls: (HTMLLIElement | null)[] = [];
@@ -88,7 +89,7 @@
   });
 
   function openMenu(): void {
-    if (disabled || open) return;
+    if (disabled || open || suppressOpenOnFocus) return;
     if (!allowCustom && options.length === 0) return;
     filterText = searchable && !multiple ? displayLabel : '';
     const list = searchable ? filterSelectOptions(options, '') : options;
@@ -99,7 +100,12 @@
   function closeMenu(focusTrigger = false): void {
     open = false;
     filterText = '';
-    if (focusTrigger) triggerEl?.focus();
+    if (!focusTrigger) return;
+    suppressOpenOnFocus = true;
+    triggerEl?.focus();
+    queueMicrotask(() => {
+      suppressOpenOnFocus = false;
+    });
   }
 
   function toggleMenu(): void {
@@ -278,6 +284,9 @@
         class="fc-input w-full pr-8 {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
         value={inputShownValue()}
         onfocus={openMenu}
+        onclick={() => {
+          if (!open) openMenu();
+        }}
         oninput={(e) => {
           filterText = (e.currentTarget as HTMLInputElement).value;
           if (!open) openMenu();
@@ -363,6 +372,7 @@
               ? 'text-fc-accent'
               : 'text-fc-text'}"
           onmouseenter={() => (activeIndex = index)}
+          onmousedown={(e) => e.preventDefault()}
           onclick={() => chooseFiltered(index)}
         >
           <span class="truncate">{opt.display}</span>

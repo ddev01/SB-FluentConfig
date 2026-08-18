@@ -54,13 +54,21 @@
     }
   }
 
+  function tabSelector(id: string): string {
+    const escaped =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(id) : id;
+    return `[data-section-id="${escaped}"]`;
+  }
+
   function selectSection(id: string): void {
     appStore.activeSectionId = id;
     if (scrollEl) scrollEl.scrollTop = 0;
     void tick().then(() => {
-      tablistEl
-        ?.querySelector<HTMLElement>(`[data-section-id="${CSS.escape(id)}"]`)
-        ?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+      tablistEl?.querySelector<HTMLElement>(tabSelector(id))?.scrollIntoView({
+        inline: 'nearest',
+        block: 'nearest',
+        behavior: 'smooth',
+      });
     });
   }
 
@@ -137,9 +145,7 @@
     if (!section) return;
     selectSection(section.id);
     void tick().then(() => {
-      const btn = tablistEl?.querySelector<HTMLElement>(
-        `[data-section-id="${CSS.escape(section.id)}"]`,
-      );
+      const btn = tablistEl?.querySelector<HTMLElement>(tabSelector(section.id));
       btn?.focus();
     });
   }
@@ -183,15 +189,31 @@
       >
         <main class="flex-1 px-4 py-4">
           {#key activeSection.id}
-            <div
-              in:fadeIn={{ duration: 0.18 }}
-              role="tabpanel"
-              id="fc-panel-{activeSection.id}"
-              aria-labelledby="fc-tab-{activeSection.id}"
-              tabindex="0"
-            >
-              <FormSection section={activeSection} />
-            </div>
+            <svelte:boundary>
+              <div
+                in:fadeIn={{ duration: 0.18 }}
+                role="tabpanel"
+                id="fc-panel-{activeSection.id}"
+                aria-labelledby="fc-tab-{activeSection.id}"
+                tabindex="0"
+              >
+                <FormSection section={activeSection} />
+              </div>
+              {#snippet failed(error, reset)}
+                <div
+                  class="rounded-fc-lg border border-fc-danger/40 bg-fc-danger/10 px-3 py-3 text-sm text-fc-text"
+                  role="alert"
+                >
+                  <p class="font-medium text-fc-danger">This tab failed to render.</p>
+                  <p class="mt-1 text-fc-text-muted">
+                    {error instanceof Error ? error.message : String(error)}
+                  </p>
+                  <button type="button" class="fc-btn mt-3" onclick={reset}>
+                    Try again
+                  </button>
+                </div>
+              {/snippet}
+            </svelte:boundary>
           {/key}
         </main>
 
@@ -224,7 +246,9 @@
                 </p>
               </div>
               <div class="flex items-center gap-2">
-                {#if dirty}
+                {#if appStore.saveMessage && appStore.saveMessage !== 'Saved'}
+                  <span class="max-w-xs text-xs text-fc-danger">{appStore.saveMessage}</span>
+                {:else if dirty}
                   <span class="text-xs text-fc-warning">Unsaved changes</span>
                 {:else if appStore.saveMessage}
                   <span class="text-xs text-fc-success">{appStore.saveMessage}</span>

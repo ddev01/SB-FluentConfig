@@ -52,7 +52,9 @@
 
   // Read values so visibility re-evaluates reactively when settings change.
   let visible = $derived(
-    isVisible(node.visibility, appStore.values, undefined, appStore.document?.sections),
+    node
+      ? isVisible(node.visibility, appStore.values, undefined, appStore.document?.sections)
+      : false,
   );
 
   let layoutStyle = $derived.by(() => {
@@ -170,7 +172,7 @@
   {/if}
 {/snippet}
 
-{#if visible}
+{#if visible && node}
   {#if node.layout}
     <div style={layoutStyle}>
       {@render control()}

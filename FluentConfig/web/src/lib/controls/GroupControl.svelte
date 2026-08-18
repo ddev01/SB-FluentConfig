@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GroupNode } from '../../protocol';
+  import { schemaNodeEachKey } from '../schemaNodeKey';
   import SchemaNodeView from './SchemaNodeView.svelte';
 
   interface Props {
@@ -46,7 +47,7 @@
 </script>
 
 {#snippet children()}
-  {#each node.children as child, i (child.type + String('id' in child ? child.id : i))}
+  {#each node.children ?? [] as child, i (schemaNodeEachKey(child, i))}
     <SchemaNodeView node={child} />
   {/each}
 {/snippet}

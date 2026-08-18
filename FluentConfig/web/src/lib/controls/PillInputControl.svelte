@@ -3,6 +3,7 @@
   import { RpcMethods } from '../../protocol';
   import type { PillChangedResult } from '../../protocol';
   import { scaleIn } from '../motion';
+  import { schemaNodeEachKey } from '../schemaNodeKey';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
   import SchemaNodeView from './SchemaNodeView.svelte';
@@ -27,14 +28,14 @@
     const name = selected && names.includes(selected) ? selected : names[0] ?? null;
     if (!name) return null;
     const fromHost = node.items?.find((i) => i.name === name);
-    if (fromHost) return fromHost;
+    if (fromHost?.children?.length) return fromHost;
     if (node.itemTemplate) {
       return {
         name,
         children: expandTemplate(node.itemTemplate, name),
       };
     }
-    return { name, children: [] };
+    return { name, children: fromHost?.children ?? [] };
   });
 
   $effect(() => {
@@ -46,7 +47,27 @@
   });
 
   function expandTemplate(template: SchemaNode[], name: string): SchemaNode[] {
-    return JSON.parse(JSON.stringify(template).replaceAll('{name}', name)) as SchemaNode[];
+    try {
+      const clone = JSON.parse(JSON.stringify(template)) as SchemaNode[];
+      replaceNamePlaceholders(clone, name);
+      return clone;
+    } catch {
+      return [];
+    }
+  }
+
+  function replaceNamePlaceholders(value: unknown, name: string): void {
+    if (Array.isArray(value)) {
+      for (const item of value) replaceNamePlaceholders(item, name);
+      return;
+    }
+    if (!value || typeof value !== 'object') return;
+    const rec = value as Record<string, unknown>;
+    for (const key of Object.keys(rec)) {
+      const cur = rec[key];
+      if (typeof cur === 'string' && cur.includes('{name}')) rec[key] = cur.replaceAll('{name}', name);
+      else replaceNamePlaceholders(cur, name);
+    }
   }
 
   async function sync(
@@ -163,9 +184,9 @@
     </button>
   </div>
 
-  {#if activeItem && activeItem.children.length > 0}
+  {#if activeItem && (activeItem.children?.length ?? 0) > 0}
     <div class="mt-3 rounded-fc-lg border border-fc-border bg-fc-elevated/50 px-3 py-2">
-      {#each activeItem.children as child, i (child.type + String('id' in child ? child.id : i) + activeItem.name)}
+      {#each activeItem.children as child, i (schemaNodeEachKey(child, i, activeItem.name))}
         <SchemaNodeView node={child} />
       {/each}
     </div>

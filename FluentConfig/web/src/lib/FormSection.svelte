@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { SectionSchema } from '../protocol';
+  import { schemaNodeEachKey } from './schemaNodeKey';
   import SchemaNodeView from './controls/SchemaNodeView.svelte';
 
   interface Props {
@@ -20,7 +21,7 @@
     ></span>
     {section.title}
   </h2>
-  {#each section.children as child, i (child.type + String('id' in child ? child.id : i) + i)}
+  {#each section.children as child, i (schemaNodeEachKey(child, i))}
     <SchemaNodeView node={child} />
   {/each}
 </section>
