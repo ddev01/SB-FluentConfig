@@ -8,67 +8,51 @@ namespace FluentConfig.Protocol
     public static class RpcMethods
     {
         // --- Web → Host ---
-
-        /// <summary>Persist the current values blob. Params: <see cref="SaveParams"/>.</summary>
+        /// <summary>Persist the current values blob. Params: <see cref = "SaveParams"/>.</summary>
         public const string Save = "save";
-
-        /// <summary>Reload dropdown options. Params: <see cref="DropdownRefreshParams"/>. Result: <see cref="DropdownRefreshResult"/>.</summary>
+        /// <summary>Reload dropdown options. Params: <see cref = "DropdownRefreshParams"/>. Result: <see cref = "DropdownRefreshResult"/>.</summary>
         public const string DropdownRefresh = "dropdown.refresh";
-
-        /// <summary>User clicked a button. Params: <see cref="ButtonClickParams"/>.</summary>
+        /// <summary>User clicked a button. Params: <see cref = "ButtonClickParams"/>.</summary>
         public const string ButtonClick = "button.click";
-
-        /// <summary>Open a native file picker. Params: <see cref="FilepathBrowseParams"/>. Result: <see cref="FilepathBrowseResult"/>.</summary>
+        /// <summary>Open a native file picker. Params: <see cref = "FilepathBrowseParams"/>. Result: <see cref = "FilepathBrowseResult"/>.</summary>
         public const string FilepathBrowse = "filepath.browse";
-
-        /// <summary>Check a filepath value (exists + optional extension). Params: <see cref="FilepathValidateParams"/>. Result: <see cref="FilepathValidateResult"/>.</summary>
+        /// <summary>Check a filepath value (exists + optional extension). Params: <see cref = "FilepathValidateParams"/>. Result: <see cref = "FilepathValidateResult"/>.</summary>
         public const string FilepathValidate = "filepath.validate";
-
-        /// <summary>Pill list changed (add/remove/rename). Params: <see cref="PillChangedParams"/>. Result may include updated item schemas.</summary>
+        /// <summary>Pill list changed (add/remove). Params: <see cref = "PillChangedParams"/>. Result may include updated item schemas.</summary>
         public const string PillChanged = "pill.changed";
-
-        /// <summary>Stage a DLL update (test/tooling). Params: <see cref="UpdateStageParams"/>.</summary>
+        /// <summary>Stage a DLL update (test/tooling). Params: <see cref = "UpdateStageParams"/>.</summary>
         public const string UpdateStage = "update.stage";
-
         /// <summary>
         /// User dismissed the extension update modal.
-        /// Params: <see cref="UpdateDismissParams"/> (<c>reason</c>: <c>later</c> | <c>ignoreVersion</c>).
+        /// Params: <see cref = "UpdateDismissParams"/> (<c>reason</c>: <c>later</c> | <c>ignoreVersion</c>).
         /// </summary>
         public const string UpdateDismiss = "update.dismiss";
-
         /// <summary>
-        /// In-app Exit button asks the host to close. Params: <see cref="WindowCloseParams"/>.
-        /// When <c>alreadyConfirmed</c> is true, host skips the <see cref="WindowCloseRequested"/> round-trip.
+        /// In-app Exit button asks the host to close. Params: <see cref = "WindowCloseParams"/>.
+        /// When <c>alreadyConfirmed</c> is true, host skips the <see cref = "WindowCloseRequested"/> round-trip.
         /// </summary>
         public const string WindowClose = "window.close";
-
         /// <summary>
-        /// Open an external URL in the system browser. Params: <see cref="ShellOpenUrlParams"/>.
+        /// Open an external URL in the system browser. Params: <see cref = "ShellOpenUrlParams"/>.
         /// Fire-and-forget from the web (footer, update-notice links, rich-text links).
         /// </summary>
         public const string ShellOpenUrl = "shell.openUrl";
-
         /// <summary>
-        /// Web → host performance mark. Params: <see cref="PerfMarkParams"/>.
+        /// Web → host performance mark. Params: <see cref = "PerfMarkParams"/>.
         /// Meaningful only when compiled with FC_PERF_TRACE. Arbitrary <c>name</c> values are recorded as
         /// milestones; only <c>web-ready</c> closes the summary and exports <c>FluentConfig_PerfLast</c>.
         /// </summary>
         public const string PerfMark = "perf.mark";
-
         // --- Host → Web (UI affordances formerly on UiContext) ---
-
-        /// <summary>Show a confirm dialog in the web UI. Params: <see cref="ConfirmParams"/>. Result: <see cref="ConfirmResult"/>.</summary>
+        /// <summary>Show a confirm dialog in the web UI. Params: <see cref = "ConfirmParams"/>. Result: <see cref = "ConfirmResult"/>.</summary>
         public const string DialogConfirm = "dialog.confirm";
-
-        /// <summary>Show a modal popup. Params: <see cref="PopupParams"/>.</summary>
+        /// <summary>Show a modal popup. Params: <see cref = "PopupParams"/>.</summary>
         public const string DialogPopup = "dialog.popup";
-
-        /// <summary>Show a toast. Params: <see cref="ToastParams"/>.</summary>
+        /// <summary>Show a toast. Params: <see cref = "ToastParams"/>.</summary>
         public const string Toast = "toast.show";
-
         /// <summary>
         /// Native title-bar close: host asks web whether discard is allowed.
-        /// Result: <see cref="WindowCloseRequestedResult"/>.
+        /// Result: <see cref = "WindowCloseRequestedResult"/>.
         /// </summary>
         public const string WindowCloseRequested = "window.closeRequested";
     }
@@ -155,7 +139,10 @@ namespace FluentConfig.Protocol
         [JsonProperty("items")]
         public IList<PillItemSchema> Items { get; set; }
 
-        /// <summary>Settings keys the host removed (e.g. on pill remove).</summary>
+        /// <summary>
+        /// Settings keys the host removed (e.g. on pill remove). Optional; authors still clean up via OnPillRemoved.
+        /// Reserved for host-driven cleanup — may be omitted.
+        /// </summary>
         [JsonProperty("removedKeys")]
         public IList<string> RemovedKeys { get; set; }
     }
@@ -178,7 +165,7 @@ namespace FluentConfig.Protocol
         [JsonProperty("reason")]
         public string Reason { get; set; }
 
-        /// <summary>Version to ignore when <see cref="Reason"/> is <c>ignoreVersion</c>.</summary>
+        /// <summary>Version to ignore when <see cref = "Reason"/> is <c>ignoreVersion</c>.</summary>
         [JsonProperty("version")]
         public string Version { get; set; }
     }
