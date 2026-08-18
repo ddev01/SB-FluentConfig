@@ -30,10 +30,12 @@
     if (multiple) return '';
     if (node.valueSaveKey) {
       const pair = appStore.getValue(node.valueSaveKey);
-      if (pair != null && pair !== '') return String(pair);
+      if (pair === '') return '';
+      if (pair != null) return String(pair);
     }
     const display = appStore.getValue(node.saveKey);
-    if (display != null && display !== '') {
+    if (display === '') return '';
+    if (display != null) {
       const match = node.options?.find((o) => o.display === display || o.value === display);
       if (match) return match.value;
       return String(display);
@@ -43,7 +45,7 @@
     if (node.defaultIndex !== undefined && node.options?.[node.defaultIndex]) {
       return node.options[node.defaultIndex]!.value;
     }
-    return node.options?.[0]?.value ?? '';
+    return '';
   });
 
   let selectedValues = $derived.by(() => {

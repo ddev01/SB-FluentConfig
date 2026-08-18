@@ -61,9 +61,7 @@ function dropdownDriverDefault(node: DropdownNode, saveKey: string): unknown {
   if (node.defaultValue != null && node.defaultValue !== '' && !pairDisplay) {
     return node.defaultValue;
   }
-  const first = options[0];
-  if (!first) return undefined;
-  return pairDisplay ? (first.display ?? first.value) : (first.value ?? first.display);
+  return undefined;
 }
 
 function walkDriverDefault(nodes: SchemaNode[] | undefined, saveKey: string): unknown {

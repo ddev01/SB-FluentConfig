@@ -43,7 +43,26 @@ describe('resolveDropdownRefresh', () => {
     ).toEqual({ action: 'keep' });
   });
 
-  it('non-custom snaps to first when missing', () => {
+  it('empty selection stays empty and does not snap to first', () => {
+    expect(
+      resolveDropdownRefresh({
+        allowCustom: false,
+        multiple: false,
+        current: '',
+        options: opts,
+      }),
+    ).toEqual({ action: 'keep' });
+    expect(
+      resolveDropdownRefresh({
+        allowCustom: true,
+        multiple: false,
+        current: '',
+        options: opts,
+      }),
+    ).toEqual({ action: 'keep' });
+  });
+
+  it('non-custom clears when missing from new options', () => {
     expect(
       resolveDropdownRefresh({
         allowCustom: false,
@@ -51,7 +70,7 @@ describe('resolveDropdownRefresh', () => {
         current: 'gone',
         options: opts,
       }),
-    ).toEqual({ action: 'snap', option: opts[0] });
+    ).toEqual({ action: 'clear' });
   });
 
   it('non-custom clears when options empty', () => {

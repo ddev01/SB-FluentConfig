@@ -99,7 +99,7 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
-        public void Collector_Dropdown_SeedsFirstOptionWhenNoExplicitDefault()
+        public void Collector_Dropdown_DoesNotSeedWhenNoExplicitDefault()
         {
             var sections = new List<SectionSchema>
             {
@@ -123,7 +123,7 @@ namespace FluentConfig.Tests
             };
 
             var defaults = SettingsDefaultsCollector.Collect(sections, new JObject());
-            Assert.Equal("quiet", defaults["mode"]?.Value<string>());
+            Assert.False(defaults.ContainsKey("mode"));
         }
     }
 }

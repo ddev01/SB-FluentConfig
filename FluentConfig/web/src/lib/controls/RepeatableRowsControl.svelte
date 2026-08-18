@@ -45,7 +45,9 @@
       case 'dropdown':
         row[child.saveKey] =
           child.defaultByValue ??
-          child.options?.[child.defaultIndex ?? 0]?.value ??
+          (child.defaultIndex !== undefined
+            ? child.options?.[child.defaultIndex]?.value
+            : undefined) ??
           '';
         break;
       default:

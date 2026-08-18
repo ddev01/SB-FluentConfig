@@ -138,9 +138,6 @@ namespace FluentConfig.Core
                 return;
             }
 
-            if (opt == null && options.Count > 0)
-                opt = options[0];
-
             if (opt == null) return;
 
             if (!string.IsNullOrEmpty(dropdown.ValueSaveKey))

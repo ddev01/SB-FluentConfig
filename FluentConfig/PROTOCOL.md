@@ -95,7 +95,7 @@ When `operator` is set (`gte` | `lte` | `gt` | `lt`), the legacy `equals` path i
 "visibility": { "saveKey": "a", "operator": "gte", "compareKey": "b" }
 ```
 
-`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, the equals path matches by type: boolean (`===`, no `"true"` coercion), number (`toNumber(actual) === expected`), string (`String(actual) === expected`, no trim), null (missing/null actual). Missing live values fall back to the driver control's schema default (dropdown `defaultByValue` / first option, toggle `defaultValue`).
+`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, the equals path matches by type: boolean (`===`, no `"true"` coercion), number (`toNumber(actual) === expected`), string (`String(actual) === expected`, no trim), null (missing/null actual). Missing live values fall back to the driver control's schema default (dropdown `defaultByValue` / `defaultIndex` / `defaultValue`, toggle `defaultValue`). Empty dropdowns stay unselected until the user picks an option.
 
 `ShowWhen(key, Comparator.GreaterOrEqual, 4)` and `WithVisibility(key, Comparator.GreaterOrEqual, 4, …)` emit this shape.
 

@@ -33,8 +33,8 @@ export function resolveDropdownRefresh(args: {
   }
 
   const v = typeof args.current === 'string' ? args.current : '';
-  if (v !== '' && inList(v)) return { action: 'keep' };
-  if (args.allowCustom && v !== '') return { action: 'keep' };
-  if (options.length > 0) return { action: 'snap', option: options[0]! };
+  if (v === '') return { action: 'keep' };
+  if (inList(v)) return { action: 'keep' };
+  if (args.allowCustom) return { action: 'keep' };
   return { action: 'clear' };
 }
