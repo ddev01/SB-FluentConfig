@@ -28,7 +28,7 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 | `IntegerInput` | `.Range`, `.Default`, `.WithStepper()`, `.Size` | 05 |
 | `NumberInput` | `.Range`, `.Step`, `.Default`, `.WithStepper()` | reference |
 | `DurationInput` | `.Default("30seconds")`, `.WithPermanentOption` | reference |
-| `Filepath` | `.Hint`, `.Default` | reference |
+| `Filepath` | `.Hint`, `.Default`, `.HideBrowse()`, `.MustExist()`, `.Accept("gif", "mp3")` | reference |
 | `ColorPicker` | `.Default("#714bfd")` | reference |
 | `DynamicTextboxes` | `.Preset`, `.AllowDuplicates` | 08 |
 | `PillInput` | `.WithItemTemplate` / `.ItemTemplate`, `.OnPillAdded`, `.OnPillRemoved` | 09 |
@@ -47,7 +47,7 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 
 ## Searchable dropdown / combobox
 
-`.Searchable()` filters options as the user types. `.AllowCustom()` commits values not in the list (kept across Refresh). `.Multiple()` stores `string[]` (incompatible with `.WithPairValue`). `.Combobox(label, key)` is a dropdown with searchable on.
+`.Searchable()` filters options as the user types. `.AllowCustom()` commits values not in the list (kept across Refresh). `.Multiple()` stores `string[]` (incompatible with `.WithPairValue`). `.Combobox(label, key)` is a dropdown with searchable on. With no `.DefaultIndex` / `.DefaultByValue`, the field shows a placeholder (`Select…` / `Select or type…`) and does not persist a value until the user chooses (or types, if custom is allowed). Refresh keeps an empty selection empty.
 
 ```csharp
 .Combobox("Auto-end timer", "timer_id")

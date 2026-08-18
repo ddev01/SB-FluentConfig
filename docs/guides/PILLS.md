@@ -24,6 +24,7 @@ Runnable example: [examples/tutorial/09_PillsAndNestedItems.cs](../../examples/t
 
 - Nested UI comes from the **item template only** — do not use WPF `Panel` / `StackPanel` types in callbacks.
 - Prefer `{name}` placeholders in nested saveKeys so each pill gets unique keys.
+- Buttons in the template get ids like `btn_label__{name}`. OnClick receives `ui.ItemName` for that pill. Default button caption is the label (not `"OK"`).
 - `OnPillAdded` / `OnPillRemoved` receive `(itemName, CallbackContext)` for host-side side effects (e.g. cleaning up nested keys).
 
 ## See also

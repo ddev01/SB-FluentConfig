@@ -42,7 +42,7 @@ Runnable examples:
 | Write from a runtime action | `Fc.SetSetting` / `Fc.SaveSettings` / `Fc.HasSavedSettings` |
 | Runtime state JSON (not the menu) | `Fc.LoadData<T>` / `Fc.SaveData` / `Fc.GetData` / `Fc.SetData` → `{slug}_data` |
 | Event args + templates + logger | `Fc.CaptureEvent` / `Fc.ApplyTemplate` / `Fc.Logger` |
-| Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)` |
+| Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)`, `SetPending` (live `values.patch`), `ItemName` for pill-template buttons |
 | Pill `OnPillAdded` / `OnPillRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
 
 ### Runtime action (outside the UI)
