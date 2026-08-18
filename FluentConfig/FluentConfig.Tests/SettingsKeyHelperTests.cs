@@ -30,6 +30,13 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
+        public void LegacySettingsKeyFor_UsesOldPrefixAndRawTitle()
+        {
+            Assert.Equal("FluentConfig_Settings_Alerts", SettingsKeyHelper.LegacySettingsKeyFor("Alerts"));
+            Assert.Equal("FluentConfig_Settings_First Chatters", SettingsKeyHelper.LegacySettingsKeyFor("First Chatters"));
+        }
+
+        [Fact]
         public void KeyFor_CustomSuffix()
         {
             Assert.Equal("first_chatters_counter", SettingsKeyHelper.KeyFor("First Chatters", "counter"));

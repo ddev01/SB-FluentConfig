@@ -15,7 +15,6 @@ namespace FluentConfig.Core
         {
             if (string.IsNullOrWhiteSpace(title))
                 return "";
-
             var sb = new StringBuilder(title.Length);
             var lastWasUnderscore = false;
             foreach (var ch in title.ToLowerInvariant())
@@ -34,7 +33,6 @@ namespace FluentConfig.Core
 
             if (sb.Length > 0 && sb[sb.Length - 1] == '_')
                 sb.Length--;
-
             return sb.ToString();
         }
 
@@ -56,5 +54,9 @@ namespace FluentConfig.Core
         /// Settings-blob key for a menu title (e.g. "First Chatters" → "first_chatters_settings").
         /// </summary>
         public static string SettingsKeyFor(string title) => KeyFor(title, "settings");
+        /// <summary>
+        /// Pre-slug global used by older FluentConfig builds: <c>FluentConfig_Settings_{title}</c>.
+        /// </summary>
+        public static string LegacySettingsKeyFor(string title) => "FluentConfig_Settings_" + (title ?? "");
     }
 }
