@@ -48,8 +48,7 @@ function Resolve-StreamerBotPath {
     param([string]$Explicit)
     if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
     $candidates = @(
-        "$env:USERPROFILE\Desktop\Streamer.bot-x64-1.0.4",
-        "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        "F:\Stream\Streamer.bot-x64-1.0.7"
     )
     if ($env:STREAMER_BOT_PATH) {
         $candidates = @($env:STREAMER_BOT_PATH) + $candidates
