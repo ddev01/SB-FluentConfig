@@ -61,7 +61,7 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
     .Refresh(() => new[] { "vip", "sub" }) // or Fc.TwitchRewardGroups(CPH)
 ```
 
-Refresh data is always author-supplied. Streamer.bot has no timer list API; do not expect `Fc.ListTimers`.
+Refresh data is always author-supplied. Streamer.bot has no timer-list CPH API — pass ids/names from your own list or globals.
 
 ## Chaining model
 

@@ -4,8 +4,6 @@ A library for building plugin settings UIs inside Streamer.bot. Tabbed panels, t
 
 ## Why FluentConfig?
 
-<img src="assets/preview.png" alt="FluentConfig settings UI" height="350px" width="auto" />
-
 Configuring a Streamer.bot plugin shouldn't require editing code. Chains of "Set Argument" subactions are tedious and error-prone. Asking end users to open raw C# is unrealistic for most of them. FluentConfig bridges that gap: end users get an easy-to-use GUI, and you define it with a simple, readable API.
 
 **It really is this simple:**
@@ -35,7 +33,7 @@ Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tu
 
 ## Quick Start
 
-The fastest path is to import an example from [examples/tutorial/](examples/tutorial/). It comes preconfigured with everything that's easy to get wrong:
+The fastest path is to copy an example from [examples/tutorial/](examples/tutorial/) into a Streamer.bot C# action. The tutorial files are C# sources (not `.sb` imports) and are preconfigured with everything that's easy to get wrong:
 
 **Execute C# Method subaction with `Run on UI thread` enabled.** This is the most important part, and it requires a specific two-subaction setup. Your plugin logic lives inside a disabled **Execute C# Code** subaction so it doesn't auto-run when a trigger fires. Then a separate **Execute C# Method** subaction calls the main function from that file, with **Run on UI thread** turned on. That toggle only exists on Execute C# Method, not on Execute C# Code, which is why both subactions are needed. Without `Run on UI thread`, the host window won't display correctly or will throw errors.
 
@@ -75,7 +73,6 @@ Outputs land in `FluentConfig/Host/bin/{Debug|Release}/net481/FluentConfig.dll`.
 | [FluentConfig/UpdaterHelper/](FluentConfig/UpdaterHelper/) | Optional stage-and-swap helper exe |
 | [docs/](docs/) | Plugin author docs |
 | [examples/](examples/) | Guided tutorial + reference / deployment examples |
-| [decompile/](decompile/) | Local reference dumps (gitignored) |
 
 ## Documentation
 

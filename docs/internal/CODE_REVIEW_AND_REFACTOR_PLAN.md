@@ -1,5 +1,7 @@
 # FluentConfig — Code Review & Refactor Plan (Production Readiness)
 
+> **Historical snapshot** (2026-08-05, `develop` @ `6f8dd6d`). Several P0/P1 items have since been fixed. Treat this as an audit log, not a current bug list. Extension-update docs live in [guides/UPDATES.md](../guides/UPDATES.md), not `EXTENSION_UPDATES.md`.
+
 **Date:** 2026-08-05 · **Branch reviewed:** `develop` @ `6f8dd6d`
 
 ## Method

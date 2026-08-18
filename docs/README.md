@@ -38,7 +38,7 @@ Plugin-author documentation for the WebView2 FluentConfig library.
 | [../FluentConfig/ARCHITECTURE.md](../FluentConfig/ARCHITECTURE.md) | Module boundaries |
 | [../FluentConfig/README.md](../FluentConfig/README.md) | Host/web package overview |
 | [performance/README.md](performance/README.md) | Cold/warm open baselines |
-| [internal/CODE_REVIEW_AND_REFACTOR_PLAN.md](internal/CODE_REVIEW_AND_REFACTOR_PLAN.md) | Point-in-time production-readiness audit |
+| [internal/CODE_REVIEW_AND_REFACTOR_PLAN.md](internal/CODE_REVIEW_AND_REFACTOR_PLAN.md) | Historical production-readiness audit (snapshot; not a live bug list) |
 
 ## Layout
 
