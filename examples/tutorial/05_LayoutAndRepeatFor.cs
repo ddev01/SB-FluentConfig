@@ -11,7 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "Tutorial 05 Layout And RepeatFor", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_05", "Tutorial 05 Layout And RepeatFor", "1.0", ui => ui
             .Section("Settings", "Settings", s => s
                 .Intro("Grid columns, a flex Row, and RepeatFor for a live field count.")
                 .IntegerInput("Max places", "max_count")
@@ -43,7 +43,7 @@ public class CPHInline
                 )
             )
             .Section("Points", "Points", s => s
-                .Intro("Points awarded per place. Extra fields appear as you raise Max places.")
+                .Intro("Points awarded per place. Extra fields appear as you raise Max places. RepeatFor requires a declared .Range (cap 32).")
                 .RepeatFor("max_count", (row, i) => row
                     .IntegerInput($"Points for place #{i}", $"points_{i}")
                         .Hint($"Awarded to the {Ordinal(i)} chatter.")

@@ -11,7 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "Tutorial 09 Pills And Nested Items", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_09", "Tutorial 09 Pills And Nested Items", "1.0", ui => ui
             .Section("Pills", "Pills", p => p
                 .Intro(
                     "PillInput with a schema itemTemplate.\n\n"

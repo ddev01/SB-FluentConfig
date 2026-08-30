@@ -1,6 +1,7 @@
 // Tutorial 01 — Basic controls
 // Minimal FluentConfig menu: Toggle, Textbox, Slider.
-// Fc.Open focuses an existing window with the same title (no AlreadyOpened check).
+// Fc.Open focuses an existing window with the same menu id (no AlreadyOpened check).
+// id is persistence identity ([a-z][a-z0-9_]*); title is the window label.
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/setup/REFERENCES.md for reference details.
 //
@@ -12,7 +13,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "Tutorial 01 Basic Controls", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_01", "Tutorial 01 Basic Controls", "1.0", ui => ui
             .Section("Settings", "Settings", s => s
                 .Intro("A minimal example with a few basic controls.")
                 .Toggle("Enable feature", "enabled")

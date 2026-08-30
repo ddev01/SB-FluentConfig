@@ -1,0 +1,154 @@
+// =============================================================================
+// FluentConfig Perf Large Menu — Streamer.bot action script
+// =============================================================================
+// Paste into Execute C# Code (DISABLED / compile-only), then add Execute C# Method
+// → CPHInline.Execute with **Run on UI thread** ENABLED.
+//
+// Why UI thread: FluentConfig opens a WPF + WebView2 window. Without
+// "Run on UI thread", ShowOrFocus will fail or hang. See docs/setup/REFERENCES.md.
+//
+// Required refs: PresentationFramework, PresentationCore, WindowsBase, FluentConfig
+// (path to dlls\FluentConfig.dll). Use Release + PerfTrace DLL for valid timings:
+//   .\FluentConfig\scripts\Redeploy.ps1 -Configuration Release -PerfTrace
+//
+// Action name (harness via PERF_ACTION_NAME): FluentConfig Perf Large Menu
+// Harness: FluentConfig/scripts/perf-benchmark/
+//
+// THIS FIXTURE HAS NOT BEEN RUN ON A LIVE Streamer.bot. Until it is captured as
+// a third archived baseline (Release + FluentConfigPerfTrace, cold start), large-menu
+// cold start is unmeasured — not known-good. Do not treat these comments as timings.
+//
+// Surface (synthetic):
+//   - 8 refresh-only dropdowns (no static .Options(); first fetch is dropdown.refresh)
+//   - 4 PillInput controls with nested ItemTemplates
+//   - RepeatFor at the cap (32)
+//   - 4 tabs
+// =============================================================================
+
+using FluentConfig;
+using System;
+
+public class CPHInline
+{
+    private const string Id = "perf_large_menu";
+    private const string Title = "FluentConfig Perf Large Menu";
+    private const string Version = "1.0";
+
+    private static (string Value, string Display)[] FakePairs(string prefix, int count)
+    {
+        var list = new (string, string)[count];
+        for (int i = 0; i < count; i++)
+            list[i] = (prefix + "-" + (i + 1), prefix.ToUpperInvariant() + " item " + (i + 1));
+        return list;
+    }
+
+    private static string[] FakeNames(string prefix, int count)
+    {
+        var list = new string[count];
+        for (int i = 0; i < count; i++)
+            list[i] = prefix + " " + (i + 1);
+        return list;
+    }
+
+    public bool Execute()
+    {
+        try
+        {
+            Fc.SetLogCallback(msg => CPH.LogInfo("[FC] " + msg));
+            CPH.LogInfo("[MENU] trigger " + Title);
+
+            Fc.Open(CPH, Id, Title, Version, ui => ui
+                .Section("Refresh A", "refresh_a", s => s
+                    .Intro(
+                        "Large-menu perf fixture (tab 1/4). Eight refresh-only dropdowns across the first two tabs.\n\n"
+                        + "`.Refresh` is **not** called at schema build. Options arrive via the web’s once-per-saveKey "
+                        + "`dropdown.refresh`. Placeholder until then is expected.")
+                    .Dropdown("List A", "list_a")
+                        .Hint("Refresh-only. DefaultByValue until options arrive.")
+                        .Refresh(() => FakeNames("alpha", 24))
+                        .DefaultByValue("alpha 1")
+                    .Dropdown("List B", "list_b")
+                        .Refresh(() => FakeNames("bravo", 24))
+                        .DefaultByValue("bravo 1")
+                    .Dropdown("Rewards A (pair)", "reward_a_display")
+                        .WithPairValue("reward_a_id")
+                        .Refresh(() => FakePairs("rew-a", 24))
+                        .DefaultByValue("rew-a-1")
+                    .Dropdown("Rewards B (pair)", "reward_b_display")
+                        .WithPairValue("reward_b_id")
+                        .Refresh(() => FakePairs("rew-b", 24))
+                        .DefaultByValue("rew-b-1")
+                )
+                .Section("Refresh B", "refresh_b", s => s
+                    .Intro("Large-menu perf fixture (tab 2/4). Four more refresh-only dropdowns.")
+                    .Dropdown("List C", "list_c")
+                        .Refresh(() => FakeNames("charlie", 24))
+                        .DefaultByValue("charlie 1")
+                    .Dropdown("List D", "list_d")
+                        .Refresh(() => FakeNames("delta", 24))
+                        .DefaultByValue("delta 1")
+                    .Dropdown("List E", "list_e")
+                        .Refresh(() => FakeNames("echo", 24))
+                        .DefaultByValue("echo 1")
+                    .Dropdown("List F", "list_f")
+                        .Refresh(() => FakeNames("foxtrot", 24))
+                        .DefaultByValue("foxtrot 1")
+                )
+                .Section("Pills", "pills", s => s
+                    .Intro("Large-menu perf fixture (tab 3/4). Four PillInput controls with nested templates.")
+                    .PillInput("Alpha items", "pill_alpha")
+                        .WithItemTemplate(item => item
+                            .Title("Alpha: {name}")
+                            .Toggle("Enabled", "{name}_alpha_enabled").Default(true)
+                            .Slider("Weight", "{name}_alpha_weight").Range(0, 100).Default(50)
+                        )
+                    .PillInput("Beta items", "pill_beta")
+                        .WithItemTemplate(item => item
+                            .Title("Beta: {name}")
+                            .Toggle("Enabled", "{name}_beta_enabled").Default(true)
+                            .IntegerInput("Count", "{name}_beta_count").Range(0, 99).Default(1)
+                        )
+                    .PillInput("Gamma items", "pill_gamma")
+                        .WithItemTemplate(item => item
+                            .Title("Gamma: {name}")
+                            .Textbox("Note", "{name}_gamma_note")
+                            .Toggle("Arm", "{name}_gamma_arm").Default(false)
+                        )
+                    .PillInput("Delta items", "pill_delta")
+                        .WithItemTemplate(item => item
+                            .Title("Delta: {name}")
+                            .Dropdown("Kind", "{name}_delta_kind")
+                                .Options(new[] { "one", "two", "three" })
+                                .DefaultByValue("one")
+                            .Slider("Mix", "{name}_delta_mix").Range(0, 10).Default(5)
+                        )
+                )
+                .Section("Repeat", "repeat", s => s
+                    .Intro(
+                        "Large-menu perf fixture (tab 4/4). RepeatFor at the cap (32). "
+                        + "All 32 rows are in the schema; extras hide via visibility when the driver is below max.")
+                    .IntegerInput("How many rows", "large_count")
+                        .Hint("Driver for RepeatFor. Declared range is the cap (32).")
+                        .Range(1, 32)
+                        .Default(8)
+                        .Size("w-fit")
+                    .RepeatFor("large_count", (row, i) => row
+                        .Textbox($"Row #{i} label", $"large_label_{i}")
+                            .Default("Item " + i)
+                        .IntegerInput($"Row #{i} points", $"large_points_{i}")
+                            .Range(0, 1000)
+                            .Default(i == 1 ? 100 : 10)
+                            .Size("w-fit")
+                    )
+                )
+            );
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError("FluentConfig Perf Large Menu FAILED: " + ex);
+            return false;
+        }
+    }
+}

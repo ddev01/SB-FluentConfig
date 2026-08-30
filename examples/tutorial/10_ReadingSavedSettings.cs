@@ -2,9 +2,9 @@
 // Companion to 03_DropdownAndButtons.cs (not a settings UI).
 //
 // Prerequisite: open Tutorial 03 at least once and click Save so the global exists.
-// The title string must match 03 exactly ("Tutorial 03 Dropdown And Buttons").
+// The menu id must match 03 exactly ("tutorial_03"). The window title can differ.
 //
-// Settings blob: tutorial_03_dropdown_and_buttons_settings (JSON)
+// Settings blob: tutorial_03_settings (JSON)
 // Save keys: mode, level, show_advanced, advanced_offset
 //
 // Refs: FluentConfig.dll (Streamer.bot dlls/).
@@ -18,7 +18,7 @@ using System;
 
 public class CPHInline
 {
-    private const string MenuTitle = "Tutorial 03 Dropdown And Buttons";
+    private const string MenuId = "tutorial_03";
 
     private class Settings
     {
@@ -30,13 +30,13 @@ public class CPHInline
 
     public bool Execute()
     {
-        if (!Fc.HasSavedSettings(CPH, MenuTitle))
+        if (!Fc.HasSavedSettings(CPH, MenuId))
         {
             CPH.LogInfo("[Tutorial10] No saved settings — open Tutorial 03 and Save first.");
             return true;
         }
 
-        var settings = Fc.LoadSettings<Settings>(CPH, MenuTitle);
+        var settings = Fc.LoadSettings<Settings>(CPH, MenuId);
 
         CPH.LogInfo($"[Tutorial10] mode={settings.Mode}, level={settings.Level}, show_advanced={settings.ShowAdvanced}, advanced_offset={settings.AdvancedOffset}");
 

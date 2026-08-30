@@ -13,7 +13,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "Tutorial 06 Dialogs And Feedback", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_06", "Tutorial 06 Dialogs And Feedback", "1.0", ui => ui
             .Section("Dialogs", "Dialogs", b => b
                 .Intro("Click buttons to exercise Popup, Confirm, Progress, Toast, and Log.")
                 .Textbox("Sample name", "sample_name")

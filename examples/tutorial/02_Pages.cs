@@ -11,7 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "Tutorial 02 Pages", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_02", "Tutorial 02 Pages", "1.0", ui => ui
             .Section("General", "General", s => s
                 .Intro("First page — general options.")
                 .Toggle("Enable feature", "enabled")

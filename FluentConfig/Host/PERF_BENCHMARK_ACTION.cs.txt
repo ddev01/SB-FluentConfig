@@ -20,6 +20,7 @@ using System;
 
 public class CPHInline
 {
+    private const string Id = "perf_benchmark";
     private const string Title = "FluentConfig Perf Benchmark";
     private const string Version = "1.0";
 
@@ -32,7 +33,7 @@ public class CPHInline
             // Wall-clock marker before Fc.Open (pairs with FluentConfig_PerfLast).
             CPH.LogInfo("[MENU] trigger " + Title);
 
-            Fc.Open(CPH, Title, Version, ui => ui
+            Fc.Open(CPH, Id, Title, Version, ui => ui
                 .Section("Benchmark", "benchmark", s => s
                     .Intro("Minimal FluentConfig surface for cold/warm open timing. Close this window between harness runs."))
             );

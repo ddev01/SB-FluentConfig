@@ -1,11 +1,11 @@
 // Tutorial 11 — Runtime helpers (logger, templates, settings write, data blob)
-// Not a settings UI. Reads Tutorial 03's saved settings; stores runtime state in this action's `{slug}_data`.
+// Not a settings UI. Reads Tutorial 03's saved settings; stores runtime state in this action's `{id}_data`.
 //
 // Demonstrates:
 //   Fc.HasSavedSettings / SetSetting
 //   Fc.Logger + Init / Failed
 //   Fc.CaptureEvent + ApplyTemplate
-//   Fc.LoadData / SaveData ({slug}_data — separate from settings)
+//   Fc.LoadData / SaveData ({id}_data — separate from settings)
 //
 // Refs: FluentConfig.dll (Streamer.bot dlls/).
 // See docs/guides/DIALOGS_AND_RUNTIME_VALUES.md.
@@ -17,7 +17,8 @@ using System;
 
 public class CPHInline
 {
-    private const string MenuTitle = "Tutorial 03 Dropdown And Buttons";
+    private const string MenuId = "tutorial_03";
+    private const string DataId = "tutorial_11";
     private const string Title = "Tutorial 11 Runtime Helpers";
     private const string Version = "1.0";
 
@@ -32,7 +33,7 @@ public class CPHInline
         var log = Fc.Logger(CPH, Title, Version);
         log.Init();
 
-        if (!Fc.HasSavedSettings(CPH, MenuTitle))
+        if (!Fc.HasSavedSettings(CPH, MenuId))
         {
             log.Info("Open Tutorial 03 and Save first.");
             return true;
@@ -43,14 +44,14 @@ public class CPHInline
         log.Info(chat);
 
         // Example: clear a secret from code without opening the UI
-        // Fc.SetSetting(CPH, MenuTitle, "access_token", "");
+        // Fc.SetSetting(CPH, MenuId, "access_token", "");
 
         try
         {
-            var state = Fc.LoadData<RuntimeState>(CPH, Title);
+            var state = Fc.LoadData<RuntimeState>(CPH, DataId);
             state.RunCount++;
             state.LastUser = string.IsNullOrEmpty(ev.User) ? ev.UserName : ev.User;
-            Fc.SaveData(CPH, Title, state);
+            Fc.SaveData(CPH, DataId, state);
             log.Info($"run_count={state.RunCount}, last_user={state.LastUser}");
         }
         catch (Exception ex)

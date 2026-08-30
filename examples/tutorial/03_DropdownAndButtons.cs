@@ -15,7 +15,7 @@ public class CPHInline
     {
         var modes = new[] { "Quiet", "Normal", "Loud" };
 
-        Fc.Open(CPH, "Tutorial 03 Dropdown And Buttons", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_03", "Tutorial 03 Dropdown And Buttons", "1.0", ui => ui
             .Section("Main", "Main", s => s
                 .Intro("Demonstrates dropdown, slider, button, and conditional visibility.")
                 .Dropdown("Mode", "mode")

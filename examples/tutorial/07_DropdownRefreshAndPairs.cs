@@ -1,5 +1,7 @@
 // Tutorial 07 — Refreshable, pair-value, and searchable dropdowns
 // Dropdown.Refresh() to reload options, WithPairValue for display+ID, Searchable/AllowCustom/Multiple.
+// .Refresh is not invoked during schema build. Refresh-only dropdowns (no .Options()) bootstrap
+// empty; the web's first-mount dropdown.refresh fills them once per saveKey.
 // Copy into a new C# action. Requires: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/setup/REFERENCES.md and docs/guides/CONTROLS.md.
 //
@@ -13,12 +15,13 @@ public class CPHInline
     {
         var options = new[] { "Option A", "Option B", "Option C" };
 
-        Fc.Open(CPH, "Tutorial 07 Dropdown Refresh And Pairs", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_07", "Tutorial 07 Dropdown Refresh And Pairs", "1.0", ui => ui
             .Section("Dropdowns", "Dropdowns", d => d
                 .Intro(
                     "Dropdown with Refresh; pair-value dropdown (display name + stored ID);\n"
                     + "searchable combobox (type to filter, optional custom value).\n\n"
-                    + "Refresh callbacks are author-supplied. There is no built-in timer list helper.")
+                    + "Refresh callbacks are author-supplied and run on dropdown.refresh, not at schema build.\n"
+                    + "There is no built-in timer list helper.")
                 .Dropdown("Choice", "dropdown_choice")
                     .Hint("Select an option. Click Refresh to reload the list.")
                     .Options(options)
@@ -29,10 +32,14 @@ public class CPHInline
                     .WithPairValue("device_id")
                     .Options(new[] { ("id1", "Device A"), ("id2", "Device B"), ("id3", "Device C") })
                     .DefaultByValue("id2")
+                .Dropdown("Live list (refresh-only)", "live_choice")
+                    .Hint("No static options — placeholder until first dropdown.refresh. DefaultByValue, not DefaultIndex.")
+                    .Refresh(() => new[] { "Live A", "Live B", "Live C" })
+                    .DefaultByValue("Live A")
                 .Combobox("Auto-end timer", "timer_id")
                     .Hint("Type to filter, or paste a custom id. Refresh uses a fake list you supply.")
                     .AllowCustom()
-                    .RefreshPairs(() => new[] { ("timer-a", "Timer A"), ("timer-b", "Timer B") })
+                    .Refresh(() => new[] { ("timer-a", "Timer A"), ("timer-b", "Timer B") })
                     .Default("timer-a")
                 .Dropdown("Include groups", "include_groups")
                     .Hint("Pick one or more group names; type a custom name if needed.")
@@ -49,7 +56,8 @@ public class CPHInline
                         string display = ui.Pending<string>("device_display");
                         string id = ui.Pending<string>("device_id");
                         string choice = ui.Pending<string>("dropdown_choice");
-                        ui.Popup("Dropdown values", $"Choice: '{choice}'\nDevice display: '{display}'\nDevice ID: '{id}'");
+                        string live = ui.Pending<string>("live_choice");
+                        ui.Popup("Dropdown values", $"Choice: '{choice}'\nLive: '{live}'\nDevice display: '{display}'\nDevice ID: '{id}'");
                     })));
 
         return true;

@@ -11,6 +11,7 @@ public class CPHInline
 {
     private static class ExtensionInfo
     {
+        public const string Id = "example_extension";
         public const string Title = "Example Extension";
         public const string Version = "1.0.0";
         public const string Repo = "example-org/example-extension"; // owner/name
@@ -33,7 +34,7 @@ public class CPHInline
             + ExtensionInfo.Repo
             + ")");
 
-        Fc.Open(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
+        Fc.Open(CPH, ExtensionInfo.Id, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
             // Default: GitHub releases/latest (one extension per repo).
             .WithExtensionUpdateNotice(
                 ExtensionInfo.Repo,

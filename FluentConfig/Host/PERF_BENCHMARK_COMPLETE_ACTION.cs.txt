@@ -29,6 +29,7 @@ using System;
 
 public class CPHInline
 {
+    private const string Id = "perf_complete";
     private const string Title = "FluentConfig Perf Complete";
     private const string Version = "1.0";
 
@@ -45,9 +46,9 @@ public class CPHInline
 
             var options = new[] { "Option A", "Option B", "Option C" };
 
-            // ShowOrFocus already does AlreadyOpened(title, version) → focus-or-create.
-            // Title differs from "FluentConfig Perf Benchmark" — no window conflict.
-            Fc.Open(CPH, Title, Version, ui => ui
+            // Fc.Open already does AlreadyOpened(id, version) → focus-or-create.
+            // Id differs from "perf_benchmark" — no window conflict.
+            Fc.Open(CPH, Id, Title, Version, ui => ui
                 .Section("General settings", "General", g => g
                     .Intro(
                         "## Perf complete (worst-case)\n\n"

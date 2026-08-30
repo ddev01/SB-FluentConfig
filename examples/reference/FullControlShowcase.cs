@@ -2,16 +2,16 @@
 // Everything in one file for lookup. Prefer examples/tutorial/ (01 → 11) for learning.
 //
 // Demonstrates all controls against the WebView2/schema host. Pill callbacks receive a fluent
-// sub-builder (schema nodes), never System.Windows.Controls.Panel. WithVisibility uses a named
-// inverted argument instead of a bare positional bool.
+// sub-builder (schema nodes), never System.Windows.Controls.Panel. WithVisibilityWhenOff /
+// When.Off replace the old inverted: argument.
 //
 // Required references: PresentationFramework, PresentationCore, WindowsBase, FluentConfig.dll.
 // See docs/setup/REFERENCES.md.
 //
 //   - PillInput.WithItemTemplate / OnPillAdded / OnPillRemoved (sub-builder, no Panel)
-//   - WithVisibility(saveKey, inverted: true, …) or WithVisibilityWhenOff(…)
+//   - WithVisibilityWhenOff(…) or WithVisibility(When.Off(…), …)
 //   - ShowProgressWindow / Toast / Popup / ShowConfirmDialog surfaces (may be RPC-backed)
-//   - Fc.Open collapses AlreadyOpened → Create → build → Show
+//   - Fc.Open(id, title, version, …) — id is persistence identity; title is the window label
 //   - ConnectionStatus + rich Intro() samples (see docs/guides/UPDATES.md for updates)
 
 using FluentConfig;
@@ -57,7 +57,7 @@ public class CPHInline
 
             var options = new[] { "Option A", "Option B", "Option C" };
 
-            Fc.Open(CPH, "FluentConfig Complete Example", "1.0", ui => ui
+            Fc.Open(CPH, "full_showcase", "FluentConfig Complete Example", "1.0", ui => ui
                 .Section("General settings", "General", g => g
                     .Intro(
                         "## Complete example\n\n"

@@ -11,7 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "Tutorial 08 Advanced Controls", "1.0", ui => ui
+        Fc.Open(CPH, "tutorial_08", "Tutorial 08 Advanced Controls", "1.0", ui => ui
             .Section("Advanced", "Advanced", a => a
                 .Intro("Exclusive toggles, dynamic textbox list, and repeatable rows.")
                 .Toggle("Mode", "mode_index")
