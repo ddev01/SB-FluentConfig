@@ -4,6 +4,7 @@
   import { RpcMethods } from '../../protocol';
   import type { FilepathBrowseResult, FilepathValidateResult } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
+  import { consumeOnce } from '../refreshCache';
   import FieldShell from './FieldShell.svelte';
 
   interface Props {
@@ -13,7 +14,7 @@
   let { node }: Props = $props();
   const fieldId = $derived(node.id ?? node.saveKey);
   let browsing = $state(false);
-  let error = $state<string | null>(null);
+  let error = $state<string | undefined>(undefined);
   let seq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -24,7 +25,7 @@
   async function validate(path: string): Promise<void> {
     const trimmed = path.trim();
     if (!trimmed) {
-      error = null;
+      error = undefined;
       return;
     }
     const token = ++seq;
@@ -34,10 +35,10 @@
         { saveKey: node.saveKey, path: trimmed },
       );
       if (token !== seq) return;
-      error = result.ok ? null : (result.error ?? 'Invalid file path.');
+      error = result.ok ? undefined : (result.error ?? 'Invalid file path.');
     } catch {
       if (token !== seq) return;
-      error = null;
+      error = undefined;
     }
   }
 
@@ -55,7 +56,7 @@
   }
 
   onMount(() => {
-    scheduleValidate(value);
+    if (consumeOnce(`filepath:${node.saveKey}`)) scheduleValidate(value);
     return () => {
       if (timer) clearTimeout(timer);
     };
@@ -85,7 +86,7 @@
     <input
       id={fieldId}
       type="text"
-      class="fc-input font-mono {error ? 'border-fc-danger focus-visible:border-fc-danger' : ''}"
+      class="fc-input min-w-0 flex-1 font-mono {error ? 'border-fc-danger focus-visible:border-fc-danger' : ''}"
       value={value}
       oninput={onInput}
       onblur={() => void validate(value)}
@@ -95,7 +96,7 @@
     {#if !node.hideBrowse}
       <button
         type="button"
-        class="fc-btn"
+        class="fc-btn shrink-0"
         disabled={browsing}
         onclick={browse}
       >

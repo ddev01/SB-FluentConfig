@@ -3,6 +3,7 @@ import {
   canOpenMenu,
   chipLabel,
   computeEmptyListMessage,
+  computeListBoxStyle,
   computeOpenMenuStart,
   computeSuggestionOptions,
   matchCustomInput,
@@ -148,5 +149,32 @@ describe('chipLabel / matchCustomInput', () => {
     expect(matchCustomInput(opts, 'a')?.value).toBe('a');
     expect(matchCustomInput(opts, 'beta')?.value).toBe('b');
     expect(matchCustomInput(opts, '  ')).toBeUndefined();
+  });
+});
+
+describe('computeListBoxStyle', () => {
+  it('opens below when there is room', () => {
+    const css = computeListBoxStyle({
+      left: 10,
+      top: 100,
+      bottom: 140,
+      width: 200,
+      viewportHeight: 800,
+    });
+    expect(css).toContain('position:fixed');
+    expect(css).toContain('top:146px');
+    expect(css).not.toContain('bottom:');
+  });
+
+  it('opens above when the trigger is near the bottom', () => {
+    const css = computeListBoxStyle({
+      left: 10,
+      top: 760,
+      bottom: 790,
+      width: 200,
+      viewportHeight: 800,
+    });
+    expect(css).toContain('bottom:46px');
+    expect(css).not.toContain('top:');
   });
 });

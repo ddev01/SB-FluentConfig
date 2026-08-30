@@ -11,7 +11,6 @@ export function filterSelectOptions(options: NamedOption[], query: string): Name
 export type RefreshDecision =
   | { action: 'keep' }
   | { action: 'keepValues'; values: string[] }
-  | { action: 'snap'; option: NamedOption }
   | { action: 'clear' };
 
 export function resolveDropdownRefresh(args: {

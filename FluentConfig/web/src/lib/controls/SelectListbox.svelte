@@ -13,6 +13,7 @@
     optionEls: (HTMLLIElement | null)[];
     onactive: (index: number) => void;
     onchoose: (index: number) => void;
+    listStyle: string;
   }
 
   let {
@@ -26,6 +27,7 @@
     optionEls,
     onactive,
     onchoose,
+    listStyle,
   }: Props = $props();
 </script>
 
@@ -33,8 +35,9 @@
   id={listboxId}
   role="listbox"
   tabindex="-1"
-  class="fc-card absolute z-20 mt-1.5 max-h-64 w-full origin-top overflow-auto p-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.55)]"
-  transition:scaleIn={{ duration: 0.12 }}
+  style={listStyle || undefined}
+  class="fc-card max-h-64 w-full origin-top overflow-auto p-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.55)]"
+  in:scaleIn={{ duration: 0.12 }}
 >
   {#each suggestionOptions as opt, index (opt.value)}
     <!-- svelte-ignore a11y_click_events_have_key_events -->

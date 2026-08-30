@@ -125,8 +125,13 @@ export function isVisible(
 ): boolean {
   if (!condition) return true;
 
+  const live = getPath(values, condition.saveKey);
   const fallback =
-    schemaDefault !== undefined ? schemaDefault : driverDefaultFromSchema(sections, condition.saveKey);
+    live !== undefined && live !== null
+      ? undefined
+      : schemaDefault !== undefined
+        ? schemaDefault
+        : driverDefaultFromSchema(sections, condition.saveKey);
 
   if (condition.operator) {
     const left = toNumber(effectiveValue(values, condition.saveKey, fallback));

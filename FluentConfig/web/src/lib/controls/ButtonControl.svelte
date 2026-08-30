@@ -37,7 +37,7 @@
   <button
     type="button"
     class="rounded-fc px-4 py-2 text-sm font-semibold text-white transition-[filter] duration-150 hover:brightness-110 active:brightness-95 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-fc-bg"
-    style:background-color={node.color ?? '#3b82f6'}
+    style:background-color={node.color ?? 'var(--color-fc-accent)'}
     title={node.hint}
     disabled={busy}
     onclick={click}

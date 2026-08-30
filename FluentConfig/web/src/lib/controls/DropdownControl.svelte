@@ -5,6 +5,7 @@
   import type { DropdownRefreshResult } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
   import { resolveDropdownRefresh } from '../dropdownRefresh';
+  import { consumeOnce } from '../refreshCache';
   import FieldShell from './FieldShell.svelte';
   import SelectMenu from './SelectMenu.svelte';
 
@@ -21,7 +22,7 @@
   let refreshing = $state(false);
 
   onMount(() => {
-    if (node.refreshable && !(node.options?.length ?? 0)) {
+    if (node.refreshable && !(node.options?.length ?? 0) && consumeOnce(`dropdown:${node.saveKey}`)) {
       void refresh();
     }
   });
@@ -42,9 +43,6 @@
     }
     if (node.defaultByValue) return node.defaultByValue;
     if (node.defaultValue) return node.defaultValue;
-    if (node.defaultIndex !== undefined && node.options?.[node.defaultIndex]) {
-      return node.options[node.defaultIndex]!.value;
-    }
     return '';
   });
 
@@ -91,16 +89,6 @@
       if (decision.action === 'keep') return;
       if (decision.action === 'keepValues') {
         appStore.setValue(node.saveKey, decision.values);
-        return;
-      }
-      if (decision.action === 'snap') {
-        const first = decision.option;
-        if (node.valueSaveKey) {
-          appStore.setValue(node.saveKey, first.display);
-          appStore.setValue(node.valueSaveKey, first.value);
-        } else {
-          appStore.setValue(node.saveKey, first.value);
-        }
         return;
       }
       appStore.setValue(node.saveKey, multiple ? [] : '');

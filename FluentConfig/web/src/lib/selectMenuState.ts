@@ -78,3 +78,22 @@ export function matchCustomInput(
     (o) => o.value === typed || o.display.toLowerCase() === typed.toLowerCase(),
   );
 }
+
+/** Fixed-position list box so `.fc-main-scroll` overflow cannot clip it. */
+export function computeListBoxStyle(trigger: {
+  left: number;
+  top: number;
+  bottom: number;
+  width: number;
+  viewportHeight: number;
+}): string {
+  const gap = 6;
+  const spaceBelow = trigger.viewportHeight - trigger.bottom - gap;
+  const spaceAbove = trigger.top - gap;
+  const preferBelow = spaceBelow >= 120 || spaceBelow >= spaceAbove;
+  const maxH = Math.min(256, Math.max(80, preferBelow ? spaceBelow : spaceAbove));
+  if (preferBelow) {
+    return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;top:${trigger.bottom + gap}px;max-height:${maxH}px`;
+  }
+  return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;bottom:${trigger.viewportHeight - trigger.top + gap}px;max-height:${maxH}px`;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SectionSchema } from '../protocol';
-import { equalsMatches, isVisible } from './visibility';
+import { effectiveValue, equalsMatches, isVisible } from './visibility';
 
 describe('equalsMatches', () => {
   it('matches booleans without coercing strings', () => {
@@ -74,5 +74,34 @@ describe('isVisible equals', () => {
 
   it('operator path still works', () => {
     expect(isVisible({ saveKey: 'n', operator: 'gte', value: 4 }, { n: 4 })).toBe(true);
+  });
+
+  it('effectiveValue treats empty string as live not default', () => {
+    expect(effectiveValue({ k: '' }, 'k', 'default')).toBe('');
+    expect(effectiveValue({}, 'k', 'default')).toBe('default');
+  });
+
+  it('isVisible pair-value empty id hides gated node', () => {
+    expect(isVisible({ saveKey: 'reward', equals: 'abc' }, { reward: '' }, 'abc')).toBe(false);
+  });
+
+  it('isVisible omitted id uses defaultByValue', () => {
+    const sections: SectionSchema[] = [
+      {
+        id: 'g',
+        title: 'G',
+        children: [
+          {
+            type: 'dropdown',
+            label: 'Reward',
+            saveKey: 'reward_display',
+            valueSaveKey: 'reward',
+            options: [{ value: 'abc', display: 'Cool reward' }],
+            defaultByValue: 'abc',
+          },
+        ],
+      },
+    ];
+    expect(isVisible({ saveKey: 'reward', equals: 'abc' }, {}, undefined, sections)).toBe(true);
   });
 });

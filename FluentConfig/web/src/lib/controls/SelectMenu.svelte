@@ -4,6 +4,7 @@
     canOpenMenu,
     chipLabel as labelForValue,
     computeEmptyListMessage,
+    computeListBoxStyle,
     computeOpenMenuStart,
     computeSuggestionOptions,
     matchCustomInput,
@@ -59,6 +60,31 @@
   let containerEl = $state<HTMLDivElement | null>(null);
   let triggerEl = $state<HTMLButtonElement | HTMLInputElement | null>(null);
   let optionEls: (HTMLLIElement | null)[] = [];
+  let listStyle = $state('');
+
+  function positionList(): void {
+    if (!triggerEl) return;
+    const r = triggerEl.getBoundingClientRect();
+    listStyle = computeListBoxStyle({
+      left: r.left,
+      top: r.top,
+      bottom: r.bottom,
+      width: r.width,
+      viewportHeight: window.innerHeight,
+    });
+  }
+
+  $effect(() => {
+    if (!open) return;
+    positionList();
+    const update = () => positionList();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  });
 
   let selectedValues = $derived(multiple ? values : []);
   let suggestionOptions = $derived(
@@ -115,6 +141,7 @@
     filterText = start.filterText;
     activeIndex = start.activeIndex;
     open = true;
+    positionList();
   }
 
   function closeMenu(focusTrigger = false): void {
@@ -361,6 +388,7 @@
       {emptyListMessage}
       {optionId}
       {optionEls}
+      {listStyle}
       onactive={(index) => (activeIndex = index)}
       onchoose={chooseFiltered}
     />

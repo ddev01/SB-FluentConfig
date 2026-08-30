@@ -94,4 +94,30 @@ describe('resolveDropdownRefresh', () => {
       }),
     ).toEqual({ action: 'keep' });
   });
+
+  it('prunes invalid multi chips', () => {
+    expect(
+      resolveDropdownRefresh({
+        allowCustom: false,
+        multiple: true,
+        current: ['a', 'gone', 'b'],
+        options: opts,
+      }),
+    ).toEqual({ action: 'keepValues', values: ['a', 'b'] });
+  });
+
+  it('never returns snap', () => {
+    const cases = [
+      { allowCustom: false, multiple: false, current: '', options: opts },
+      { allowCustom: false, multiple: false, current: 'gone', options: opts },
+      { allowCustom: false, multiple: false, current: 'a', options: opts },
+      { allowCustom: true, multiple: false, current: 'custom', options: [] },
+      { allowCustom: false, multiple: true, current: ['gone'], options: opts },
+      { allowCustom: false, multiple: true, current: ['a', 'gone'], options: opts },
+      { allowCustom: true, multiple: true, current: ['gone'], options: opts },
+    ];
+    for (const c of cases) {
+      expect(['keep', 'keepValues', 'clear']).toContain(resolveDropdownRefresh(c).action);
+    }
+  });
 });

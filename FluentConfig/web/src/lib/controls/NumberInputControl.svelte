@@ -2,6 +2,7 @@
   import type { NumberInputNode } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
   import { digitCount } from '../layout';
+  import { roundToStep } from '../number';
   import FieldShell from './FieldShell.svelte';
 
   interface Props {
@@ -11,7 +12,7 @@
   let { node }: Props = $props();
   const fieldId = $derived(node.id ?? node.saveKey);
   const step = $derived(node.step ?? (node.valueType === 'int' ? 1 : 0.1));
-  const isFit = $derived(node.layout?.width === 'fit');
+  const isFit = $derived(node.layout?.width === 'fit-content');
   const fitChars = $derived(
     Math.max(digitCount(node.min), digitCount(node.max)) + 1,
   );
@@ -20,31 +21,15 @@
     appStore.getValue(node.saveKey) ?? node.defaultValue ?? 0,
   );
 
-  /** Decimal places implied by step (e.g. 0.1 → 1) so 0.1+0.2 stays 0.3. */
-  function stepDecimals(s: number): number {
-    if (!Number.isFinite(s) || s <= 0) return 0;
-    const text = String(s);
-    if (text.includes('e') || text.includes('E')) {
-      const fixed = s.toFixed(10).replace(/\.?0+$/, '');
-      const dot = fixed.indexOf('.');
-      return dot === -1 ? 0 : fixed.length - dot - 1;
-    }
-    const dot = text.indexOf('.');
-    return dot === -1 ? 0 : text.length - dot - 1;
-  }
-
-  function roundToStep(raw: number): number {
-    const s = step;
-    if (!Number.isFinite(raw) || !Number.isFinite(s) || s <= 0) return raw;
-    const rounded = Math.round(raw / s) * s;
-    return Number(rounded.toFixed(stepDecimals(s)));
+  function roundCurrent(raw: number): number {
+    return roundToStep(raw, step);
   }
 
   function coerce(raw: number): string | number {
-    let n = roundToStep(raw);
+    let n = roundCurrent(raw);
     if (node.min !== undefined) n = Math.max(node.min, n);
     if (node.max !== undefined) n = Math.min(node.max, n);
-    n = roundToStep(n);
+    n = roundCurrent(n);
     if (node.valueType === 'string') return String(n);
     if (node.valueType === 'int') return Math.round(n);
     return n;
