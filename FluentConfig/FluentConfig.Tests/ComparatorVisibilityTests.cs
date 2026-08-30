@@ -76,7 +76,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void WithVisibility_Comparator_EmitsGatedGroup()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Comparator Vis", "1.0");
             ui.Section("G", "g", s => s
                 .IntegerInput("Count", "count").Range(0, 10).Default(3)
@@ -133,7 +133,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void WithVisibility_StringEquals_EmitsFlatGroup()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Equals Vis", "1.0");
             ui.Section("G", "g", s => s
                 .Dropdown("Mode", "mode").Options(new[] { "quiet", "loud" })

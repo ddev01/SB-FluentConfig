@@ -25,7 +25,7 @@ namespace FluentConfig.Tests
                     if (Application.Current == null)
                         new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
 
-                    var cph = Phase2HostSmokeTests.CreateMockCph();
+                    var cph = TestCph.CreateMockCph();
                     var session = new FluentConfigSession(cph.Object, "Bridge Thread Guard", "1.0");
                     window = new FluentConfigHostWindow("Bridge Thread Guard", "1.0");
                     bridge = new HostBridge(window, session);

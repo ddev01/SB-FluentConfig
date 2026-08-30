@@ -11,7 +11,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Searchable_AllowCustom_Multiple_EmitFlags()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Dropdown Flags", "1.0");
             ui.Section("G", "g", s => s
                 .Combobox("Groups", "include_groups")

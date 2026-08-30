@@ -134,7 +134,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Grid_EmitsGroupWithGridSpec_AndResolvedSize()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Layout Grid", "1.0");
             ui.Section("G", "g", s => s
                 .Grid("grid-cols-2 gap-3 items-center", g => g
@@ -170,7 +170,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Row_EmitsFlexModeGroup()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Layout Row", "1.0");
             ui.Section("G", "g", s => s
                 .Row("gap-2 items-center", r => r.Toggle("A", "a").Toggle("B", "b"))
@@ -187,7 +187,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Size_GrowInsideRow_Succeeds()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Layout Grow", "1.0");
             ui.Section("G", "g", s => s
                 .Row(r => r
@@ -207,7 +207,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Size_GrowOutsideRow_Throws()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Layout Grow Bad", "1.0");
             ui.Section("G", "g", s => s
                 .Textbox("Name", "name").Size("grow")
@@ -221,7 +221,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Size_GrowInsideGrid_Throws()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Layout Grow Grid", "1.0");
             ui.Section("G", "g", s => s
                 .Grid("grid-cols-2", g => g
@@ -236,7 +236,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void Size_ColSpanOutsideGrid_Throws()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "Layout ColSpan Bad", "1.0");
             ui.Section("G", "g", s => s
                 .Textbox("Name", "name").Size("col-span-2")

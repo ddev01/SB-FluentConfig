@@ -29,7 +29,7 @@ namespace FluentConfig.Tests
         public void BuildDocument_SeedsMissingDefaults_DoesNotOverwriteExisting()
         {
             var store = new ConcurrentDictionary<string, string>(System.StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store);
+            var cph = TestCph.CreateMockCph(store);
             var key = "defaults_seed_settings";
             store[key] = new JObject { ["volume"] = 90 }.ToString();
 

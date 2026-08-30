@@ -1,14 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Windows;
 using FluentConfig.Core;
 using FluentConfig.Protocol;
-using FluentConfig.Runtime;
 using FluentConfig.Updater;
-using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 using Streamer.bot.Plugin.Interface;
 
@@ -90,6 +86,9 @@ namespace FluentConfig
         }
 
         internal PerformanceTracer PerfTracer => _perfTracer;
+
+        /// <summary>Per-menu persistence identity. W3 replaces the body with the explicit menu id.</summary>
+        internal string ScopeKey => _title;
 
         internal void SetIconPath(string iconPath) => _iconPath = iconPath;
         internal void RegisterDeferredSection(string tabId, string title, Action<SectionBuilder> build)
@@ -173,30 +172,6 @@ namespace FluentConfig
             return this;
         }
 
-        internal void LogExistingSettings()
-        {
-            // Load from CPH — in-memory may still be empty when called from the build delegate
-            // before Show() (common pattern: .LogExistingSettings() inside ShowOrFocus).
-            var settings = _settingsManager.Load();
-            _latestValues = settings ?? new JObject();
-            var redacted = SettingsRedaction.RedactObject(settings);
-            Log($"[FluentConfig] Existing settings for '{_title}': {redacted}");
-        }
-
-        /// <summary>
-        /// Loads settings and builds the UiDocument without opening a window (tests / harnesses).
-        /// </summary>
-        internal UiDocument BuildDocumentForTests()
-        {
-            var settings = _settingsManager.Load();
-            _latestValues = settings ?? new JObject();
-            var prefs = WindowPrefsStore.Load(_cph, _title);
-            _dontRemindDiscard = prefs?.DontRemindDiscard ?? false;
-            return BuildDocument();
-        }
-
-        /// <summary>Exposes in-memory settings for tests after save RPCs.</summary>
-        internal JObject GetSettingsForTests() => _settingsManager.GetSettings();
         internal void Show()
         {
             _perfTracer.Start("Show.begin");
@@ -210,7 +185,7 @@ namespace FluentConfig
             if (!TryValidateExtensionVersionGates(out var gateMessage))
             {
                 MessageBox.Show(gateMessage, _title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                FluentConfigWindowManager.Unregister(_title);
+                FluentConfigWindowManager.Unregister(ScopeKey);
                 return;
             }
 
@@ -221,7 +196,7 @@ namespace FluentConfig
                 {
                     if (_window.IsLoaded || _window.IsVisible)
                     {
-                        FluentConfigWindowManager.AlreadyOpened(_title, _version, Log);
+                        FluentConfigWindowManager.AlreadyOpened(ScopeKey, _version, Log);
                         return;
                     }
                 }
@@ -239,53 +214,27 @@ namespace FluentConfig
             _perfTracer.BeginPhase("Settings.Load");
             var settings = _settingsManager.Load();
             _latestValues = settings ?? new JObject();
-            var prefs = WindowPrefsStore.Load(_cph, _title);
+            var prefs = WindowPrefsStore.Load(_cph, ScopeKey);
             _dontRemindDiscard = prefs?.DontRemindDiscard ?? false;
             _perfTracer.BeginPhase("Schema.Build");
             var document = BuildDocument();
             // Overlap CoreWebView2Environment.CreateAsync with Window.Create / Show (UI thread only).
             FluentConfigHostWindow.KickoffSharedEnvironment();
             _perfTracer.BeginPhase("Window.Create");
-            // ColorScheme is always "dark" today â€” only dark is supported (no author builder yet).
-            var geometry = WindowGeometryStore.Load(_cph, _title);
+            // ColorScheme is always "dark" today — only dark is supported (no author builder yet).
+            var geometry = WindowGeometryStore.Load(_cph, ScopeKey);
             _window = new FluentConfigHostWindow(_title, _version, geometry, _iconPath, "dark");
             _window.PerfTracer = _perfTracer;
             _bridge = new HostBridge(_window, this);
             _window.Closing += OnWindowClosing;
             _window.Closed += OnWindowClosed;
             _window.NativeCloseRequested += OnNativeCloseRequested;
-            FluentConfigWindowManager.Register(_title, _window);
+            FluentConfigWindowManager.Register(ScopeKey, _window);
             EnsureHostExitHook();
             _perfTracer.BeginPhase("Window.Show");
             _window.Show();
             _bridge.Start(document);
-        // LogSummary moves to perf.mark("web-ready") â€” navigation has not started yet here.
-        }
-
-        private UiDocument BuildDocument()
-        {
-            _filepathRules.Clear();
-            var sections = _deferredSections.Select(f => f()).ToList();
-            // Update notices are pushed via update.available after a deferred HTTP check
-            // (never injected here â€” that would block Show on network I/O).
-            ExpandPillItems(sections, _latestValues);
-            // First menu open writes schema defaults for missing keys only (never overwrites
-            // user values). Runtime actions can then use CPH.GetGlobalVar on the settings blob.
-            var defaults = SettingsDefaultsCollector.Collect(sections, _latestValues);
-            if (SettingsSync.SeedMissingDefaults(_settingsManager, defaults, persist: true) > 0)
-                _latestValues = _settingsManager.GetSettings() ?? new JObject();
-            return new UiDocument
-            {
-                Title = _title,
-                Version = _version,
-                // Only dark is supported today (no .ColorScheme builder).
-                ColorScheme = "dark",
-                Sections = sections,
-                Values = _latestValues,
-                FrameworkVersion = FrameworkVersion,
-                RepoUrl = _repoUrl,
-                DontRemindDiscard = _dontRemindDiscard,
-            };
+        // LogSummary moves to perf.mark("web-ready") — navigation has not started yet here.
         }
 
         /// <summary>Override the footer GitHub / docs link for this session.</summary>
@@ -293,128 +242,6 @@ namespace FluentConfig
         {
             if (!string.IsNullOrWhiteSpace(repoUrl))
                 _repoUrl = repoUrl.Trim();
-        }
-
-        private void ExpandPillItems(IList<SectionSchema> sections, JObject values)
-        {
-            if (sections == null)
-                return;
-            foreach (var section in sections)
-                ExpandPillNodes(section.Children, values);
-        }
-
-        private void ExpandPillNodes(IList<SchemaNode> nodes, JObject values)
-        {
-            if (nodes == null)
-                return;
-            foreach (var node in nodes)
-            {
-                if (node is PillInputNode pill && !string.IsNullOrEmpty(pill.SaveKey))
-                {
-                    var names = values?[pill.SaveKey] as JArray;
-                    if (names != null && pill.ItemTemplate != null)
-                    {
-                        try
-                        {
-                            var templateJson = ProtocolJson.Serialize(pill.ItemTemplate);
-                            pill.Items = names.Select(t => t?.ToString()).Where(n => !string.IsNullOrEmpty(n)).Select(n => new PillItemSchema { Name = n, Children = ExpandTemplateJson(templateJson, n), }).ToList();
-                        }
-                        catch (Exception ex)
-                        {
-                            Log($"[FluentConfig] pill expand failed: {ex.Message}");
-                        }
-                    }
-                }
-                else if (node is GroupNode group)
-                {
-                    ExpandPillNodes(group.Children, values);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Substitute <c>{name}</c> only inside leaf string values of the schema tree
-        /// (avoids corrupting JSON when the pill name contains quotes/backslashes).
-        /// </summary>
-        private static IList<SchemaNode> ExpandTemplate(IList<SchemaNode> template, string name)
-        {
-            if (template == null)
-                return new List<SchemaNode>();
-            return ExpandTemplateJson(ProtocolJson.Serialize(template), name);
-        }
-
-        private static IList<SchemaNode> ExpandTemplateJson(string templateJson, string name)
-        {
-            var root = JToken.Parse(templateJson);
-            ReplaceNamePlaceholders(root, name ?? "");
-            // Use ProtocolJson.Serialize — not JToken.ToString(Formatting). Streamer.bot may load an
-            // older Newtonsoft.Json without that overload (MissingMethodException at runtime).
-            return ProtocolJson.Deserialize<List<SchemaNode>>(ProtocolJson.Serialize(root)) ?? new List<SchemaNode>();
-        }
-
-        private static void ReplaceNamePlaceholders(JToken token, string name)
-        {
-            if (token == null)
-                return;
-            switch (token.Type)
-            {
-                case JTokenType.Object:
-                    foreach (var prop in ((JObject)token).Properties())
-                        ReplaceNamePlaceholders(prop.Value, name);
-                    break;
-                case JTokenType.Array:
-                    foreach (var item in (JArray)token)
-                        ReplaceNamePlaceholders(item, name);
-                    break;
-                case JTokenType.String:
-                    var s = token.Value<string>();
-                    if (s != null && s.IndexOf("{name}", StringComparison.Ordinal) >= 0)
-                        ((JValue)token).Value = s.Replace("{name}", name);
-                    break;
-            }
-        }
-
-        // â”€â”€ Values / settings â”€â”€
-        internal T GetValue<T>(string key) => _settingsManager.GetValue(key, default(T));
-        internal void RemoveSettingsKeys(params string[] keys)
-        {
-            _settingsManager.RemoveKeys(keys);
-            _settingsManager.Save(_settingsManager.GetSettings());
-            _latestValues = _settingsManager.GetSettings();
-        }
-
-        internal T GetPendingValue<T>(string key, JObject snapshot)
-        {
-            var source = snapshot ?? _latestValues ?? _settingsManager.GetSettings();
-            if (source == null || string.IsNullOrEmpty(key))
-                return default;
-            var token = SettingsPathHelper.GetNestedValue(source, key) ?? source[key];
-            if (token == null || token.Type == JTokenType.Null)
-                return default;
-            try
-            {
-                return token.ToObject<T>();
-            }
-            catch
-            {
-                return default;
-            }
-        }
-
-        internal void PushSchemaPatch(string sectionId, string nodeId, SchemaNode node)
-        {
-            _bridge?.Send(WireMessage.Push(PushEventNames.SchemaPatch, new SchemaPatchPayload { SectionId = sectionId, NodeId = nodeId, Node = node, }));
-        }
-
-        internal void PatchLiveValue<T>(string key, T value)
-        {
-            if (string.IsNullOrEmpty(key))
-                return;
-            _settingsManager.SetValue(key, value);
-            _settingsManager.Save(_settingsManager.GetSettings());
-            _latestValues = _settingsManager.GetSettings();
-            var token = value == null ? JValue.CreateNull() : JToken.FromObject(value);
-            _bridge?.Send(WireMessage.Push(PushEventNames.ValuesPatch, new ValuesPatchPayload { Paths = new JObject { [key] = token }, }));
         }
     }
 }

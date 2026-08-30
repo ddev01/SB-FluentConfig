@@ -80,7 +80,7 @@ namespace FluentConfig
             if (dontRemindAgain)
             {
                 _dontRemindDiscard = true;
-                WindowPrefsStore.SetDontRemindDiscard(_cph, _title, true);
+                WindowPrefsStore.SetDontRemindDiscard(_cph, ScopeKey, true);
             }
 
             if (!allowClose || _window == null || _hostExitInProgress)
@@ -92,13 +92,13 @@ namespace FluentConfig
 
         private void OnWindowClosed(object sender, EventArgs e)
         {
-            FluentConfigWindowManager.Unregister(_title);
+            FluentConfigWindowManager.Unregister(ScopeKey);
 
             if (_window != null)
             {
                 var geometry = WindowGeometryStore.FromWindow(_window);
                 if (geometry != null)
-                    WindowGeometryStore.Save(_cph, _title, geometry);
+                    WindowGeometryStore.Save(_cph, ScopeKey, geometry);
 
                 var bounds = _window.WindowState == WindowState.Maximized
                     ? _window.RestoreBounds

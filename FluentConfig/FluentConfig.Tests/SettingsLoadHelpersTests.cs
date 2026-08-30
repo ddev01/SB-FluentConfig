@@ -26,7 +26,7 @@ namespace FluentConfig.Tests
                 ["exclude_broadcaster"] = false
             // message / points_variable intentionally absent
             }.ToString();
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             var s = FluentConfig.LoadSettings<SampleSettings>(cph, "First Chatters");
             Assert.Equal(7, s.MaxCount);
             Assert.False(s.ExcludeBroadcaster);
@@ -44,7 +44,7 @@ namespace FluentConfig.Tests
                 ["max_count"] = "not-a-number",
                 ["message"] = "ok"
             }.ToString();
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             var s = FluentConfig.LoadSettings<SampleSettings>(cph, "First Chatters");
             Assert.Equal(3, s.MaxCount); // default preserved
             Assert.Equal("ok", s.Message);
@@ -53,7 +53,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void LoadSettings_MissingGlobal_ReturnsDefaults()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph().Object;
+            var cph = TestCph.CreateMockCph().Object;
             var s = FluentConfig.LoadSettings<SampleSettings>(cph, "First Chatters");
             Assert.Equal(3, s.MaxCount);
             Assert.True(s.ExcludeBroadcaster);
@@ -68,7 +68,7 @@ namespace FluentConfig.Tests
             {
                 ["max_count"] = 99
             }.ToString();
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             var s = FluentConfig.LoadSettings<SampleSettings>(cph, "First Chatters", x =>
             {
                 if (x.MaxCount > 10)
@@ -86,7 +86,7 @@ namespace FluentConfig.Tests
                 ["points_1"] = 1000,
                 ["points_2"] = 500
             }.ToString();
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             Assert.Equal(1000, FluentConfig.GetSetting(cph, "First Chatters", "points_1", 0));
             Assert.Equal(500, FluentConfig.GetSetting(cph, "First Chatters", "points_2", 0));
             Assert.Equal(0, FluentConfig.GetSetting(cph, "First Chatters", "points_3", 0));
@@ -101,7 +101,7 @@ namespace FluentConfig.Tests
                 ["max_count"] = 4
             }.ToString();
             store[SettingsKeyHelper.LegacySettingsKeyFor("Alerts")] = blob;
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             Assert.True(Fc.MigrateLegacySettingsKey(cph, "Alerts"));
             Assert.Equal(blob, store[SettingsKeyHelper.SettingsKeyFor("Alerts")]);
             Assert.True(Fc.HasSavedSettings(cph, "Alerts"));
@@ -119,7 +119,7 @@ namespace FluentConfig.Tests
             {
                 ["max_count"] = 99
             }.ToString();
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             Assert.False(Fc.MigrateLegacySettingsKey(cph, "Alerts"));
             Assert.Equal(1, JObject.Parse(store[SettingsKeyHelper.SettingsKeyFor("Alerts")]).Value<int>("max_count"));
         }
@@ -132,7 +132,7 @@ namespace FluentConfig.Tests
             {
                 ["max_count"] = 8
             }.ToString();
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             var s = FluentConfig.LoadSettings<SampleSettings>(cph, "First Chatters");
             Assert.Equal(8, s.MaxCount);
             Assert.True(store.ContainsKey(SettingsKeyHelper.SettingsKeyFor("First Chatters")));

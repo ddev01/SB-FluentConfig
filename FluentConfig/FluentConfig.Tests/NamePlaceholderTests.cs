@@ -71,7 +71,7 @@ namespace FluentConfig.Tests
         {
             var store = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(
                 System.StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store);
+            var cph = TestCph.CreateMockCph(store);
             var ui = FluentConfigUi.Create(cph.Object, "Name Placeholder", "1.0");
             ui.Section("G", "g", s => s
                 .PillInput("Items", "items")

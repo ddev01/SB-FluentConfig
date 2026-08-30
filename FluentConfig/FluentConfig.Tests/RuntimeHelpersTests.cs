@@ -28,7 +28,7 @@ namespace FluentConfig.Tests
                 ["access_token"] = "secret-value",
             }.ToString();
 
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             Fc.SetSetting(cph, "Runtime Demo", "access_token", "");
 
             var persisted = JObject.Parse(store[key]);
@@ -48,7 +48,7 @@ namespace FluentConfig.Tests
                 ["refresh_token"] = "ref",
             }.ToString();
 
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
             Fc.SaveSettings(cph, "Runtime Demo", o =>
             {
                 o["access_token"] = "";
@@ -65,7 +65,7 @@ namespace FluentConfig.Tests
         public void HasSavedSettings_EmptyVsPresent()
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
 
             Assert.False(Fc.HasSavedSettings(cph, "Runtime Demo"));
 
@@ -127,7 +127,7 @@ namespace FluentConfig.Tests
                 ["isModerator"] = true,
             };
 
-            var cph = Phase2HostSmokeTests.CreateMockCph(null, args).Object;
+            var cph = TestCph.CreateMockCph(null, args).Object;
             var ev = Fc.CaptureEvent(cph);
 
             Assert.Equal("Alice", ev.User);
@@ -148,7 +148,7 @@ namespace FluentConfig.Tests
             {
                 ["actionName"] = "DemoAction",
             };
-            var cph = Phase2HostSmokeTests.CreateMockCph(null, args, info, null, error).Object;
+            var cph = TestCph.CreateMockCph(null, args, info, null, error).Object;
 
             var log = Fc.Logger(cph, "Runtime Demo", "1.2.3");
             log.Info("hello");
@@ -167,7 +167,7 @@ namespace FluentConfig.Tests
         public void LoadData_SaveData_RoundTrip()
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store).Object;
+            var cph = TestCph.CreateMockCph(store).Object;
 
             Assert.Equal(Fc.KeyFor("Runtime Demo", "data"), Fc.DataKeyFor("Runtime Demo"));
 

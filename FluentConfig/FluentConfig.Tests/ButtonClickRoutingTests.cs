@@ -68,7 +68,7 @@ namespace FluentConfig.Tests
         {
             var store = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(
                 System.StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store);
+            var cph = TestCph.CreateMockCph(store);
             var ui = FluentConfigUi.Create(cph.Object, "Pill Buttons", "1.0");
             ui.Section("G", "g", s => s
                 .Button("Top")
@@ -96,7 +96,7 @@ namespace FluentConfig.Tests
             string itemName = null;
             var store = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(
                 System.StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store);
+            var cph = TestCph.CreateMockCph(store);
             var ui = FluentConfigUi.Create(cph.Object, "Pill Click", "1.0");
             ui.Section("G", "g", s => s
                 .PillInput("Alerts", "alerts")

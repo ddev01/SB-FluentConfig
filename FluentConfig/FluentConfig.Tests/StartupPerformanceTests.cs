@@ -17,7 +17,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void SchemaBuild_ColdAndWarm_ReportsTiming()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             Action<FluentConfigUi> build = ui =>
             {
                 ui.Section("General", "general", s => s

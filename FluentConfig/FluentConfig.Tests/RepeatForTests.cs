@@ -10,7 +10,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void RepeatFor_EmitsUngatedBelowMin_AndGatedAbove()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "RepeatFor Basic", "1.0");
             ui.Section("G", "g", s => s
                 .IntegerInput("Max count", "max_count").Range(1, 4).Default(2)
@@ -45,7 +45,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void RepeatFor_AutoDetectsMaxFromEarlierSection()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "RepeatFor CrossSection", "1.0");
             ui.Section("Settings", "settings", s => s
                 .IntegerInput("Max count", "max_count").Range(2, 3).Default(2)
@@ -69,7 +69,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void RepeatFor_ExplicitMaxOverride_IgnoresDeclaredMax()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "RepeatFor MaxOverride", "1.0");
             ui.Section("G", "g", s => s
                 .IntegerInput("Max count", "max_count").Range(1, 10).Default(1)
@@ -85,7 +85,7 @@ namespace FluentConfig.Tests
         [Fact]
         public void RepeatFor_MissingRangeAndNoExplicitMax_Throws()
         {
-            var cph = Phase2HostSmokeTests.CreateMockCph();
+            var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "RepeatFor Missing", "1.0");
             ui.Section("G", "g", s => s
                 .RepeatFor("unknown_driver", (row, i) => row

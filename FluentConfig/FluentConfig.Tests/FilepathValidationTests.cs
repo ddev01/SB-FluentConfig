@@ -99,7 +99,7 @@ namespace FluentConfig.Tests
         public void SaveRpc_RejectsMissingFilepath()
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-            var cph = Phase2HostSmokeTests.CreateMockCph(store);
+            var cph = TestCph.CreateMockCph(store);
             var ui = FluentConfigUi.Create(cph.Object, "Path Check", "1.0");
             ui.Section("G", "g", s => s.Filepath("GIF / video", "gif_path"));
             ui.Session.BuildDocumentForTests();
