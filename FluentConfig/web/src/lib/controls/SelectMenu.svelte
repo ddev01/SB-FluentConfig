@@ -1,12 +1,16 @@
 <script lang="ts">
-  import { scaleIn } from '../motion';
-  import { filterSelectOptions } from '../dropdownRefresh';
-  import TrashIcon from '../icons/TrashIcon.svelte';
-
-  export interface SelectMenuOption {
-    value: string;
-    display: string;
-  }
+  import type { Snippet } from 'svelte';
+  import {
+    canOpenMenu,
+    chipLabel as labelForValue,
+    computeEmptyListMessage,
+    computeOpenMenuStart,
+    computeSuggestionOptions,
+    matchCustomInput,
+    type SelectMenuOption,
+  } from '../selectMenuState';
+  import SelectChips from './SelectChips.svelte';
+  import SelectListbox from './SelectListbox.svelte';
 
   interface Props {
     id?: string;
@@ -21,6 +25,7 @@
     multiple?: boolean;
     values?: string[];
     onchangeValues?: (values: string[]) => void;
+    addon?: Snippet;
   }
 
   let {
@@ -36,6 +41,7 @@
     multiple = false,
     values = [],
     onchangeValues,
+    addon,
   }: Props = $props();
 
   const resolvedPlaceholder = $derived(
@@ -55,12 +61,16 @@
   let optionEls: (HTMLLIElement | null)[] = [];
 
   let selectedValues = $derived(multiple ? values : []);
-  let suggestionOptions = $derived.by(() => {
-    const base = multiple
-      ? options.filter((o) => !selectedValues.includes(o.value))
-      : options;
-    return searchable ? filterSelectOptions(base, open ? filterText : '') : base;
-  });
+  let suggestionOptions = $derived(
+    computeSuggestionOptions({
+      options,
+      selectedValues,
+      multiple,
+      searchable,
+      open,
+      filterText,
+    }),
+  );
 
   let selectedIndex = $derived(options.findIndex((o) => o.value === value));
   let selectedOption = $derived(selectedIndex >= 0 ? options[selectedIndex] : undefined);
@@ -73,27 +83,37 @@
       : undefined,
   );
 
-  let emptyListMessage = $derived.by(() => {
-    const typed = filterText.trim();
-    if (allowCustom && typed) return `Press Enter to add “${typed}”`;
-    if (
-      multiple &&
-      !typed &&
-      options.length > 0 &&
-      suggestionOptions.length === 0
-    ) {
-      return 'All options selected';
-    }
-    if (allowCustom) return 'Type to add a custom value';
-    return 'No options';
-  });
+  let emptyListMessage = $derived(
+    computeEmptyListMessage({
+      filterText,
+      allowCustom,
+      multiple,
+      optionsLength: options.length,
+      suggestionLength: suggestionOptions.length,
+    }),
+  );
 
   function openMenu(): void {
-    if (disabled || open || suppressOpenOnFocus) return;
-    if (!allowCustom && options.length === 0) return;
-    filterText = searchable && !multiple ? displayLabel : '';
-    const list = searchable ? filterSelectOptions(options, '') : options;
-    activeIndex = !multiple && selectedIndex >= 0 ? selectedIndex : list.length ? 0 : -1;
+    if (
+      !canOpenMenu({
+        disabled,
+        open,
+        suppressOpenOnFocus,
+        allowCustom,
+        optionsLength: options.length,
+      })
+    ) {
+      return;
+    }
+    const start = computeOpenMenuStart({
+      searchable,
+      multiple,
+      displayLabel,
+      selectedIndex,
+      options,
+    });
+    filterText = start.filterText;
+    activeIndex = start.activeIndex;
     open = true;
   }
 
@@ -148,10 +168,6 @@
 
   function removeChip(v: string): void {
     emitMultiple(selectedValues.filter((x) => x !== v));
-  }
-
-  function chipLabel(v: string): string {
-    return options.find((o) => o.value === v)?.display ?? v;
   }
 
   function moveActive(delta: number): void {
@@ -225,9 +241,7 @@
     if (!allowCustom || !searchable || multiple) return;
     const text = filterText.trim();
     if (!text) return;
-    const match = options.find(
-      (o) => o.value === text || o.display.toLowerCase() === text.toLowerCase(),
-    );
+    const match = matchCustomInput(options, text);
     if (match) emitSingle(match.value);
     else commitCustom(text);
   }
@@ -245,144 +259,110 @@
 
 <svelte:window onclick={onWindowClick} />
 
-<div class="relative" bind:this={containerEl}>
-  {#if multiple && selectedValues.length > 0}
-    <div class="mb-1 flex flex-wrap gap-1">
-      {#each selectedValues as v (v)}
-        <span
-          class="inline-flex items-center gap-1 rounded-fc bg-fc-accent/15 px-1.5 py-0.5 text-xs text-fc-accent"
-        >
-          {chipLabel(v)}
-          <button
-            type="button"
-            class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-fc-text-subtle transition-colors hover:text-fc-danger"
-            aria-label="Remove {chipLabel(v)}"
-            onclick={() => removeChip(v)}
-          >
-            <TrashIcon class="h-3 w-3" />
-          </button>
-        </span>
-      {/each}
-    </div>
+<div class="relative min-w-0 flex-1" bind:this={containerEl}>
+  {#if multiple}
+    <SelectChips values={selectedValues} labelFor={(v) => labelForValue(options, v)} onremove={removeChip} />
   {/if}
 
-  {#if searchable}
-    <div class="relative">
-      <input
+  <div class="flex items-center gap-2">
+    {#if searchable}
+      <div class="relative min-w-0 flex-1">
+        <input
+          {id}
+          bind:this={triggerEl}
+          type="text"
+          role="combobox"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-activedescendant={activeOptionId}
+          aria-autocomplete="list"
+          aria-label={ariaLabel}
+          {disabled}
+          placeholder={resolvedPlaceholder}
+          class="fc-input w-full pr-8 {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
+          value={inputShownValue()}
+          onfocus={openMenu}
+          onclick={() => {
+            if (!open) openMenu();
+          }}
+          oninput={(e) => {
+            filterText = (e.currentTarget as HTMLInputElement).value;
+            if (!open) openMenu();
+            activeIndex = suggestionOptions.length ? 0 : -1;
+          }}
+          onblur={onInputBlur}
+          onkeydown={onTriggerKeydown}
+        />
+        <svg
+          class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-fc-text-subtle {open
+            ? 'rotate-180 text-fc-accent'
+            : ''}"
+          viewBox="0 0 20 20"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M5 7.5L10 12.5L15 7.5"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+    {:else}
+      <button
         {id}
         bind:this={triggerEl}
-        type="text"
+        type="button"
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
         aria-activedescendant={activeOptionId}
-        aria-autocomplete="list"
         aria-label={ariaLabel}
         {disabled}
-        placeholder={resolvedPlaceholder}
-        class="fc-input w-full pr-8 {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
-        value={inputShownValue()}
-        onfocus={openMenu}
-        onclick={() => {
-          if (!open) openMenu();
-        }}
-        oninput={(e) => {
-          filterText = (e.currentTarget as HTMLInputElement).value;
-          if (!open) openMenu();
-          activeIndex = suggestionOptions.length ? 0 : -1;
-        }}
-        onblur={onInputBlur}
+        class="fc-input flex min-w-0 flex-1 items-center justify-between gap-2 text-left
+          {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
+        onclick={toggleMenu}
         onkeydown={onTriggerKeydown}
-      />
-      <svg
-        class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-fc-text-subtle {open
-          ? 'rotate-180 text-fc-accent'
-          : ''}"
-        viewBox="0 0 20 20"
-        fill="none"
-        aria-hidden="true"
       >
-        <path
-          d="M5 7.5L10 12.5L15 7.5"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </div>
-  {:else}
-    <button
-      {id}
-      bind:this={triggerEl}
-      type="button"
-      role="combobox"
-      aria-haspopup="listbox"
-      aria-expanded={open}
-      aria-controls={listboxId}
-      aria-activedescendant={activeOptionId}
-      aria-label={ariaLabel}
-      {disabled}
-      class="fc-input flex w-full items-center justify-between gap-2 text-left
-        {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
-      onclick={toggleMenu}
-      onkeydown={onTriggerKeydown}
-    >
-      <span class="truncate {selectedOption || (allowCustom && value) ? 'text-fc-text' : 'text-fc-text-subtle'}">
-        {displayLabel || resolvedPlaceholder}
-      </span>
-      <svg
-        class="h-4 w-4 shrink-0 text-fc-text-subtle transition-transform duration-150
-          {open ? 'rotate-180 text-fc-accent' : ''}"
-        viewBox="0 0 20 20"
-        fill="none"
-        aria-hidden="true"
-      >
-        <path
-          d="M5 7.5L10 12.5L15 7.5"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </button>
-  {/if}
+        <span class="truncate {selectedOption || (allowCustom && value) ? 'text-fc-text' : 'text-fc-text-subtle'}">
+          {displayLabel || resolvedPlaceholder}
+        </span>
+        <svg
+          class="h-4 w-4 shrink-0 text-fc-text-subtle transition-transform duration-150
+            {open ? 'rotate-180 text-fc-accent' : ''}"
+          viewBox="0 0 20 20"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M5 7.5L10 12.5L15 7.5"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    {/if}
+    {@render addon?.()}
+  </div>
 
   {#if open}
-    <ul
-      id={listboxId}
-      role="listbox"
-      tabindex="-1"
-      class="fc-card absolute z-20 mt-1.5 max-h-64 w-full origin-top overflow-auto p-1 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.55)]"
-      transition:scaleIn={{ duration: 0.12 }}
-    >
-      {#each suggestionOptions as opt, index (opt.value)}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <li
-          id={optionId(index)}
-          bind:this={optionEls[index]}
-          role="option"
-          aria-selected={opt.value === value || selectedValues.includes(opt.value)}
-          class="flex items-center justify-between gap-2 rounded-fc px-2.5 py-1.5 text-sm transition-colors duration-100
-            {index === activeIndex
-            ? 'bg-fc-accent/15 text-fc-accent'
-            : opt.value === value
-              ? 'text-fc-accent'
-              : 'text-fc-text'}"
-          onmouseenter={() => (activeIndex = index)}
-          onmousedown={(e) => e.preventDefault()}
-          onclick={() => chooseFiltered(index)}
-        >
-          <span class="truncate">{opt.display}</span>
-        </li>
-      {/each}
-      {#if suggestionOptions.length === 0}
-        <li class="px-2.5 py-1.5 text-sm text-fc-text-subtle">
-          {emptyListMessage}
-        </li>
-      {/if}
-    </ul>
+    <SelectListbox
+      {listboxId}
+      {suggestionOptions}
+      {activeIndex}
+      {value}
+      {selectedValues}
+      {emptyListMessage}
+      {optionId}
+      {optionEls}
+      onactive={(index) => (activeIndex = index)}
+      onchoose={chooseFiltered}
+    />
   {/if}
 </div>

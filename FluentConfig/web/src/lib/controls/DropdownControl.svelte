@@ -114,23 +114,24 @@
 </script>
 
 <FieldShell label={node.label} hint={node.hint} forId={fieldId}>
-  <div class="flex items-end gap-2">
-    <SelectMenu
-      id={fieldId}
-      value={selectedValue}
-      values={selectedValues}
-      options={node.options ?? []}
-      ariaLabel={node.label}
-      searchable={searchable}
-      allowCustom={allowCustom}
-      multiple={multiple}
-      onchange={onChange}
-      onchangeValues={onChangeValues}
-    />
-    {#if node.refreshable}
-      <button type="button" class="fc-btn" disabled={refreshing} onclick={refresh}>
-        {refreshing ? '…' : 'Refresh'}
-      </button>
-    {/if}
-  </div>
+  <SelectMenu
+    id={fieldId}
+    value={selectedValue}
+    values={selectedValues}
+    options={node.options ?? []}
+    ariaLabel={node.label}
+    searchable={searchable}
+    allowCustom={allowCustom}
+    multiple={multiple}
+    onchange={onChange}
+    onchangeValues={onChangeValues}
+  >
+    {#snippet addon()}
+      {#if node.refreshable}
+        <button type="button" class="fc-btn shrink-0" disabled={refreshing} onclick={refresh}>
+          {refreshing ? '…' : 'Refresh'}
+        </button>
+      {/if}
+    {/snippet}
+  </SelectMenu>
 </FieldShell>
