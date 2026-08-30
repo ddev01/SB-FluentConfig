@@ -8,8 +8,11 @@ using Xunit;
 namespace FluentConfig.Tests
 {
     /// <summary>
-    /// Per-title window registry and close callbacks.
+    /// Per-menu-id window registry and close callbacks.
+    /// Shares <c>StaWpf</c> with CloseMachine / reservation tests so TakeAllWindows
+    /// cannot empty the registry mid-ConcurrentIsOpen.
     /// </summary>
+    [Collection("StaWpf")]
     public class FluentConfigWindowManagerTests
     {
         [Fact]

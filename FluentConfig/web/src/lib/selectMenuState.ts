@@ -92,8 +92,8 @@ export function computeListBoxStyle(trigger: {
   const spaceAbove = trigger.top - gap;
   const preferBelow = spaceBelow >= 120 || spaceBelow >= spaceAbove;
   const maxH = Math.min(256, Math.max(80, preferBelow ? spaceBelow : spaceAbove));
-  if (preferBelow) {
-    return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;top:${trigger.bottom + gap}px;max-height:${maxH}px`;
-  }
-  return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;bottom:${trigger.viewportHeight - trigger.top + gap}px;max-height:${maxH}px`;
+  const edge = preferBelow
+    ? `top:${trigger.bottom + gap}px`
+    : `bottom:${trigger.viewportHeight - trigger.top + gap}px`;
+  return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;${edge};max-height:${maxH}px`;
 }

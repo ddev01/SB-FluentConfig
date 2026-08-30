@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import TrashIcon from '../icons/TrashIcon.svelte';
+  import { scaleIn } from '../motion';
   import {
     canOpenMenu,
     chipLabel as labelForValue,
@@ -10,8 +12,6 @@
     matchCustomInput,
     type SelectMenuOption,
   } from '../selectMenuState';
-  import SelectChips from './SelectChips.svelte';
-  import SelectListbox from './SelectListbox.svelte';
 
   interface Props {
     id?: string;
@@ -287,8 +287,24 @@
 <svelte:window onclick={onWindowClick} />
 
 <div class="relative min-w-0 flex-1" bind:this={containerEl}>
-  {#if multiple}
-    <SelectChips values={selectedValues} labelFor={(v) => labelForValue(options, v)} onremove={removeChip} />
+  {#if multiple && selectedValues.length > 0}
+    <div class="mb-1 flex flex-wrap gap-1">
+      {#each selectedValues as v (v)}
+        <span
+          class="inline-flex items-center gap-1 rounded-fc bg-fc-accent/15 px-1.5 py-0.5 text-xs text-fc-accent"
+        >
+          {labelForValue(options, v)}
+          <button
+            type="button"
+            class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-fc-text-subtle transition-colors hover:text-fc-danger"
+            aria-label="Remove {labelForValue(options, v)}"
+            onclick={() => removeChip(v)}
+          >
+            <TrashIcon class="h-3 w-3" />
+          </button>
+        </span>
+      {/each}
+    </div>
   {/if}
 
   <div class="flex items-center gap-2">
@@ -321,22 +337,7 @@
           onblur={onInputBlur}
           onkeydown={onTriggerKeydown}
         />
-        <svg
-          class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-fc-text-subtle {open
-            ? 'rotate-180 text-fc-accent'
-            : ''}"
-          viewBox="0 0 20 20"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M5 7.5L10 12.5L15 7.5"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+        {@render chevron('pointer-events-none absolute right-2 top-1/2 -translate-y-1/2')}
       </div>
     {:else}
       <button
@@ -358,39 +359,63 @@
         <span class="truncate {selectedOption || (allowCustom && value) ? 'text-fc-text' : 'text-fc-text-subtle'}">
           {displayLabel || resolvedPlaceholder}
         </span>
-        <svg
-          class="h-4 w-4 shrink-0 text-fc-text-subtle transition-transform duration-150
-            {open ? 'rotate-180 text-fc-accent' : ''}"
-          viewBox="0 0 20 20"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M5 7.5L10 12.5L15 7.5"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
+        {@render chevron('shrink-0 transition-transform duration-150')}
       </button>
     {/if}
     {@render addon?.()}
   </div>
 
   {#if open}
-    <SelectListbox
-      {listboxId}
-      {suggestionOptions}
-      {activeIndex}
-      {value}
-      {selectedValues}
-      {emptyListMessage}
-      {optionId}
-      {optionEls}
-      {listStyle}
-      onactive={(index) => (activeIndex = index)}
-      onchoose={chooseFiltered}
-    />
+    <ul
+      id={listboxId}
+      role="listbox"
+      tabindex="-1"
+      style={listStyle || undefined}
+      class="fc-card max-h-64 w-full origin-top overflow-auto p-1 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)]"
+      in:scaleIn={{ duration: 0.12 }}
+    >
+      {#each suggestionOptions as opt, index (opt.value)}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <li
+          id={optionId(index)}
+          bind:this={optionEls[index]}
+          role="option"
+          aria-selected={opt.value === value || selectedValues.includes(opt.value)}
+          class="rounded-fc px-2.5 py-1.5 text-sm transition-colors duration-100
+            {index === activeIndex
+            ? 'bg-fc-accent/15 text-fc-accent'
+            : opt.value === value
+              ? 'text-fc-accent'
+              : 'text-fc-text'}"
+          onmouseenter={() => (activeIndex = index)}
+          onmousedown={(e) => e.preventDefault()}
+          onclick={() => chooseFiltered(index)}
+        >
+          <span class="truncate">{opt.display}</span>
+        </li>
+      {/each}
+      {#if suggestionOptions.length === 0}
+        <li class="px-2.5 py-1.5 text-sm text-fc-text-subtle">
+          {emptyListMessage}
+        </li>
+      {/if}
+    </ul>
   {/if}
 </div>
+
+{#snippet chevron(posClass: string)}
+  <svg
+    class="h-4 w-4 text-fc-text-subtle {posClass} {open ? 'rotate-180 text-fc-accent' : ''}"
+    viewBox="0 0 20 20"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M5 7.5L10 12.5L15 7.5"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+{/snippet}

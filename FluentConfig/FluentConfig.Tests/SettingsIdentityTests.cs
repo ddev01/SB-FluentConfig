@@ -108,6 +108,7 @@ namespace FluentConfig.Tests
         }
     }
 
+    [Collection("StaWpf")]
     public class SettingsIdentityReservationTests
     {
         [Fact]
