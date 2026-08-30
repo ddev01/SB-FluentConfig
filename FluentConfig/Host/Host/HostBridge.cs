@@ -18,6 +18,14 @@ namespace FluentConfig
         private readonly ConcurrentDictionary<long, TaskCompletionSource<JToken>> _pending =
             new ConcurrentDictionary<long, TaskCompletionSource<JToken>>();
         private long _nextId = 1;
+        private volatile bool _webAlive;
+
+        /// <summary>
+        /// True once any inbound web message arrived. Set in <see cref="OnWebMessage"/> (not
+        /// <c>perf.mark</c> / <c>web-ready</c>) so Release builds without FC_PERF_TRACE still
+        /// fail closed on a live renderer.
+        /// </summary>
+        internal bool WebAlive => _webAlive;
 
         public HostBridge(FluentConfigHostWindow window, FluentConfigSession session)
         {
@@ -61,7 +69,14 @@ namespace FluentConfig
             }
         }
 
-        private void OnWebMessage(string json) => _session.HandleWebMessage(json);
+        private void OnWebMessage(string json)
+        {
+            _webAlive = true;
+            _session.HandleWebMessage(json);
+        }
+
+        /// <summary>Test seam: same path as a real WebView2 postMessage.</summary>
+        internal void DeliverWebMessageForTests(string json) => OnWebMessage(json);
 
         public void Send(WireMessage message)
         {

@@ -60,9 +60,19 @@ namespace FluentConfig
                     Log($"[FluentConfig] window.closeRequested bad result: {ex.Message}");
                 }
 
-                // Null = timeout / error / detach. Prefer closing over a permanently stuck X.
+                // Null = timeout / error / detach.
                 if (parsed == null)
                 {
+                    if (_bridge != null && _bridge.WebAlive)
+                    {
+                        // Renderer has spoken; a 60s discard dialog or a web exception must not
+                        // wipe unsaved edits. Clearing _closePromptInFlight (finally) lets the
+                        // next X click ask again instead of becoming a permanent no-op.
+                        Log("[FluentConfig] window.closeRequested timed out or failed after web was alive — not closing");
+                        return;
+                    }
+
+                    // Page never came up — fail open so the X is not a permanent no-op.
                     FinishNativeClose(allowClose: true, dontRemindAgain: false);
                     return;
                 }
@@ -118,6 +128,9 @@ namespace FluentConfig
         {
             lock (HostExitHookLock)
             {
+                // Show() calls this after Register — a cancelled Streamer.bot shutdown must not
+                // permanently disable native close for later menus.
+                _hostExitInProgress = false;
                 if (_hostExitHookRegistered) return;
                 var app = Application.Current;
                 if (app == null) return;
@@ -148,13 +161,25 @@ namespace FluentConfig
             {
                 // Take-all clears the registry so re-entrant Exit/ShutdownStarted/Closing hooks no-op.
                 windows = FluentConfigWindowManager.TakeAllWindows();
-                if (windows != null && windows.Length > 0)
-                    _hostExitInProgress = true;
+                if (windows == null || windows.Length == 0)
+                {
+                    // Cancelled / empty host-exit must not leave the sticky flag set.
+                    _hostExitInProgress = false;
+                    return;
+                }
+                _hostExitInProgress = true;
             }
-            if (windows == null || windows.Length == 0) return;
 
-            foreach (var window in windows)
-                TeardownWindowForHostExit(window as FluentConfigHostWindow);
+            try
+            {
+                foreach (var window in windows)
+                    TeardownWindowForHostExit(window as FluentConfigHostWindow);
+            }
+            finally
+            {
+                lock (HostExitHookLock)
+                    _hostExitInProgress = false;
+            }
         }
 
         private static void TeardownWindowForHostExit(FluentConfigHostWindow window)
@@ -201,5 +226,33 @@ namespace FluentConfig
                     "[FluentConfig] Host-exit WebView2 teardown failed: " + ex.Message);
             }
         }
+
+        /// <summary>Test seam: bind a window/bridge without <c>Show()</c> / WebView2.</summary>
+        internal void BindHostForTests(FluentConfigHostWindow window, HostBridge bridge)
+        {
+            _window = window;
+            _bridge = bridge;
+            if (_window == null)
+                return;
+            _window.Closing += OnWindowClosing;
+            _window.Closed += OnWindowClosed;
+            _window.NativeCloseRequested += OnNativeCloseRequested;
+        }
+
+        internal void RequestNativeCloseForTests() => OnNativeCloseRequested();
+
+        internal void DeliverNativeCloseReplyForTests(JToken result) => OnNativeCloseReply(result);
+
+        internal bool ClosePromptInFlightForTests => _closePromptInFlight;
+
+        internal bool CloseAlreadyConfirmedForTests => _closeAlreadyConfirmed;
+
+        internal static bool HostExitInProgressForTests => _hostExitInProgress;
+
+        internal static void SetHostExitInProgressForTests(bool value) => _hostExitInProgress = value;
+
+        internal static void CloseAllWindowsForHostExitForTests() => CloseAllWindowsForHostExit();
+
+        internal static void EnsureHostExitHookForTests() => EnsureHostExitHook();
     }
 }
