@@ -59,15 +59,6 @@
     appStore.setValue(node.saveKey, next);
   }
 
-  /** Stable-ish key for {#each} so remove/reorder doesn't remount the wrong row inputs. */
-  function rowKey(row: Record<string, unknown>, index: number): string {
-    const fingerprint = Object.keys(row)
-      .sort()
-      .map((k) => `${k}=${String(row[k])}`)
-      .join('|');
-    return fingerprint || `row-${index}`;
-  }
-
   function addRow(): void {
     setRows([...rows, defaultsFromSchema()]);
   }
@@ -106,7 +97,7 @@
 
 <FieldShell>
   <div class="space-y-3">
-    {#each rows as row, index (rowKey(row, index))}
+    {#each rows as _row, index (index)}
       <div
         class="rounded-fc-lg border border-fc-border bg-fc-elevated/40 px-3 py-2 transition-colors duration-150 hover:border-fc-border-strong"
         transition:slideY={{ duration: 0.2, y: 6 }}

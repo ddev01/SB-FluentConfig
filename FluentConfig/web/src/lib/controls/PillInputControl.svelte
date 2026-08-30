@@ -38,13 +38,7 @@
     return { name, children: fromHost?.children ?? [] };
   });
 
-  $effect(() => {
-    if (selected && !names.includes(selected)) {
-      selected = names[0] ?? null;
-    } else if (!selected && names.length > 0) {
-      selected = names[0]!;
-    }
-  });
+  let activeName = $derived(activeItem?.name ?? null);
 
   function expandTemplate(template: SchemaNode[], name: string): SchemaNode[] {
     try {
@@ -122,8 +116,8 @@
   }
 
   async function removeSelected(): Promise<void> {
-    if (!selected || busy) return;
-    const name = selected;
+    if (!activeName || busy) return;
+    const name = activeName;
     const ok = await appStore.openConfirm({
       title: 'Remove item',
       message: `Remove “${name}” and its settings? This can’t be undone from here.`,
@@ -141,9 +135,9 @@
       <button
         type="button"
         role="tab"
-        aria-selected={selected === name}
+        aria-selected={activeName === name}
         class="rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fc-ring/50
-          {selected === name
+          {activeName === name
           ? 'border-fc-accent bg-fc-accent/15 text-fc-accent'
           : 'border-fc-border bg-fc-surface text-fc-text-muted hover:border-fc-border-strong hover:text-fc-text'}"
         transition:scaleIn={{ duration: 0.16 }}
@@ -174,9 +168,9 @@
     <button
       type="button"
       class="fc-btn flex items-center gap-2 text-fc-text-subtle hover:border-fc-danger/50 hover:text-fc-danger"
-      disabled={busy || !selected}
-      aria-label={selected ? `Remove ${selected}` : 'Remove selected item'}
-      title={selected ? `Remove “${selected}”` : 'Select an item to remove'}
+      disabled={busy || !activeName}
+      aria-label={activeName ? `Remove ${activeName}` : 'Remove selected item'}
+      title={activeName ? `Remove “${activeName}”` : 'Select an item to remove'}
       onclick={() => void removeSelected()}
     >
       <TrashIcon class="h-4 w-4" />

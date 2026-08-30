@@ -10,9 +10,11 @@ import type {
 } from '../protocol';
 import { PushEventNames, RpcMethods } from '../protocol';
 import { cloneJson } from '../lib/clone';
-import { deepEqual, diffEntries as computeDiffEntries, type DiffEntry } from '../lib/diff';
+import { diffEntries as computeDiffEntries, type DiffEntry } from '../lib/diff';
+import { rebuildDirtyKeys, syncDirtyKey } from '../lib/dirtyKeys';
 import { applyPathMap, deepMerge, deletePath, getPath, setPath } from '../lib/paths';
 import { bindPerf, mark, unbindPerf } from '../lib/perf';
+import { patchDropdownOptionsInTree, patchPillItemsInTree } from '../lib/schemaWalk';
 import { applyColorScheme, watchSystemScheme } from '../lib/theme';
 import type { RpcClient } from '../rpc/client';
 
@@ -59,9 +61,17 @@ class AppStore {
   private unsubSystem: (() => void) | null = null;
   private toastSeq = 0;
   private disposed = false;
+  /** Per-path dirty set. Reactivity is the generation counter, not Set mutation. */
+  private dirtyKeys = new Set<string>();
+  private dirtyGen = $state(0);
+  private discardInFlight: Promise<WindowCloseRequestedResult> | null = null;
+  private saveMessageTimer: number | null = null;
+  private progressTimer: number | null = null;
+  private toastTimers = new Map<number, number>();
 
   get isDirty(): boolean {
-    return !deepEqual(this.values, this.savedValues);
+    void this.dirtyGen;
+    return this.dirtyKeys.size > 0;
   }
 
   bind(rpc: RpcClient, usingMock: boolean): void {
@@ -77,7 +87,9 @@ class AppStore {
       const p = payload as ProgressPayload;
       this.progress = p;
       if (p.done) {
-        window.setTimeout(() => {
+        if (this.progressTimer !== null) window.clearTimeout(this.progressTimer);
+        this.progressTimer = window.setTimeout(() => {
+          this.progressTimer = null;
           if (this.progress?.id === p.id && this.progress.done) {
             this.progress = null;
           }
@@ -139,17 +151,18 @@ class AppStore {
         dontRemindAgain: dontRemind,
       });
     }
-    return new Promise((resolve) => {
-      this.discardDialog?.resolve({
-        allowClose: false,
-        dontRemindAgain: false,
-      });
+    if (this.discardInFlight) return this.discardInFlight;
+    this.discardInFlight = new Promise((resolve) => {
       this.discardDialog = {
         entries: this.diffEntries(),
         dontRemindInitial: false,
-        resolve,
+        resolve: (result) => {
+          this.discardInFlight = null;
+          resolve(result);
+        },
       };
     });
+    return this.discardInFlight;
   }
 
   resolveDiscard(result: WindowCloseRequestedResult): void {
@@ -235,6 +248,8 @@ class AppStore {
     this.popupDialog = null;
     this.discardDialog?.resolve({ allowClose: false, dontRemindAgain: false });
     this.discardDialog = null;
+    this.discardInFlight = null;
+    this.clearTimers();
     this.unsubSystem?.();
     this.unsubSystem = null;
     unbindPerf();
@@ -249,6 +264,8 @@ class AppStore {
     const next = cloneJson(this.values) as SettingsValues;
     setPath(next, saveKey, value);
     this.values = next;
+    syncDirtyKey(this.dirtyKeys, saveKey, this.savedValues, value);
+    this.dirtyGen++;
   }
 
   /** Remove a top-level or nested key from the live values blob. */
@@ -256,33 +273,16 @@ class AppStore {
     const next = cloneJson(this.values) as SettingsValues;
     deletePath(next, saveKey);
     this.values = next;
+    syncDirtyKey(this.dirtyKeys, saveKey, this.savedValues, getPath(next, saveKey));
+    this.dirtyGen++;
   }
 
   /** Replace options on a dropdown node in the live document. */
   patchDropdownOptions(saveKey: string, options: { value: string; display: string }[]): void {
     if (!this.document) return;
     const doc = cloneJson(this.document);
-    const visit = (nodes: SchemaNode[]): boolean => {
-      for (const node of nodes) {
-        if (node.type === 'dropdown' && node.saveKey === saveKey) {
-          node.options = options;
-          return true;
-        }
-        if (node.type === 'group' && visit(node.children)) return true;
-        if (node.type === 'pill-input') {
-          if (node.items) {
-            for (const item of node.items) {
-              if (visit(item.children)) return true;
-            }
-          }
-          if (node.itemTemplate && visit(node.itemTemplate)) return true;
-        }
-        if (node.type === 'repeatable-rows' && visit(node.rowSchema)) return true;
-      }
-      return false;
-    };
     for (const section of doc.sections) {
-      if (visit(section.children)) {
+      if (patchDropdownOptionsInTree(section.children, saveKey, options)) {
         this.document = doc;
         return;
       }
@@ -296,12 +296,9 @@ class AppStore {
     if (!this.document) return;
     const doc = cloneJson(this.document);
     for (const section of doc.sections) {
-      for (const node of section.children) {
-        if (node.type === 'pill-input' && node.saveKey === saveKey) {
-          node.items = items;
-          this.document = doc;
-          return;
-        }
+      if (patchPillItemsInTree(section.children, saveKey, items)) {
+        this.document = doc;
+        return;
       }
     }
   }
@@ -326,8 +323,11 @@ class AppStore {
     try {
       await this.rpc.request(RpcMethods.Save, { values: this.values });
       this.savedValues = cloneJson(this.values) as SettingsValues;
+      this.clearDirty();
       this.saveMessage = 'Saved';
-      window.setTimeout(() => {
+      if (this.saveMessageTimer !== null) window.clearTimeout(this.saveMessageTimer);
+      this.saveMessageTimer = window.setTimeout(() => {
+        this.saveMessageTimer = null;
         if (this.saveMessage === 'Saved') this.saveMessage = null;
       }, 2000);
       return true;
@@ -350,9 +350,31 @@ class AppStore {
   pushToast(message: string): void {
     const id = ++this.toastSeq;
     this.toasts = [...this.toasts, { id, message }];
-    window.setTimeout(() => {
+    const handle = window.setTimeout(() => {
+      this.toastTimers.delete(id);
       this.toasts = this.toasts.filter((t) => t.id !== id);
     }, 3200);
+    this.toastTimers.set(id, handle);
+  }
+
+  private clearDirty(): void {
+    this.dirtyKeys.clear();
+    this.dirtyGen++;
+  }
+
+  private clearTimers(): void {
+    if (this.saveMessageTimer !== null) {
+      window.clearTimeout(this.saveMessageTimer);
+      this.saveMessageTimer = null;
+    }
+    if (this.progressTimer !== null) {
+      window.clearTimeout(this.progressTimer);
+      this.progressTimer = null;
+    }
+    for (const handle of this.toastTimers.values()) {
+      window.clearTimeout(handle);
+    }
+    this.toastTimers.clear();
   }
 
   private applyBootstrap(doc: UiDocument): void {
@@ -362,6 +384,7 @@ class AppStore {
     const vals = cloneJson(doc.values) as SettingsValues;
     this.values = vals;
     this.savedValues = cloneJson(vals) as SettingsValues;
+    this.clearDirty();
     this.activeSectionId = doc.sections[0]?.id ?? null;
     this.ready = true;
     this.unsubSystem?.();
@@ -382,6 +405,9 @@ class AppStore {
     if (patch.paths) applyPathMap(saved, patch.paths);
     if (patch.values) deepMerge(saved, patch.values as SettingsValues);
     this.savedValues = saved;
+    // Dual-write means patched paths match saved. Rebuild so leftover user edits stay dirty.
+    this.dirtyKeys = rebuildDirtyKeys(this.savedValues, this.values);
+    this.dirtyGen++;
   }
 
   private applyUpdateAvailable(payload: UpdateAvailablePayload): void {
