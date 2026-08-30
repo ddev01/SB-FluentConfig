@@ -9,6 +9,12 @@ namespace FluentConfig
     /// </summary>
     internal static class SchemaBuilderHelpers
     {
+        internal const int RepeatForCap = 32;
+
+        internal static string UniqueId(FluentConfigSession session, string baseId)
+        {
+            return session != null ? session.UniqueGeneratedId(baseId) : baseId;
+        }
         public static void AddVisibilityGroup(
             FluentConfigSession session,
             SchemaNodeList nodes,
@@ -50,7 +56,7 @@ namespace FluentConfig
             pb.FlushPending();
             nodes.Add(new GroupNode
             {
-                Id = groupId ?? "vis_group",
+                Id = UniqueId(session, groupId ?? "vis_group"),
                 Visibility = visibility,
                 Children = list.ToList(),
                 Indented = indented,
@@ -129,7 +135,7 @@ namespace FluentConfig
                 : "grid_" + (spec?.Columns?.ToString() ?? "auto");
             nodes.Add(new GroupNode
             {
-                Id = id,
+                Id = UniqueId(session, id),
                 Grid = spec,
                 Children = list.ToList(),
             });
@@ -174,7 +180,17 @@ namespace FluentConfig
             int resolvedMax = (int)Math.Round(declaredMax);
             int resolvedMin = (int)Math.Round(declaredMin);
             if (resolvedMax < startIndex)
-                return;
+            {
+                throw new InvalidOperationException(
+                    $"RepeatFor(\"{driverKey}\"): resolved max ({resolvedMax}) is below startIndex ({startIndex}).");
+            }
+
+            if (resolvedMax > RepeatForCap)
+            {
+                throw new InvalidOperationException(
+                    $"RepeatFor(\"{driverKey}\"): max {resolvedMax} exceeds the cap of {RepeatForCap}. " +
+                    "Pass an explicit max: within the cap, or lower the driver's .Range(...).");
+            }
 
             for (int i = startIndex; i <= resolvedMax; i++)
             {
@@ -195,7 +211,7 @@ namespace FluentConfig
                 {
                     nodes.Add(new GroupNode
                     {
-                        Id = "repeat_" + driverKey + "_" + i,
+                        Id = UniqueId(session, "repeat_" + driverKey + "_" + i),
                         Visibility = new VisibilityCondition
                         {
                             SaveKey = driverKey,

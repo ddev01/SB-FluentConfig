@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FluentConfig.Protocol;
 
 namespace FluentConfig
 {
@@ -19,7 +20,17 @@ namespace FluentConfig
                 $".{option}() is not valid for {_kind}. Allowed: {string.Join(", ", allowed)}.");
         }
 
-        public void Hint(string text) => _hint = text;
+        private void RequireActiveControl(string option)
+        {
+            if (_kind == Kind.None)
+                throw new InvalidOperationException($".{option}() requires an active control.");
+        }
+
+        public void Hint(string text)
+        {
+            RequireActiveControl(nameof(Hint));
+            _hint = text;
+        }
         public void Default(bool value)
         {
             RequireKind(nameof(Default), Kind.Toggle);
@@ -43,23 +54,29 @@ namespace FluentConfig
         {
             RequireKind(nameof(Default), Kind.Slider, Kind.NumberInput, Kind.IntegerInput);
             _defaultInt = value;
+            _defaultDouble = null;
         }
         public void Default(double value)
         {
             RequireKind(nameof(Default), Kind.Slider, Kind.NumberInput, Kind.IntegerInput);
             _defaultDouble = value;
+            _defaultInt = null;
         }
         public void Range(int min, int max)
         {
             RequireKind(nameof(Range), Kind.Slider, Kind.NumberInput, Kind.IntegerInput);
             _rangeMinInt = min;
             _rangeMaxInt = max;
+            _rangeMinDbl = null;
+            _rangeMaxDbl = null;
         }
         public void Range(double min, double max)
         {
             RequireKind(nameof(Range), Kind.Slider, Kind.NumberInput, Kind.IntegerInput);
             _rangeMinDbl = min;
             _rangeMaxDbl = max;
+            _rangeMinInt = null;
+            _rangeMaxInt = null;
         }
         public void Step(double value)
         {
@@ -78,26 +95,31 @@ namespace FluentConfig
         }
         public void ShowWhen(string key)
         {
+            RequireActiveControl(nameof(ShowWhen));
             SetEqualsShowWhen(key, true, inverted: false);
         }
 
         public void ShowWhen(string key, string equalsValue)
         {
+            RequireActiveControl(nameof(ShowWhen));
             SetEqualsShowWhen(key, equalsValue, inverted: false);
         }
 
         public void ShowWhen(string key, int equalsValue)
         {
+            RequireActiveControl(nameof(ShowWhen));
             SetEqualsShowWhen(key, equalsValue, inverted: false);
         }
 
         public void ShowWhenNot(string key, string equalsValue)
         {
+            RequireActiveControl(nameof(ShowWhenNot));
             SetEqualsShowWhen(key, equalsValue, inverted: true);
         }
 
         public void ShowWhenNot(string key, int equalsValue)
         {
+            RequireActiveControl(nameof(ShowWhenNot));
             SetEqualsShowWhen(key, equalsValue, inverted: true);
         }
 
@@ -113,6 +135,7 @@ namespace FluentConfig
 
         public void ShowWhen(string key, Comparator op, int value)
         {
+            RequireActiveControl(nameof(ShowWhen));
             _showWhenKey = key;
             _showWhenOp = op;
             _showWhenValue = value;
@@ -123,6 +146,7 @@ namespace FluentConfig
 
         public void ShowWhen(string key, Comparator op, string compareKey)
         {
+            RequireActiveControl(nameof(ShowWhen));
             if (string.IsNullOrWhiteSpace(compareKey))
                 throw new ArgumentException("compareKey is required (non-null, non-empty).", nameof(compareKey));
             _showWhenKey = key;
@@ -135,6 +159,7 @@ namespace FluentConfig
 
         public void Size(string spec)
         {
+            RequireActiveControl(nameof(Size));
             var hint = LayoutTokens.ParseSize(spec);
             if ((hint.Grow.HasValue || hint.Shrink.HasValue) &&
                 !string.Equals(_target.ContainerMode, "row", StringComparison.OrdinalIgnoreCase))
@@ -148,7 +173,21 @@ namespace FluentConfig
                 throw new InvalidOperationException(
                     $".Size(\"{spec}\") uses col-span, which only apply directly inside a Grid(...) container.");
             }
-            _sizeHint = hint;
+
+            if (_sizeHint == null)
+                _sizeHint = hint;
+            else
+                MergeSizeHint(_sizeHint, hint);
+        }
+
+        private static void MergeSizeHint(LayoutHint into, LayoutHint from)
+        {
+            if (from.Span.HasValue) into.Span = from.Span;
+            if (from.Width != null) into.Width = from.Width;
+            if (from.MinWidth != null) into.MinWidth = from.MinWidth;
+            if (from.MaxWidth != null) into.MaxWidth = from.MaxWidth;
+            if (from.Grow.HasValue) into.Grow = from.Grow;
+            if (from.Shrink.HasValue) into.Shrink = from.Shrink;
         }
 
         public void Options(string[] options)
@@ -187,6 +226,7 @@ namespace FluentConfig
         public void MaxSelected(int n)
         {
             RequireKind(nameof(MaxSelected), Kind.Toggle);
+            _maxSelectedExplicit = true;
             _maxSelected = Math.Max(1, n);
         }
         public void DefaultIndices(int[] indices)

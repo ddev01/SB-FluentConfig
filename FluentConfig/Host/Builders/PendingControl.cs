@@ -74,6 +74,7 @@ namespace FluentConfig
         private bool _permanentOption = true;
         private bool _stepper;
         private string _valueType;
+        private bool _maxSelectedExplicit;
         private Action<PanelBuilder> _itemTemplate;
         private Action<string, CallbackContext> _onPillAdded;
         private Action<string, CallbackContext> _onPillRemoved;
@@ -94,7 +95,8 @@ namespace FluentConfig
         public void BeginButton(string label)
         {
             Reset(Kind.Button, label, null);
-            _buttonId = StableButtonId(label);
+            var rawId = StableButtonId(label);
+            _buttonId = _session != null ? _session.UniqueGeneratedId(rawId) : rawId;
             // Item templates expand {name} in leaf strings; keep it so each pill's click id is unique.
             if (_session != null && _session.InItemTemplate)
                 _buttonId += "__{name}";
@@ -164,6 +166,7 @@ namespace FluentConfig
             _defaultIndex = null;
             _exclusiveOptions = null;
             _maxSelected = 1;
+            _maxSelectedExplicit = false;
             _defaultIndices = null;
             _refresh = null;
             _refreshPairs = null;
@@ -199,8 +202,26 @@ namespace FluentConfig
             if (_kind == Kind.Toggle && _exclusiveOptions != null && _exclusiveOptions.Length > 0 && _defaultBool.HasValue)
                 throw new InvalidOperationException(
                     "Cannot combine .Default(bool) with .WithExclusive(...). Use .DefaultIndex / .DefaultIndices instead.");
+            if (_kind == Kind.Toggle && (_exclusiveOptions == null || _exclusiveOptions.Length == 0))
+            {
+                if (_maxSelectedExplicit || _defaultIndex.HasValue || _defaultIndices != null)
+                    throw new InvalidOperationException(
+                        ".MaxSelected / .DefaultIndex / .DefaultIndices require .WithExclusive(...) on a toggle.");
+            }
             if (_kind == Kind.Dropdown && _multiple && !string.IsNullOrEmpty(_valueKey))
                 throw new InvalidOperationException(".Multiple() cannot be combined with .WithPairValue(...).");
+            if (_kind == Kind.Dropdown && _defaultIndex.HasValue)
+            {
+                var hasStatic = (_options != null && _options.Length > 0)
+                    || (_pairOptions != null && _pairOptions.Count > 0);
+                var refreshOnly = !hasStatic && (_refresh != null || _refreshPairs != null);
+                if (refreshOnly)
+                {
+                    throw new InvalidOperationException(
+                        ".DefaultIndex() is not valid on a refresh-only dropdown (no static .Options()). " +
+                        "Use .DefaultByValue(\"...\") instead.");
+                }
+            }
             var node = BuildNode();
             if (node != null)
             {
@@ -208,7 +229,7 @@ namespace FluentConfig
                 {
                     node.Visibility = new VisibilityCondition
                     {
-                        SaveKey = _saveKeyPath(_showWhenKey),
+                        SaveKey = _showWhenKey,
                         EqualsValue = null,
                         Operator = LayoutTokens.OperatorString(_showWhenOp.Value),
                         Value = _showWhenCompareKey == null ? (double?)(_showWhenValue ?? 0) : null,
@@ -220,7 +241,7 @@ namespace FluentConfig
                 {
                     node.Visibility = new VisibilityCondition
                     {
-                        SaveKey = _saveKeyPath(_showWhenKey),
+                        SaveKey = _showWhenKey,
                         EqualsValue = _showWhenEquals ?? true,
                         Inverted = _showWhenInverted,
                     };
@@ -248,16 +269,17 @@ namespace FluentConfig
         private void RegisterDeclaredRangeIfAny(SchemaNode node)
         {
             if (_session == null) return;
+            var rangeDeclared = _rangeMinInt.HasValue || _rangeMaxInt.HasValue
+                || _rangeMinDbl.HasValue || _rangeMaxDbl.HasValue;
             if (node is SliderNode slider)
             {
+                if (!rangeDeclared) return;
                 _session.RegisterDeclaredRange(slider.SaveKey, slider.Min, slider.Max);
                 return;
             }
             if (node is NumberInputNode number && number.Min.HasValue && number.Max.HasValue)
                 _session.RegisterDeclaredRange(number.SaveKey, number.Min.Value, number.Max.Value);
         }
-
-        private static string _saveKeyPath(string key) => key ?? "";
     }
 }
 

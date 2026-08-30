@@ -47,11 +47,11 @@ namespace FluentConfig
         {
             FlushPending();
             // Stable id from label so authors can PatchSchema without an extra id parameter.
-            var id = "conn_" + (label ?? "status").Replace(' ', '_');
+            var id = SchemaBuilderHelpers.UniqueId(Session, "conn_" + (label ?? "status").Replace(' ', '_'));
             string buttonId = null;
             if (!string.IsNullOrEmpty(buttonText))
             {
-                buttonId = "btn_" + id;
+                buttonId = SchemaBuilderHelpers.UniqueId(Session, "btn_" + id);
                 if (onClick != null)
                     Session.RegisterButtonClick(buttonId, onClick);
             }

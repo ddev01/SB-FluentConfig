@@ -97,5 +97,50 @@ namespace FluentConfig.Tests
             Assert.Contains("unknown_driver", ex.Message);
             Assert.Contains("Range", ex.Message);
         }
+
+        [Fact]
+        public void RepeatFor_SliderWithoutDeclaredRange_Throws()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_slider", "RepeatFor Slider", "1.0");
+            ui.Section("G", "g", s => s
+                .Slider("Volume", "volume")
+                .RepeatFor("volume", (row, i) => row
+                    .Textbox($"L{i}", $"label_{i}")
+                )
+            );
+
+            var ex = Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
+            Assert.Contains("volume", ex.Message);
+            Assert.Contains("Range", ex.Message);
+        }
+
+        [Fact]
+        public void RepeatFor_AboveCap_Throws()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_cap", "RepeatFor Cap", "1.0");
+            ui.Section("G", "g", s => s
+                .IntegerInput("N", "n").Range(1, 100)
+                .RepeatFor("n", (row, i) => row.Textbox($"L{i}", $"label_{i}"))
+            );
+
+            var ex = Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
+            Assert.Contains("32", ex.Message);
+        }
+
+        [Fact]
+        public void RepeatFor_ResolvedMaxBelowStartIndex_Throws()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_below", "RepeatFor Below", "1.0");
+            ui.Section("G", "g", s => s
+                .IntegerInput("N", "n").Range(1, 2)
+                .RepeatFor("n", (row, i) => row.Textbox($"L{i}", $"label_{i}"), max: 2, startIndex: 5)
+            );
+
+            var ex = Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
+            Assert.Contains("startIndex", ex.Message);
+        }
     }
 }
