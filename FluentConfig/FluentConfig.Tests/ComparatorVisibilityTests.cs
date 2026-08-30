@@ -151,5 +151,76 @@ namespace FluentConfig.Tests
             var json = ProtocolJson.Serialize(group);
             Assert.Contains("\"indented\":false", json.Replace(" ", ""));
         }
+
+        [Fact]
+        public void ShowWhen_WhenOff_EmitsInvertedBooleanTrue()
+        {
+            var list = new SchemaNodeList();
+            var pending = new PendingControl(session: null, list);
+            pending.BeginTextbox("Note", "note");
+            pending.ShowWhen(When.Off("premium"));
+            pending.Flush();
+
+            var jo = JObject.Parse(ProtocolJson.Serialize(Assert.Single(list.ToList())));
+            var vis = jo["visibility"] as JObject;
+            Assert.Equal("premium", vis["saveKey"]?.ToString());
+            Assert.Equal(true, vis["equals"]?.Value<bool>());
+            Assert.Equal(true, vis["inverted"]?.Value<bool>());
+        }
+
+        [Fact]
+        public void ShowWhen_WhenAll_Throws()
+        {
+            var list = new SchemaNodeList();
+            var pending = new PendingControl(session: null, list);
+            pending.BeginTextbox("Note", "note");
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                pending.ShowWhen(When.All(When.On("a"), When.On("b"))));
+            Assert.Contains("When.All", ex.Message);
+        }
+
+        [Fact]
+        public void WithVisibility_WhenAll_EmitsNestedGroups()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "when_all", "When All", "1.0");
+            ui.Section("G", "g", s => s
+                .Toggle("A", "flag_a")
+                .Toggle("B", "flag_b")
+                .WithVisibility(When.All(When.On("flag_a"), When.On("flag_b")), inner => inner
+                    .Textbox("Both", "both_on")
+                )
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            var outer = Assert.IsType<GroupNode>(
+                doc.Sections[0].Children.Single(n => n is GroupNode));
+            Assert.Equal("flag_a", outer.Visibility.SaveKey);
+            Assert.Equal(true, outer.Visibility.EqualsValue);
+            Assert.False(outer.Visibility.Inverted);
+            var inner = Assert.IsType<GroupNode>(Assert.Single(outer.Children));
+            Assert.Equal("flag_b", inner.Visibility.SaveKey);
+            Assert.Equal(true, inner.Visibility.EqualsValue);
+            var leaf = Assert.IsType<TextboxNode>(Assert.Single(inner.Children));
+            Assert.Equal("both_on", leaf.SaveKey);
+        }
+
+        [Fact]
+        public void Toggle_ReturnsSectionBuilder_CanChainStructural()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "crtp_chain", "Crtp Chain", "1.0");
+            ui.Section("G", "g", s => s
+                .Toggle("A", "a").Hint("on")
+                .Separator()
+                .Textbox("B", "b").ShowWhen(When.Off("a"))
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            Assert.Equal(3, doc.Sections[0].Children.Count);
+            var text = Assert.IsType<TextboxNode>(doc.Sections[0].Children[2]);
+            Assert.True(text.Visibility.Inverted);
+            Assert.Equal(true, text.Visibility.EqualsValue);
+        }
     }
 }

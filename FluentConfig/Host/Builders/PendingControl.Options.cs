@@ -157,6 +157,42 @@ namespace FluentConfig
             _showWhenInverted = false;
         }
 
+        public void ShowWhen(When condition)
+        {
+            RequireActiveControl(nameof(ShowWhen));
+            if (condition == null)
+                throw new ArgumentNullException(nameof(condition));
+            if (condition.IsAll)
+            {
+                throw new InvalidOperationException(
+                    "When.All cannot apply to a single control. Use WithVisibility(When.All(...), build) so AND is nested groups.");
+            }
+
+            switch (condition.Kind)
+            {
+                case When.Mode.On:
+                    SetEqualsShowWhen(condition.Key, true, inverted: false);
+                    break;
+                case When.Mode.Off:
+                    SetEqualsShowWhen(condition.Key, true, inverted: true);
+                    break;
+                case When.Mode.Eq:
+                    SetEqualsShowWhen(condition.Key, condition.EqualsValue, inverted: false);
+                    break;
+                case When.Mode.Neq:
+                    SetEqualsShowWhen(condition.Key, condition.EqualsValue, inverted: true);
+                    break;
+                case When.Mode.CmpLiteral:
+                    ShowWhen(condition.Key, condition.Op, condition.Literal);
+                    break;
+                case When.Mode.CmpKey:
+                    ShowWhen(condition.Key, condition.Op, condition.CompareKey);
+                    break;
+                default:
+                    throw new InvalidOperationException("Unknown When mode.");
+            }
+        }
+
         public void Size(string spec)
         {
             RequireActiveControl(nameof(Size));

@@ -27,6 +27,7 @@ namespace FluentConfig
         void ShowWhenNot(string key, int equalsValue);
         void ShowWhen(string key, Comparator op, int value);
         void ShowWhen(string key, Comparator op, string compareKey);
+        void ShowWhen(When condition);
         void Size(string spec);
         void Options(string[] options);
         void OptionsPairs(IEnumerable<(string Value, string Display)> pairOptions);

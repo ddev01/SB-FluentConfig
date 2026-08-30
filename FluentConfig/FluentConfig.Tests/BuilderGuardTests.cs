@@ -201,5 +201,14 @@ namespace FluentConfig.Tests
             Assert.Contains("btn_save", ids);
             Assert.Contains("btn_save_2", ids);
         }
+
+        [Fact]
+        public void OptionAfterStructural_Throws()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "opt_after", "Opt After", "1.0");
+            ui.Section("G", "g", s => s.Intro("hi").Hint("lost"));
+            Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
+        }
     }
 }

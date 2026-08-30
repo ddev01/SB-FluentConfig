@@ -15,27 +15,79 @@ namespace FluentConfig
         {
             return session != null ? session.UniqueGeneratedId(baseId) : baseId;
         }
-        public static void AddVisibilityGroup(
+
+        public static void AddWhenVisibility(
             FluentConfigSession session,
             SchemaNodeList nodes,
             Action flushPending,
-            string toggleKey,
+            When condition,
             Action<PanelBuilder> build,
-            bool inverted)
+            VisibilityChrome? chrome)
         {
+            if (condition == null)
+                throw new ArgumentNullException(nameof(condition));
+            flushPending();
+            EmitWhenGroups(session, nodes, condition, build, chrome, outermost: true);
+        }
+
+        private static void EmitWhenGroups(
+            FluentConfigSession session,
+            SchemaNodeList nodes,
+            When condition,
+            Action<PanelBuilder> build,
+            VisibilityChrome? chrome,
+            bool outermost)
+        {
+            if (build == null)
+                return;
+
+            if (condition.IsAll)
+            {
+                var parts = condition.Children;
+                if (parts == null || parts.Length == 0)
+                    throw new ArgumentException("When.All requires at least one condition.");
+                if (parts.Length == 1)
+                {
+                    EmitWhenGroups(session, nodes, parts[0], build, chrome, outermost);
+                    return;
+                }
+
+                var head = parts[0];
+                When tail;
+                if (parts.Length == 2)
+                {
+                    tail = parts[1];
+                }
+                else
+                {
+                    var rest = new When[parts.Length - 1];
+                    Array.Copy(parts, 1, rest, 0, rest.Length);
+                    tail = When.All(rest);
+                }
+
+                EmitWhenGroups(session, nodes, head, inner =>
+                {
+                    EmitWhenGroups(session, inner.TargetNodes, tail, build, chrome, outermost: false);
+                }, chrome, outermost);
+                return;
+            }
+
+            bool? indented;
+            if (!outermost)
+                indented = false;
+            else if (chrome.HasValue)
+                indented = IndentedFromChrome(chrome.Value);
+            else
+                indented = condition.DefaultIndented;
+
             AddVisibilityGroup(
                 session,
                 nodes,
-                flushPending,
-                new VisibilityCondition
-                {
-                    SaveKey = toggleKey,
-                    EqualsValue = true,
-                    Inverted = inverted,
-                },
-                "vis_" + (toggleKey ?? "group"),
+                () => { },
+                condition.ToCondition(),
+                condition.SuggestedId(),
                 build,
-                indented: null);
+                indented);
         }
 
         public static void AddVisibilityGroup(
@@ -65,32 +117,6 @@ namespace FluentConfig
 
         internal static bool? IndentedFromChrome(VisibilityChrome chrome) =>
             chrome == VisibilityChrome.Indented ? true : (bool?)false;
-
-        public static void AddEqualsVisibilityGroup(
-            FluentConfigSession session,
-            SchemaNodeList nodes,
-            Action flushPending,
-            string key,
-            object equalsValue,
-            bool inverted,
-            Action<PanelBuilder> build,
-            VisibilityChrome chrome)
-        {
-            var token = equalsValue?.ToString() ?? "null";
-            AddVisibilityGroup(
-                session,
-                nodes,
-                flushPending,
-                new VisibilityCondition
-                {
-                    SaveKey = key,
-                    EqualsValue = equalsValue,
-                    Inverted = inverted,
-                },
-                "vis_" + (key ?? "group") + "_" + token,
-                build,
-                IndentedFromChrome(chrome));
-        }
 
         public static void AddRepeatableRows(
             FluentConfigSession session,
