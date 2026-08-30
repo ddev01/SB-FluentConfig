@@ -13,6 +13,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Host\Host.csproj" />
+    <ProjectReference Include="..\UpdaterHelper\UpdaterHelper.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>

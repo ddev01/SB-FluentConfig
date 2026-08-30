@@ -47,16 +47,18 @@ $hostProj = Join-Path $repoRoot 'Host\Host.csproj'
 function Resolve-StreamerBotPath {
     param([string]$Explicit)
     if ($Explicit -and (Test-Path $Explicit)) { return $Explicit }
-    $candidates = @(
-        "F:\Stream\Streamer.bot-x64-1.0.7"
-    )
+
+    # Same order and 1.0.4 folder name as Host.csproj (env → Desktop portable → WinGet).
+    $desktop = Join-Path $env:USERPROFILE 'Desktop\Streamer.bot-x64-1.0.4'
+    $winget = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages\streamerbot.streamerbot_Microsoft.Winget.Source_8wekyb3d8bbwe'
+    $candidates = @($desktop, $winget)
     if ($env:STREAMER_BOT_PATH) {
         $candidates = @($env:STREAMER_BOT_PATH) + $candidates
     }
     foreach ($c in $candidates) {
-        if (Test-Path (Join-Path $c 'Microsoft.Web.WebView2.Wpf.dll')) { return $c }
+        if ($c -and (Test-Path (Join-Path $c 'Microsoft.Web.WebView2.Wpf.dll'))) { return $c }
     }
-    throw "Could not auto-detect Streamer.bot install path. Pass -StreamerBotPath explicitly."
+    throw "Could not auto-detect Streamer.bot install path. Pass -StreamerBotPath or set STREAMER_BOT_PATH."
 }
 
 function Invoke-RedeployOnce {

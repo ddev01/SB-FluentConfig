@@ -233,7 +233,7 @@ export interface SeparatorNode extends SchemaNodeBase {
 }
 
 /**
- * Extension update modal. Host fills after CheckForUpdate;
+ * Extension update modal. Host fills after a notify-only GitHub check;
  * UI never talks to GitHub — opens guide/release URLs via `shell.openUrl`.
  */
 export interface UpdateNoticeNode extends SchemaNodeBase {
@@ -248,7 +248,7 @@ export interface UpdateNoticeNode extends SchemaNodeBase {
   repo?: string;
   dismissible?: boolean;
   /** Default `'notify'` for in-menu extension notices. */
-  mode?: 'self' | 'notify';
+  mode?: 'notify';
   /** Release HTML page (fallback for How to update). */
   releasePageUrl?: string;
   /** Preferred “How to update” URL (guide or release page). */

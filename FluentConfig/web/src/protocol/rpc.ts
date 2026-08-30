@@ -12,7 +12,6 @@ export const RpcMethods = {
   FilepathBrowse: 'filepath.browse',
   FilepathValidate: 'filepath.validate',
   PillChanged: 'pill.changed',
-  UpdateStage: 'update.stage',
   UpdateDismiss: 'update.dismiss',
   DialogConfirm: 'dialog.confirm',
   DialogPopup: 'dialog.popup',
@@ -74,11 +73,6 @@ export interface PillChangedParams {
 export interface PillChangedResult {
   items?: PillItemSchema[];
   removedKeys?: string[];
-}
-
-export interface UpdateStageParams {
-  downloadUrl: string;
-  noticeId?: string;
 }
 
 export interface UpdateDismissParams {

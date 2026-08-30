@@ -59,9 +59,6 @@ namespace FluentConfig
                     case RpcMethods.PillChanged:
                         HandlePillChanged(msg);
                         break;
-                    case RpcMethods.UpdateStage:
-                        HandleUpdateStage(msg);
-                        break;
                     case RpcMethods.UpdateDismiss:
                         HandleUpdateDismissRpc(msg);
                         break;

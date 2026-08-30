@@ -66,12 +66,34 @@ namespace FluentConfig.Updater
             var nextToDll = Path.Combine(asmDir, "FluentConfig.UpdaterHelper.exe");
             if (File.Exists(nextToDll)) return nextToDll;
 
-            // Dev: Host/bin/Debug/net481 → ../../UpdaterHelper/bin/Debug/net481
-            var candidate = Path.GetFullPath(Path.Combine(asmDir, "..", "..", "..", "..", "UpdaterHelper", "bin", "Debug", "net481", "FluentConfig.UpdaterHelper.exe"));
-            if (File.Exists(candidate)) return candidate;
-            candidate = Path.GetFullPath(Path.Combine(asmDir, "..", "..", "..", "..", "UpdaterHelper", "bin", "Release", "net481", "FluentConfig.UpdaterHelper.exe"));
-            if (File.Exists(candidate)) return candidate;
+            // Dev: Host/bin/{Configuration}/net481 → ../../UpdaterHelper/bin/{Configuration}/net481
+            // Prefer the configuration matching this assembly so a leftover Debug helper
+            // cannot swap a Release user's binary.
+            var preferred = GuessDevConfiguration(asmDir);
+            var preferredPath = Path.GetFullPath(Path.Combine(
+                asmDir, "..", "..", "..", "..", "UpdaterHelper", "bin", preferred, "net481", "FluentConfig.UpdaterHelper.exe"));
+            if (File.Exists(preferredPath)) return preferredPath;
+
+            var other = string.Equals(preferred, "Debug", StringComparison.OrdinalIgnoreCase) ? "Release" : "Debug";
+            var otherPath = Path.GetFullPath(Path.Combine(
+                asmDir, "..", "..", "..", "..", "UpdaterHelper", "bin", other, "net481", "FluentConfig.UpdaterHelper.exe"));
+            if (File.Exists(otherPath)) return otherPath;
             return null;
+        }
+
+        internal static string GuessDevConfiguration(string asmDir)
+        {
+            var dir = (asmDir ?? "").Replace('/', Path.DirectorySeparatorChar);
+            var sep = Path.DirectorySeparatorChar.ToString();
+            if (dir.IndexOf(sep + "Release" + sep, StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Release";
+            if (dir.IndexOf(sep + "Debug" + sep, StringComparison.OrdinalIgnoreCase) >= 0)
+                return "Debug";
+#if DEBUG
+            return "Debug";
+#else
+            return "Release";
+#endif
         }
 
         private static string FindHostExe(string processName)

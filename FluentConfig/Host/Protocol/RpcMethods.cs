@@ -20,8 +20,6 @@ namespace FluentConfig.Protocol
         public const string FilepathValidate = "filepath.validate";
         /// <summary>Pill list changed (add/remove). Params: <see cref = "PillChangedParams"/>. Result may include updated item schemas.</summary>
         public const string PillChanged = "pill.changed";
-        /// <summary>Stage a DLL update (test/tooling). Params: <see cref = "UpdateStageParams"/>.</summary>
-        public const string UpdateStage = "update.stage";
         /// <summary>
         /// User dismissed the extension update modal.
         /// Params: <see cref = "UpdateDismissParams"/> (<c>reason</c>: <c>later</c> | <c>ignoreVersion</c>).
@@ -145,15 +143,6 @@ namespace FluentConfig.Protocol
         /// </summary>
         [JsonProperty("removedKeys")]
         public IList<string> RemovedKeys { get; set; }
-    }
-
-    public sealed class UpdateStageParams
-    {
-        [JsonProperty("downloadUrl")]
-        public string DownloadUrl { get; set; }
-
-        [JsonProperty("noticeId")]
-        public string NoticeId { get; set; }
     }
 
     public sealed class UpdateDismissParams

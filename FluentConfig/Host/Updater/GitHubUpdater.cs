@@ -463,7 +463,19 @@ namespace FluentConfig.Updater
         private static bool VersionsEqual(string a, string b) =>
             string.Equals(Normalize(a), Normalize(b), StringComparison.OrdinalIgnoreCase);
 
-        private static string Normalize(string v) => Regex.Replace(v ?? "", @"[^0-9.]+", "");
+        /// <summary>
+        /// Dotted-numeric form for compare. Strips build metadata (<c>+</c> suffix) first so a
+        /// SourceRevision hash cannot overflow <see cref="int.TryParse"/> and collapse the version to zero.
+        /// </summary>
+        internal static string Normalize(string v)
+        {
+            if (string.IsNullOrEmpty(v))
+                return "";
+            var plus = v.IndexOf('+');
+            if (plus >= 0)
+                v = v.Substring(0, plus);
+            return Regex.Replace(v, @"[^0-9.]+", "");
+        }
 
         /// <summary>Simple dotted-numeric compare; non-numeric suffixes ignored.</summary>
         public static bool IsNewer(string candidate, string current)

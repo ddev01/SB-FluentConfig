@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using FluentConfig.Protocol;
 using Newtonsoft.Json.Linq;
 using Xunit;
@@ -176,6 +177,12 @@ namespace FluentConfig.Tests
             Assert.Equal("bootstrap", jo["event"]?.ToString());
             Assert.Equal("Example Extension", jo["payload"]?["title"]?.ToString());
             Assert.Equal(1, jo["payload"]?["values"]?["rate_value"]?.Value<int>());
+        }
+
+        [Fact]
+        public void RpcMethods_HasNoUpdateStage()
+        {
+            Assert.Null(typeof(RpcMethods).GetField("UpdateStage", BindingFlags.Public | BindingFlags.Static));
         }
     }
 }

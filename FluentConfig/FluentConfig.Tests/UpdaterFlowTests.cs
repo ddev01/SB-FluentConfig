@@ -77,26 +77,17 @@ namespace FluentConfig.Tests
             Assert.True(File.Exists(staged));
             Assert.Equal(_assetBytes, File.ReadAllBytes(staged));
 
-            // Run UpdaterHelper swap without relaunch (no Streamer.bot process name match needed —
-            // helper waits for process exit; use a fake process name that is not running).
+            // Helper is built as a Host project reference — do not shell out to dotnet build.
             var helperProj = Path.GetFullPath(Path.Combine(
                 AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "UpdaterHelper", "UpdaterHelper.csproj"));
             Assert.True(File.Exists(helperProj), "UpdaterHelper.csproj missing at " + helperProj);
 
-            var build = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = $"build \"{helperProj}\" -c Debug",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-            });
-            build.WaitForExit(120000);
-            Assert.Equal(0, build.ExitCode);
-
             var helperExe = Path.GetFullPath(Path.Combine(
                 Path.GetDirectoryName(helperProj), "bin", "Debug", "net481", "FluentConfig.UpdaterHelper.exe"));
+            if (!File.Exists(helperExe))
+            {
+                helperExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FluentConfig.UpdaterHelper.exe");
+            }
             Assert.True(File.Exists(helperExe), "Helper exe missing: " + helperExe);
 
             var swap = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo

@@ -4,7 +4,8 @@ using Xunit;
 namespace FluentConfig.Tests
 {
     /// <summary>
-    /// Behavior spec for duration string parsing (ported from ControlExtractionHelperTests).
+    /// Spec for the experimental <see cref="DurationParsing"/> helper.
+    /// This is not the UI/save grammar (see <c>web/src/lib/duration.ts</c>).
     /// </summary>
     public class DurationParsingTests
     {

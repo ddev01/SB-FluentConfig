@@ -204,10 +204,6 @@ export class MockWebView implements ChromeWebView {
         };
       }
 
-      case RpcMethods.UpdateStage:
-        void this.runProgressDemo('update-stage', 'Staging update…');
-        return { ok: true };
-
       case RpcMethods.UpdateDismiss: {
         // reason: later | ignoreVersion (host persists throttle / ignored version)
         this.dismissedUpdate = true;

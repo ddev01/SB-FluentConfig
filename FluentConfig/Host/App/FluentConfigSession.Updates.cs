@@ -73,7 +73,7 @@ namespace FluentConfig
             if (Interlocked.Exchange(ref _updateCheckStarted, 1) != 0)
                 return;
 
-            var prefs = UpdatePrefsStore.Load(_cph, _title);
+            var prefs = UpdatePrefsStore.Load(_cph, ScopeKey);
             if (UpdatePrefsStore.IsWithinDailyThrottle(prefs))
                 return;
 
@@ -92,14 +92,14 @@ namespace FluentConfig
                         : GitHubUpdater.CheckForTaggedRelease(repo, tagPrefix, currentVersion);
 
                     // Record the attempt even when no update / network failure so we don't hammer GitHub.
-                    UpdatePrefsStore.MarkChecked(_cph, _title);
+                    UpdatePrefsStore.MarkChecked(_cph, ScopeKey);
 
                     if (result == null || !result.UpdateAvailable)
                         return;
 
                     var ignoredPrefs = new UpdatePrefsData { IgnoredVersion = ignoredSnapshot };
                     // Re-load in case IgnoreVersion raced; prefer fresh prefs when available.
-                    var fresh = UpdatePrefsStore.Load(_cph, _title);
+                    var fresh = UpdatePrefsStore.Load(_cph, ScopeKey);
                     if (fresh != null)
                         ignoredPrefs = fresh;
 
@@ -160,7 +160,7 @@ namespace FluentConfig
                     ? p.Version
                     : _pendingUpdate?.LatestVersion;
                 if (!string.IsNullOrWhiteSpace(version))
-                    UpdatePrefsStore.IgnoreVersion(_cph, _title, version);
+                    UpdatePrefsStore.IgnoreVersion(_cph, ScopeKey, version);
             }
             // "later" — close modal only; daily throttle handles re-ask.
         }

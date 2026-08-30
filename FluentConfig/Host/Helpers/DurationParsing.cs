@@ -4,8 +4,10 @@ using System;
 namespace FluentConfig.Helpers
 {
     /// <summary>
-    /// Pure duration string parser ("30seconds", "5m", "permanent").
-    /// Not yet wired into the RPC/save path — kept as an experimental utility for authors/tests.
+    /// Experimental duration string parser ("30seconds", "5m", "permanent").
+    /// Not the save path — persisted duration strings are produced and parsed by
+    /// the web UI (<c>web/src/lib/duration.ts</c>). Passing tests here does not mean
+    /// the host validates what the UI saves.
     /// </summary>
     internal static class DurationParsing
     {
