@@ -14,7 +14,7 @@ Baseline reports are keyed by **git commit** (short SHA in the filename; full SH
 
 2. **Streamer.bot WebSocket Server** — enable Auto Start (default `127.0.0.1:8080`, endpoint `/`).
 
-3. **Action** — paste from [`FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt) (minimal) or [`FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) (complete). Run on UI thread. Select via `PERF_ACTION_NAME` in the harness.
+3. **Action** — paste from [`FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt) (minimal) or [`FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) (complete). Large-menu fixture (unmeasured): [`actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt`](actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt). Run on UI thread. Select via `PERF_ACTION_NAME` in the harness.
 
 4. **Harness**:
 
@@ -33,7 +33,9 @@ Baseline reports are keyed by **git commit** (short SHA in the filename; full SH
 
 See [`FluentConfig/scripts/perf-benchmark/README.md`](../../FluentConfig/scripts/perf-benchmark/README.md) for cold vs warm procedure and environment variables.
 
-After a run you trust, archive under `baselines/<short-sha>-minimal.md` / `<short-sha>-complete.md` for the commit you measured (tip of the perf work tree).
+After a run you trust, archive under `baselines/<short-sha>-minimal.md` / `<short-sha>-complete.md` / `<short-sha>-large.md` for the commit you measured (tip of the perf work tree).
+
+**Large-menu cold start is unmeasured** until someone runs the large-menu fixture on a live Streamer.bot (Release + `FluentConfigPerfTrace`, cold start). Do not treat the absence of a large-menu baseline as known-good.
 
 ## Phase vs mark
 
@@ -70,10 +72,11 @@ Cold-start optimization handoff (completed): see [archive/COLD_START_OPTIMIZATIO
 |----------|------|
 | [`FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt) | **Canonical paste source** (minimal) |
 | [`FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) | **Canonical paste source** (complete) |
-| [`actions/PERF_BENCHMARK_ACTION.cs.txt`](actions/PERF_BENCHMARK_ACTION.cs.txt) | Archived snapshot matching baselines |
+| [`actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt`](actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt) | Large-menu fixture (8 refresh dropdowns, 4 pills, RepeatFor at cap 32, 4 tabs). **Needs a manual Streamer.bot run** — not yet a baseline. |
+| [`actions/PERF_BENCHMARK_ACTION.cs.txt`](actions/PERF_BENCHMARK_ACTION.cs.txt) | Archived snapshot matching baselines (may predate the explicit menu-id API) |
 | [`actions/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](actions/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) | Archived snapshot matching baselines |
 
-Host copies are the live paste targets; `docs/performance/actions/` snapshots are frozen alongside each baseline entry.
+Host copies are the live paste targets for minimal/complete; `docs/performance/actions/` snapshots for those two are frozen alongside each baseline entry. The large-menu file is authored here until a Host copy is added after the first archived run.
 
 ## Comparing results
 

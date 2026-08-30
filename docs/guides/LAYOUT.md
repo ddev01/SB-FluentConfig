@@ -179,7 +179,7 @@ Bare `fit` / `1/2` / `120px` are **not** accepted — always prefix with `w-`.
 )
 ```
 
-Max from driver’s `.Range` (or explicit `max:`). Indices `<=` min always visible; higher indices gate with `gte`. Not the same as `WithRepeatableRows` (user-managed lists).
+Max from driver’s `.Range` (or explicit `max:`). **Cap is 32** — above that throws. A slider/integer without `.Range` does not imply 0–100; `RepeatFor` throws until a range or `max:` is declared. Indices `<=` min always visible; higher indices gate with `gte`. Not the same as `WithRepeatableRows` (user-managed lists).
 
 ---
 

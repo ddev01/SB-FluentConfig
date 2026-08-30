@@ -67,5 +67,6 @@ must be installed on the OS (typical on modern Windows).
 ## DSL changes vs old FluentConfig (authors)
 
 - **PillInput:** use `.ItemTemplate(pb => …)` (or `.WithItemTemplate(pb => …)`). Callbacks no longer receive `Panel` / `StackPanel`. Prefer `{name}` placeholders in nested saveKeys.
-- **WithVisibility:** prefer `.WithVisibility("key", build, inverted: true)` or `.WithVisibilityWhenOff("key", build)` instead of a bare positional bool in the middle.
+- **WithVisibility:** `.WithVisibilityWhenOff("key", build)` or `.WithVisibility(When.Off("key"), build)`. Public `inverted:` is gone. See [../guides/VISIBILITY.md](../guides/VISIBILITY.md) and [../guides/BREAKING.md](../guides/BREAKING.md).
+- **Menu id:** `Fc.Open(CPH, id, title, version, build)` — `id` is `[a-z][a-z0-9_]*`; title is a label. Load/save helpers take the same id.
 - **Updater:** chain `examples/deployment/01_DllCheck` → menu with `.WithExtensionUpdateNotice("owner/repo", "1.0.0")`. Low-level: `FluentConfig.Updater.GitHubUpdater`. See [../guides/UPDATES.md](../guides/UPDATES.md).

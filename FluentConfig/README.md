@@ -6,6 +6,7 @@ WebView2 + Svelte implementation of FluentConfig. The shipping assembly is built
 |------|------|
 | C# host (`FluentConfig.dll`) | [Host/](Host/) |
 | Packaging notes | [Host/PACKAGING.md](Host/PACKAGING.md) |
+| Release cookbook | [Host/RELEASE.md](Host/RELEASE.md) |
 | Updater helper exe | [UpdaterHelper/](UpdaterHelper/) |
 | Web UI | [web/](web/) |
 | Wire protocol | [PROTOCOL.md](PROTOCOL.md) |

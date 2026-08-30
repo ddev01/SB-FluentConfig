@@ -21,6 +21,7 @@ Baselines are only valid with a **Release + PerfTrace** host DLL. Debug / Vite-d
    |---------|----------|-------------|
    | **Minimal** (default) | [`../../Host/PERF_BENCHMARK_ACTION.cs.txt`](../../Host/PERF_BENCHMARK_ACTION.cs.txt) | **`FluentConfig Perf Benchmark`** |
    | **Complete / worst-case** | [`../../Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../../Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) | **`FluentConfig Perf Complete`** |
+   | **Large menu** (unmeasured) | [`../../../docs/performance/actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt`](../../../docs/performance/actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt) | **`FluentConfig Perf Large Menu`** |
 
    For each action:
    - Execute C# Code (disabled) + Execute C# Method → `CPHInline.Execute`
@@ -33,7 +34,7 @@ Baselines are only valid with a **Release + PerfTrace** host DLL. Debug / Vite-d
    harness polls forever, check the SB checklist above (Method disabled / no UI thread /
    compile error are the usual causes).
 
-   Use **minimal** for baseline open timing; use **complete** to stress the full control surface (same density as `examples/reference/FullControlShowcase.cs`).
+   Use **minimal** for baseline open timing; use **complete** to stress the full control surface (same density as `examples/reference/FullControlShowcase.cs`). The large-menu template is a third variant; **it still needs a manual run** (Release + PerfTrace, cold start) before it is a baseline.
 
 4. Node 18+ and deps:
 
@@ -83,6 +84,11 @@ node benchmark.mjs
 
 # Worst-case / complete UI surface
 $env:PERF_ACTION_NAME = 'FluentConfig Perf Complete'
+npm run bench
+
+# Large-menu fixture (8 refresh dropdowns, 4 pills, RepeatFor at cap 32).
+# Not yet a baseline — needs a manual Streamer.bot run (Release + PerfTrace, cold start).
+$env:PERF_ACTION_NAME = 'FluentConfig Perf Large Menu'
 npm run bench
 ```
 

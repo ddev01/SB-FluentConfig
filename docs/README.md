@@ -10,11 +10,13 @@ Plugin-author documentation for the WebView2 FluentConfig library.
 |-----|----------|
 | [guides/README.md](guides/README.md) | Author landing page + quick start snippet |
 | [guides/CONTROLS.md](guides/CONTROLS.md) | Control catalog and chained options |
-| [guides/VISIBILITY.md](guides/VISIBILITY.md) | `ShowWhen` / `WithVisibility` / `WithVisibilityWhenOff` |
+| [guides/VISIBILITY.md](guides/VISIBILITY.md) | `ShowWhen` / `When` / `WithVisibility` / `WithVisibilityWhenOff` |
 | [guides/LAYOUT.md](guides/LAYOUT.md) | Grid / Row / Size / RepeatFor |
 | [guides/DIALOGS_AND_RUNTIME_VALUES.md](guides/DIALOGS_AND_RUNTIME_VALUES.md) | Buttons, dialogs, reading saved values |
 | [guides/PILLS.md](guides/PILLS.md) | PillInput + nested ItemTemplate |
 | [guides/UPDATES.md](guides/UPDATES.md) | FluentConfig.dll vs extension update paths |
+| [guides/SECURITY.md](guides/SECURITY.md) | Auto-update only our DLL; extensions notify-only |
+| [guides/BREAKING.md](guides/BREAKING.md) | 0.2 author-facing breaks |
 | [guides/EXTRAS.md](guides/EXTRAS.md) | Known bots, window chrome, perf pointer |
 
 ## Setup
@@ -35,6 +37,7 @@ Plugin-author documentation for the WebView2 FluentConfig library.
 |-----|----------|
 | [../FluentConfig/PROTOCOL.md](../FluentConfig/PROTOCOL.md) | Host ↔ web message contract |
 | [../FluentConfig/Host/PACKAGING.md](../FluentConfig/Host/PACKAGING.md) | Deploy footprint: FluentConfig.dll (+ Newtonsoft); WebView2 from Streamer.bot |
+| [../FluentConfig/Host/RELEASE.md](../FluentConfig/Host/RELEASE.md) | FileVersion vs tag vs InformationalVersion; how to cut a release |
 | [../FluentConfig/ARCHITECTURE.md](../FluentConfig/ARCHITECTURE.md) | Module boundaries |
 | [../FluentConfig/README.md](../FluentConfig/README.md) | Host/web package overview |
 | [performance/README.md](performance/README.md) | Cold/warm open baselines |

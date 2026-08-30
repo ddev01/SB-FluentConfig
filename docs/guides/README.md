@@ -11,7 +11,7 @@ public class CPHInline
 {
     public bool Execute()
     {
-        Fc.Open(CPH, "My Extension", "1.0", ui => ui
+        Fc.Open(CPH, "my_extension", "My Extension", "1.0", ui => ui
             .Section("Settings", "Settings", s => s
                 .Intro("Configure the extension.")
                 .Toggle("Enabled", "enabled").Default(true)
@@ -22,7 +22,7 @@ public class CPHInline
 }
 ```
 
-That's the whole model: `Fc.Open` focuses an existing window or builds a new one. Each method adds a control, options chain onto it, settings persist automatically. Use `FluentConfigUi.Create` only when you need the granular Create / Section / Show steps.
+That's the whole model: `Fc.Open` focuses an existing window with the same **id** or builds a new one. `id` is persistence identity (`[a-z][a-z0-9_]*`); the title is the window label. Each method adds a control, options chain onto it, settings persist automatically as `{id}_settings`. Use `FluentConfigUi.Create` only when you need the granular Create / Section / Show steps.
 
 **Next:** work through [examples/tutorial/](../../examples/tutorial/) (01 → 11), or jump into a topic below.
 
@@ -31,11 +31,13 @@ That's the whole model: `Fc.Open` focuses an existing window or builds a new one
 | Guide | Contents | Tutorial step |
 |-------|----------|---------------|
 | [CONTROLS.md](CONTROLS.md) | Control catalog and chained options | 01, 03, 07, 08 |
-| [VISIBILITY.md](VISIBILITY.md) | `ShowWhen`, `WithVisibility`, `WithVisibilityWhenOff` | 03, 04 |
+| [VISIBILITY.md](VISIBILITY.md) | `ShowWhen`, `When`, `WithVisibility`, `WithVisibilityWhenOff` | 03, 04 |
 | [LAYOUT.md](LAYOUT.md) | Grid / Row / Size / RepeatFor | 05 |
 | [DIALOGS_AND_RUNTIME_VALUES.md](DIALOGS_AND_RUNTIME_VALUES.md) | Buttons, dialogs, reading values | 06, 10, 11 |
 | [PILLS.md](PILLS.md) | PillInput + nested ItemTemplate | 09 |
 | [UPDATES.md](UPDATES.md) | FluentConfig.dll vs extension update paths | deployment/ |
+| [SECURITY.md](SECURITY.md) | Who auto-updates the DLL; extensions notify-only | — |
+| [BREAKING.md](BREAKING.md) | 0.2 author-facing breaks (id, `When`, Refresh, …) | — |
 | [EXTRAS.md](EXTRAS.md) | Known bots, window chrome, perf pointer | — |
 
 ## Setup

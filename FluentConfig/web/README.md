@@ -18,7 +18,7 @@ Svelte 5 + Vite single-file bundle embedded into `FluentConfig.dll` for the WebV
 
 ## Bundle size
 
-Release `dist/index.html` should stay near **~150–160 KB** (soft gate **161 KB** in `vite.config.ts`, plus a mock-string check). Do not chase extra terser passes — minify is already on.
+Release `dist/index.html` must stay under **180,000 bytes** (`BUNDLE_SIZE_SOFT_MAX` in `vite.config.ts`, plus a mock-string check). Last measured: **179,770** bytes. Do not chase extra terser passes — minify is already on.
 
 ## Related
 

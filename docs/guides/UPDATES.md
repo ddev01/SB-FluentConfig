@@ -40,7 +40,7 @@ Use `.WithExtensionUpdateNotice(...)` on the menu action. After the window opens
 
 - **How to update** — opens `updateGuideUrl` (or the release page)
 - **Later** — closes for this session; daily throttle may re-ask tomorrow
-- **Don't ask for this version** — persists ignored version in `FluentConfig_UpdatePrefs_{title}`
+- **Don't ask for this version** — persists ignored version in `FluentConfig_UpdatePrefs_{id}`
 
 ### Discovery modes
 
@@ -61,6 +61,7 @@ Use `.WithExtensionUpdateNotice(...)` on the menu action. After the window opens
 ```csharp
 static class ExtensionInfo
 {
+    public const string Id = "my_extension";
     public const string Title = "My Extension";
     public const string Version = "1.0.0";
     public const string Repo = "example-org/my-extension";
@@ -69,7 +70,7 @@ static class ExtensionInfo
     public const string UpdateGuideUrl = null;           // optional; else release page
 }
 
-Fc.Open(CPH, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
+Fc.Open(CPH, ExtensionInfo.Id, ExtensionInfo.Title, ExtensionInfo.Version, ui => ui
     .WithExtensionUpdateNotice(
         ExtensionInfo.Repo,
         ExtensionInfo.Version,
@@ -88,7 +89,7 @@ If a min gate fails, `Show()` aborts with a MessageBox **before** the window ope
 1. Export or note settings if needed.
 2. Import the new action bundle in Streamer.bot.
 3. Replace/disable the old action group.
-4. Re-open the menu — CPH settings under `{slug}_settings` are preserved when the **title** (and therefore the slug) is unchanged.
+4. Re-open the menu — CPH settings under `{id}_settings` are preserved when the **id** is unchanged (the window title can be renamed).
 
 ## Quick comparison
 
@@ -97,7 +98,7 @@ If a min gate fails, `Show()` aborts with a MessageBox **before** the window ope
 | Where | DllCheck action (no FluentConfig ref) | `.WithExtensionUpdateNotice` on menu |
 | GitHub lookup | `releases/latest` + `.dll` asset | `releases/latest` **or** tagged `{prefix}-v*` |
 | User action | Auto-stage; restart Streamer.bot | Modal → guide / release → manual re-import |
-| Throttle | Daily (`fluentconfig_settings` → `dll_check_last_utc`) | Daily (`FluentConfig_UpdatePrefs_{title}`) |
+| Throttle | Daily (`fluentconfig_settings` → `dll_check_last_utc`) | Daily (`FluentConfig_UpdatePrefs_{id}`) |
 
 ## Low-level API (no UI)
 
@@ -116,11 +117,12 @@ All return `null` on network/parse failure.
 
 ## Version comparison notes
 
-`GitHubUpdater.IsNewer` uses a dotted-numeric compare after stripping non-digit characters (except dots). Pre-release metadata is invisible — publish distinct numeric versions for each shippable release.
+`GitHubUpdater.IsNewer` uses a dotted-numeric compare after stripping build metadata (`+…`) then non-digit characters (except dots). Pre-release labels are invisible — publish a distinct **FileVersion** for each shippable release. See [../../FluentConfig/Host/RELEASE.md](../../FluentConfig/Host/RELEASE.md).
 
 ## See also
 
 - [README.md](README.md) — guide index
+- [SECURITY.md](SECURITY.md) — who can install bytes vs who can notify
 - [../setup/REFERENCES.md](../setup/REFERENCES.md)
 - [`examples/deployment/01_DllCheck.cs`](../../examples/deployment/01_DllCheck.cs)
 - [`examples/deployment/02_ExtensionUpdateNotice.cs`](../../examples/deployment/02_ExtensionUpdateNotice.cs)

@@ -9,24 +9,24 @@ Configuring a Streamer.bot plugin shouldn't require editing code. Chains of "Set
 **It really is this simple:**
 
 ```csharp
-Fc.Open(CPH, "My Extension", "1.0", ui => ui
+Fc.Open(CPH, "my_extension", "My Extension", "1.0", ui => ui
     .Section("General", "general", s => s
         .Toggle("Enable feature", "enabled")
         .Textbox("Username", "username")
         .Slider("Volume", "volume").Range(0, 100).Default(50)));
 ```
 
-Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`{slug}_settings`, e.g. `"First Chatters"` → `first_chatters_settings`).
+Each method call adds a control. Options chain onto it. That's the whole model. Settings persist automatically as JSON in Streamer.bot globals (`{id}_settings`, e.g. id `"first_chatters"` → `first_chatters_settings`). The window title is a label; pick a stable id (`[a-z][a-z0-9_]*`).
 
-Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tutorial/01_BasicControls.cs) → 11 step by step.
+Ready for more? Work through [examples/tutorial/01_BasicControls.cs](examples/tutorial/01_BasicControls.cs) → 11 step by step. Upgrading an existing menu: [docs/guides/BREAKING.md](docs/guides/BREAKING.md).
 
 **Reading values at runtime** depends on context:
 
 | Context | API |
 |---------|-----|
-| After the user opens/saves the UI | `Fc.LoadSettings<T>(CPH, title)` (or `Fc.GetSetting<T>` / `Fc.SettingsKeyFor(title)`) |
+| After the user opens/saves the UI | `Fc.LoadSettings<T>(CPH, id)` (or `Fc.GetSetting<T>` / `Fc.SettingsKeyFor(id)`) |
 | Write a setting from an action | `Fc.SetSetting` / `Fc.SaveSettings` / `Fc.HasSavedSettings` |
-| Runtime state (not the menu) | `Fc.LoadData<T>` / `Fc.SaveData` → `{slug}_data` |
+| Runtime state (not the menu) | `Fc.LoadData<T>` / `Fc.SaveData` → `{id}_data` |
 | Event args + chat templates | `Fc.CaptureEvent` / `Fc.ApplyTemplate` / `Fc.Logger` |
 | Button `OnClick` handlers | `UiContext.Pending<T>(saveKey)` |
 | Pill `OnPillAdded` / `OnPillRemoved` | `CallbackContext.GetValue<T>(saveKey)` |
@@ -83,11 +83,14 @@ See the index at [docs/README.md](docs/README.md). Highlights:
 | [docs/guides/README.md](docs/guides/README.md) | Author landing page + quick start |
 | [docs/guides/CONTROLS.md](docs/guides/CONTROLS.md) | Control catalog |
 | [docs/guides/LAYOUT.md](docs/guides/LAYOUT.md) | Grid / Row / Size / RepeatFor |
-| [docs/guides/UPDATES.md](docs/guides/UPDATES.md) | Self-update vs notify-only extension update paths |
+| [docs/guides/UPDATES.md](docs/guides/UPDATES.md) | DLL auto-update vs notify-only extension updates |
+| [docs/guides/SECURITY.md](docs/guides/SECURITY.md) | Update trust model |
+| [docs/guides/BREAKING.md](docs/guides/BREAKING.md) | 0.2 author-facing breaks |
 | [docs/setup/REFERENCES.md](docs/setup/REFERENCES.md) | Assembly reference setup for Streamer.bot C# actions |
 | [docs/performance/README.md](docs/performance/README.md) | Cold/warm open baselines and how to remeasure |
 | [FluentConfig/PROTOCOL.md](FluentConfig/PROTOCOL.md) | Host ↔ web message contract |
 | [FluentConfig/Host/PACKAGING.md](FluentConfig/Host/PACKAGING.md) | Deploy footprint (FluentConfig.dll + Newtonsoft; WebView2 from Streamer.bot) |
+| [FluentConfig/Host/RELEASE.md](FluentConfig/Host/RELEASE.md) | How to cut a FluentConfig.dll release |
 | [FluentConfig/ARCHITECTURE.md](FluentConfig/ARCHITECTURE.md) | Module boundaries and design notes |
 | [examples/README.md](examples/README.md) | Guided example index |
 
@@ -103,7 +106,7 @@ See [examples/README.md](examples/README.md) for the full guided path. Highlight
 | `tutorial/05_LayoutAndRepeatFor.cs` | Grid / Row / Size + RepeatFor |
 | `tutorial/09_PillsAndNestedItems.cs` | PillInput + nested ItemTemplate |
 | `tutorial/10_ReadingSavedSettings.cs` | Read saved settings from a runtime action |
-| `tutorial/11_RuntimeHelpers.cs` | Logger, templates, SetSetting, `{slug}_data` |
+| `tutorial/11_RuntimeHelpers.cs` | Logger, templates, SetSetting, `{id}_data` |
 | `reference/FullControlShowcase.cs` | Everything in one file (lookup) |
 | `deployment/01_DllCheck.cs` | Install + daily FluentConfig.dll check |
 | `deployment/02_ExtensionUpdateNotice.cs` | In-menu extension update modal |

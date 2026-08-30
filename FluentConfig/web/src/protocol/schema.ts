@@ -3,8 +3,8 @@
  *
  * These types are the web-side half of the shared host↔UI message contract.
  * Keep them structurally identical to the C# DTOs' JSON form (camelCase fields,
- * same optionality). Sync is manual for now — codegen from a single schema is a
- * reasonable future improvement, not in scope for Phase 0.
+ * same optionality). Sync is manual — codegen from a single schema is a
+ * reasonable future improvement; it is not in this tree.
  *
  * See also: `FluentConfig/PROTOCOL.md`
  */

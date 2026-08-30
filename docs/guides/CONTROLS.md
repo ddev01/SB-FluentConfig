@@ -9,7 +9,7 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 
 | API | Role |
 |-----|------|
-| `Fc.Open(cph, title, version, build)` | Preferred menu entry (focus or create) |
+| `Fc.Open(cph, id, title, version, build)` | Preferred menu entry (focus or create). `id` is `[a-z][a-z0-9_]*` persistence identity; `title` is the window label. |
 | `Section(label, id, build)` | Tab / page |
 | `Intro(markdown)` | Rich markdown blurb at the top of a section |
 | `Title(text)` | In-section heading |
@@ -23,7 +23,7 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 | `Toggle` | `.Hint`, `.Default`, `.ShowWhen`, `.WithExclusive`, `.MaxSelected` | 01, 08 |
 | `Textbox` | `.Hint`, `.Default`, `.Password()`, `.Multiline()` | 01 |
 | `Slider` | `.Range`, `.Default`, `.Step`, `.ShowWhen` | 01 |
-| `Dropdown` | `.Options`, `.DefaultIndex` / `.DefaultByValue`, `.Refresh`, `.WithPairValue`, `.Searchable()`, `.AllowCustom()`, `.Multiple()` | 03, 07 |
+| `Dropdown` | `.Options`, `.DefaultByValue` (or `.DefaultIndex` only when static `.Options()` exist), `.Refresh` (string[] or pairs), `.WithPairValue`, `.Searchable()`, `.AllowCustom()`, `.Multiple()` | 03, 07 |
 | `Combobox` | Same as Dropdown with `.Searchable()` implied | 07 |
 | `IntegerInput` | `.Range`, `.Default`, `.WithStepper()`, `.Size` | 05 |
 | `NumberInput` | `.Range`, `.Step`, `.Default`, `.WithStepper()` | reference |
@@ -49,16 +49,23 @@ Runnable intro: [examples/tutorial/01_BasicControls.cs](../../examples/tutorial/
 
 `.Searchable()` filters options as the user types. `.AllowCustom()` commits values not in the list (kept across Refresh). `.Multiple()` stores `string[]` (incompatible with `.WithPairValue`). `.Combobox(label, key)` is a dropdown with searchable on. With no `.DefaultIndex` / `.DefaultByValue`, the field shows a placeholder (`Select…` / `Select or type…`) and does not persist a value until the user chooses (or types, if custom is allowed). Refresh keeps an empty selection empty.
 
+`.Refresh(() => …)` is **not** invoked during schema build (string[] or pair enumerable overloads). Refresh-only dropdowns (no static `.Options()`) bootstrap with empty options; the web’s first-mount `dropdown.refresh` fills them once per saveKey. `.DefaultIndex()` on a refresh-only dropdown throws — use `.DefaultByValue`. Residual: the trigger may show the placeholder until options arrive; if Refresh returns empty (Twitch offline), an unmatched default is cleared.
+
 ```csharp
 .Combobox("Auto-end timer", "timer_id")
     .AllowCustom()
-    .RefreshPairs(() => new[] { ("timer-a", "Timer A"), ("timer-b", "Timer B") })
+    .Refresh(() => new[] { ("timer-a", "Timer A"), ("timer-b", "Timer B") })
 
 .Dropdown("Include groups", "include_groups")
     .Searchable()
     .Multiple()
     .AllowCustom()
     .Refresh(() => new[] { "vip", "sub" }) // or Fc.TwitchRewardGroups(CPH)
+
+.Dropdown("Reward", "reward_display")
+    .WithPairValue("reward_id")
+    .Refresh(() => new[] { ("reward-guid", "Channel Points Reward") })
+    .DefaultByValue("reward-guid")
 ```
 
 Refresh data is always author-supplied. Streamer.bot has no timer-list CPH API — pass ids/names from your own list or globals.
@@ -80,6 +87,7 @@ Each method call adds a control. Options chain onto the control just added. That
 ## See also
 
 - [VISIBILITY.md](VISIBILITY.md)
+- [BREAKING.md](BREAKING.md) — 0.2 id / When / Refresh
 - [LAYOUT.md](LAYOUT.md)
 - [PILLS.md](PILLS.md)
 - [DIALOGS_AND_RUNTIME_VALUES.md](DIALOGS_AND_RUNTIME_VALUES.md) — Button `OnClick`, runtime reads

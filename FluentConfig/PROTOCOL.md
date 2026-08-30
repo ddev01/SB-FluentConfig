@@ -77,11 +77,13 @@ Every `SchemaNode` may include:
 "visibility": { "saveKey": "optional_limit_enabled", "equals": true, "inverted": false }
 ```
 
-`ShowWhen(key)` → `{ saveKey: key, equals: true }`.  
-`ShowWhen(key, "random")` → `{ saveKey: key, equals: "random" }` (`equals` may be boolean, string, or number).  
-`ShowWhenNot(key, "free")` → `{ saveKey: key, equals: "free", inverted: true }`.  
-`WithVisibility(key, inverted: true, …)` → a `group` node with `{ saveKey: key, equals: true, inverted: true }`.  
+`ShowWhen(key)` / `ShowWhen(When.On(key))` → `{ saveKey: key, equals: true }`.  
+`ShowWhen(key, "random")` / `ShowWhen(When.Eq(key, "random"))` → `{ saveKey: key, equals: "random" }` (`equals` may be boolean, string, or number).  
+`ShowWhenNot(key, "free")` / `ShowWhen(When.Neq(key, "free"))` → `{ saveKey: key, equals: "free", inverted: true }`.  
+`WithVisibilityWhenOff(key, …)` / `WithVisibility(When.Off(key), …)` → a `group` with `{ saveKey: key, equals: true, inverted: true }`.  
 `WithVisibility(key, "random", …)` → a `group` with `{ saveKey: key, equals: "random" }` and `"indented": false` (flat chrome). Toggle groups omit `indented` (left rail).
+
+The public C# API has no trailing `inverted:` bool. `inverted` on the **wire** is still how Off/Neq are expressed. `When.All` emits nested `group` nodes (one `VisibilityCondition` per node); there is no OR.
 
 #### Comparator operators (additive)
 
@@ -95,13 +97,15 @@ When `operator` is set (`gte` | `lte` | `gt` | `lt`), the legacy `equals` path i
 "visibility": { "saveKey": "a", "operator": "gte", "compareKey": "b" }
 ```
 
-`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, the equals path matches by type: boolean (`===`, no `"true"` coercion), number (`toNumber(actual) === expected`), string (`String(actual) === expected`, no trim), null (missing/null actual). Missing live values fall back to the driver control's schema default (dropdown `defaultByValue` / `defaultIndex` / `defaultValue`, toggle `defaultValue`). Empty dropdowns stay unselected until the user picks an option.
+`inverted` still negates the result. Missing/NaN values hide the node (conservative default). When `operator` is absent, the equals path matches by type: boolean (`===`, no `"true"` coercion), number (`toNumber(actual) === expected`), string (`String(actual) === expected`, no trim), null (missing/null actual). Missing live values fall back to the driver control's schema default (dropdown `defaultByValue` / `defaultIndex` / `defaultValue`, toggle `defaultValue`). An empty string (`''`) is explicit none, not “use the default”.
+
+Refresh-only dropdowns (`.Refresh` with no static `.Options()`) ship with empty/omitted `options`. The author callback is **not** invoked at schema build. The web’s first-mount `dropdown.refresh` (once per saveKey) fills them. `SelectMenu` may show the placeholder until that reply; if Refresh returns empty, an unmatched default is cleared.
 
 `ShowWhen(key, Comparator.GreaterOrEqual, 4)` and `WithVisibility(key, Comparator.GreaterOrEqual, 4, …)` emit this shape.
 
 #### RepeatFor (sugar — no new wire type)
 
-`RepeatFor(driverKey, (row, i) => …)` materializes real controls for each index up to the driver's declared `.Range` max (or an explicit `max`). Indices at/below the driver's min are appended ungated; higher indices wrap in a `group` with `{ operator: "gte", value: i }`. Values are preserved when the driver shrinks — visibility only toggles rendering. No host round-trip.
+`RepeatFor(driverKey, (row, i) => …)` materializes real controls for each index up to the driver's declared `.Range` max (or an explicit `max`, cap **32**). A slider/integer without `.Range` does not imply 0–100. Indices at/below the driver's min are appended ungated; higher indices wrap in a `group` with `{ operator: "gte", value: i }`. Values are preserved when the driver shrinks — visibility only toggles rendering. No host round-trip.
 
 ### Layout (Grid / Row)
 
@@ -189,7 +193,7 @@ A `group` may set `indented`: omitted/`true` = left-border rail (toggle `WithVis
 }
 ```
 
-Optional flags (omitted when false): `searchable`, `allowCustom`, `multiple`. `multiple` stores `string[]` in `saveKey` and cannot be combined with `valueSaveKey`.
+Optional flags (omitted when false): `searchable`, `allowCustom`, `multiple`. `multiple` stores `string[]` in `saveKey` and cannot be combined with `valueSaveKey`. Refresh-only nodes omit `options` (or send `[]`); the example above is a dropdown that also has static options at bootstrap.
 
 ### 3. Pill input (nested schema — not a Panel)
 
@@ -340,7 +344,7 @@ Nested keys follow existing conventions: `"settings.timeout"`, `"rows[0].name"`.
 
 ## Extension update modal
 
-Update notices are **not** in bootstrap. After the window is ready, the host may push:
+Update notices are **not** in bootstrap (`UiDocument` has no `update-notice` children). After the window is ready, a deferred host-side GitHub check may push:
 
 ```json
 {
@@ -363,11 +367,10 @@ The web UI shows an in-menu modal (How to update / Later / Don't ask for this ve
 
 | RPC | Params | Host behavior |
 |-----|--------|---------------|
-| `update.dismiss` | `{ noticeId?, reason?: "later" \| "ignoreVersion", version? }` | `later` closes modal only; `ignoreVersion` persists version in `FluentConfig_UpdatePrefs_{title}` |
-| `update.stage` | `{ downloadUrl, noticeId? }` | Test/tooling only — menu no longer stages DLL updates |
+| `update.dismiss` | `{ noticeId?, reason?: "later" \| "ignoreVersion", version? }` | `later` closes modal only; `ignoreVersion` persists version in `FluentConfig_UpdatePrefs_{id}` |
 | `shell.openUrl` | `{ url }` | Opens How to update / release URL |
 
-FluentConfig.dll install/update is handled by the copy-paste **DllCheck** action, not the menu.
+There is no `update.stage` RPC. `FluentConfig.dll` install/update is the copy-paste **DllCheck** action (`GitHubUpdater.StageUpdate` is a host API, not callable from the web). The web cannot choose a download URL.
 
 ---
 

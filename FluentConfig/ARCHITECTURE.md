@@ -41,7 +41,8 @@ Plugin action  →  FluentConfigUi.Create  →  Host window + WebView2
 Host pushes bootstrap (UiDocument)  →  Svelte renders schema
 User edits  →  web store; save RPC  →  SettingsPathHelper merge  →  SettingsManager / CPH
 Dynamic data (dropdown.refresh, etc.)  →  correlation-id RPC
-Updater  →  host CheckForUpdate / StageUpdate; web only shows update-notice
+Updater  →  DllCheck stages FluentConfig.dll; menu is notify-only (update.available).
+             StageUpdate is a host API — the web cannot choose a download URL.
 ```
 
 ---
@@ -53,18 +54,20 @@ per-control files like `Controls/ToggleBuilder.cs` — that layout no longer exi
 
 Today's DSL lives under `Host/Builders/`:
 
-- `SectionBuilder` / `PanelBuilder` / fluent wrappers — author-facing API
+- `SectionBuilder` / `PanelBuilder` (CRTP hosts) — author-facing API
+- `When` — visibility conditions (`On` / `Off` / `Eq` / `Neq` / `Cmp` / `All`)
 - `PendingControl` — consolidated state + serialization for all control kinds
 - `SchemaBuilderHelpers` — shared visibility / repeatable-rows helpers
 
 Protocol DTOs are in `Host/Protocol/`; the Svelte renderer is schema-driven
 (`web/src/lib/controls/`).
 
-**DSL smell fixes (still required):**
+**Authoring rules (do not regress):**
 
 1. Pill callbacks must never expose `System.Windows.Controls.Panel`.
-2. Prefer `WithVisibilityWhenOff` or named `inverted:` — avoid positional-bool
-   visibility overloads on wrappers.
+2. Public `inverted:` on `WithVisibility` is gone. Use `WithVisibilityWhenOff`
+   or `When.Off` / `When.Neq`. The wire still carries `inverted` on
+   `VisibilityCondition`. See [docs/guides/BREAKING.md](../docs/guides/BREAKING.md).
 
 ### New in WebView2 host (no old WPF counterpart)
 
@@ -72,7 +75,7 @@ Protocol DTOs are in `Host/Protocol/`; the Svelte renderer is schema-driven
 |-------|-------|
 | `Host/Protocol/*` | Wire contract DTOs |
 | WebView2 host window | Thin WPF shell |
-| Updater (`CheckForUpdate` / `EnsureInstalled` / `StageUpdate` + swap helper) | Generic GitHub-releases module |
+| Updater (`CheckForUpdate` / `CheckForLatestRelease` / `StageUpdate` + swap helper) | Generic GitHub-releases module. Menu never calls `StageUpdate`. |
 | `update-notice` schema node | Banner control |
 | Svelte schema renderer + mock bridge | Web UI |
 | Embedded HTML bundle | Release build step |

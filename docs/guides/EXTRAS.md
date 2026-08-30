@@ -21,7 +21,7 @@ IReadOnlyList<string> all = KnownBots.GetKnownBots(); // sorted copy
 
 FluentConfig uses native WPF chrome with a dark title bar (DWM immersive mode) matching the web UI. A default FluentConfig icon is embedded; override with `.Icon(@"C:\path\to\icon.ico")` on the root builder.
 
-Window size and position are saved automatically on close to the CPH global `fluentconfig_settings` (`windows.{title}`) and restored on the next open (clamped to visible screens). Optional callbacks:
+Window size and position are saved automatically on close to the CPH global `fluentconfig_settings` (`windows.{id}`) and restored on the next open (clamped to visible screens). Optional callbacks:
 
 ```csharp
 FluentConfig.FluentConfig.SetWindowClosedCallback((width, height) => { /* legacy size-only */ });
@@ -33,7 +33,7 @@ FluentConfig.FluentConfig.SetWindowClosedCallback((left, top, width, height) => 
 For cold/warm open timing with a Release host built with `FC_PERF_TRACE`:
 
 1. Redeploy: `FluentConfig/scripts/Redeploy.ps1 -Configuration Release -PerfTrace`
-2. Paste an action template (Run on UI thread): minimal [`PERF_BENCHMARK_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt) or worst-case [`PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt) — select via `PERF_ACTION_NAME` in the harness.
+2. Paste an action template (Run on UI thread): minimal [`PERF_BENCHMARK_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_ACTION.cs.txt) or worst-case [`PERF_BENCHMARK_COMPLETE_ACTION.cs.txt`](../../FluentConfig/Host/PERF_BENCHMARK_COMPLETE_ACTION.cs.txt). Large-menu (unmeasured): [`PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt`](../performance/actions/PERF_BENCHMARK_LARGE_MENU_ACTION.cs.txt). Select via `PERF_ACTION_NAME` in the harness.
 3. Run the Node harness in [`FluentConfig/scripts/perf-benchmark/`](../../FluentConfig/scripts/perf-benchmark/) — it drives Streamer.bot via Client WebSocket `DoAction` and reads the CPH global `FluentConfig_PerfLast` written on `web-ready`.
 
 See that folder’s README for cold (SB restart) vs warm (close window, no restart) procedure.
