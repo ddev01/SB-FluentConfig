@@ -104,4 +104,32 @@ describe('isVisible equals', () => {
     ];
     expect(isVisible({ saveKey: 'reward', equals: 'abc' }, {}, undefined, sections)).toBe(true);
   });
+
+  it('isVisible pair-value empty options uses defaultByValue on first paint', () => {
+    const sections: SectionSchema[] = [
+      {
+        id: 'g',
+        title: 'G',
+        children: [
+          {
+            type: 'dropdown',
+            label: 'Reward',
+            saveKey: 'reward_display',
+            valueSaveKey: 'reward',
+            options: [],
+            defaultByValue: 'abc',
+            refreshable: true,
+          },
+        ],
+      },
+    ];
+    // Host collector seeds the id; gated block must not wait for Refresh options.
+    expect(
+      isVisible({ saveKey: 'reward', equals: 'abc' }, { reward: 'abc' }, undefined, sections),
+    ).toBe(true);
+    expect(isVisible({ saveKey: 'reward', equals: 'abc' }, {}, undefined, sections)).toBe(true);
+    expect(isVisible({ saveKey: 'reward', equals: 'abc' }, { reward: '' }, undefined, sections)).toBe(
+      false,
+    );
+  });
 });

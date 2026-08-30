@@ -102,20 +102,78 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
-        public void RefreshOnlyDropdown_SeedsInitialOptions()
+        public void RefreshOnlyDropdown_ShipsEmptyOptions()
         {
+            var refreshCalls = 0;
             var cph = TestCph.CreateMockCph();
             var ui = FluentConfigUi.Create(cph.Object, "refresh_seed", "Refresh Seed", "1.0");
             ui.Section("G", "g", s => s
                 .Dropdown("Groups", "include_groups")
-                    .Refresh(() => new[] { "vip", "sub", "mod" })
+                    .Refresh(() =>
+                    {
+                        refreshCalls++;
+                        return new[] { "vip", "sub", "mod" };
+                    })
             );
 
             var doc = ui.Session.BuildDocumentForTests();
             var node = Assert.IsType<DropdownNode>(doc.Sections[0].Children.Single(n => n is DropdownNode));
             Assert.True(node.Refreshable);
-            Assert.Equal(3, node.Options.Count);
-            Assert.Equal("vip", node.Options[0].Value);
+            Assert.True(node.Options == null || node.Options.Count == 0);
+            Assert.Equal(0, refreshCalls);
+
+            var refreshField = typeof(FluentConfigSession).GetField("_dropdownRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(refreshField);
+            var map = (Dictionary<string, Func<IList<DropdownOption>>>)refreshField.GetValue(ui.Session);
+            Assert.True(map.ContainsKey("include_groups"));
+            Assert.Equal(3, map["include_groups"]().Count);
+            Assert.Equal(1, refreshCalls);
+        }
+
+        [Fact]
+        public void RefreshOnlyPairDropdown_BehindVisibility_DoesNotEagerRefresh()
+        {
+            var refreshCalls = 0;
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "refresh_pair_vis", "Refresh Pair Vis", "1.0");
+            ui.Section("G", "g", s => s
+                .Toggle("Use reward", "use_reward").Default(true)
+                .WithVisibility("use_reward", inner => inner
+                    .Dropdown("Reward", "reward_display")
+                        .WithPairValue("reward_id")
+                        .DefaultByValue("rew_2")
+                        .Refresh(() =>
+                        {
+                            refreshCalls++;
+                            return new[] { ("rew_1", "Alpha"), ("rew_2", "Beta") };
+                        })
+                )
+            );
+
+            var doc = ui.Session.BuildDocumentForTests();
+            Assert.Equal(0, refreshCalls);
+
+            var group = Assert.IsType<GroupNode>(doc.Sections[0].Children.Single(n => n is GroupNode));
+            Assert.Equal("use_reward", group.Visibility.SaveKey);
+            var node = Assert.IsType<DropdownNode>(Assert.Single(group.Children.OfType<DropdownNode>()));
+            Assert.True(node.Refreshable);
+            Assert.True(node.Options == null || node.Options.Count == 0);
+            Assert.Equal("rew_2", node.DefaultByValue);
+            Assert.Equal("reward_id", node.ValueSaveKey);
+
+            // Empty-options collector seeds the id only — gated first paint uses this, not Refresh.
+            Assert.Equal("rew_2", doc.Values.Value<string>("reward_id"));
+            Assert.False(doc.Values.ContainsKey("reward_display"));
+            Assert.True(doc.Values.Value<bool>("use_reward"));
+
+            var refreshField = typeof(FluentConfigSession).GetField("_dropdownRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(refreshField);
+            var map = (Dictionary<string, Func<IList<DropdownOption>>>)refreshField.GetValue(ui.Session);
+            Assert.True(map.ContainsKey("reward_display"));
+            var options = map["reward_display"]();
+            Assert.Equal(1, refreshCalls);
+            Assert.Equal(2, options.Count);
+            Assert.Equal("rew_2", options[1].Value);
         }
 
         [Fact]

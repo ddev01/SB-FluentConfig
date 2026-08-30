@@ -188,10 +188,8 @@ namespace FluentConfig
                 };
 
                 _session?.RegisterDropdownRefresh(_saveKey, refreshFn);
-
-                // Refresh-only dropdowns (no static .Options) start empty unless seeded here.
-                if (opts == null || opts.Count == 0)
-                    opts = refreshFn();
+                // Refresh-only dropdowns ship empty. First paint uses collected defaults;
+                // the web fetches options on first mount (refreshCache.consumeOnce).
             }
 
             var node = new DropdownNode
