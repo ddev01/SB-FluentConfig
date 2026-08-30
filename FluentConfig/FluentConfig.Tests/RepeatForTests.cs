@@ -11,7 +11,7 @@ namespace FluentConfig.Tests
         public void RepeatFor_EmitsUngatedBelowMin_AndGatedAbove()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "RepeatFor Basic", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_basic", "RepeatFor Basic", "1.0");
             ui.Section("G", "g", s => s
                 .IntegerInput("Max count", "max_count").Range(1, 4).Default(2)
                 .RepeatFor("max_count", (row, i) => row
@@ -46,7 +46,7 @@ namespace FluentConfig.Tests
         public void RepeatFor_AutoDetectsMaxFromEarlierSection()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "RepeatFor CrossSection", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_crosssection", "RepeatFor CrossSection", "1.0");
             ui.Section("Settings", "settings", s => s
                 .IntegerInput("Max count", "max_count").Range(2, 3).Default(2)
             );
@@ -70,7 +70,7 @@ namespace FluentConfig.Tests
         public void RepeatFor_ExplicitMaxOverride_IgnoresDeclaredMax()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "RepeatFor MaxOverride", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_maxoverride", "RepeatFor MaxOverride", "1.0");
             ui.Section("G", "g", s => s
                 .IntegerInput("Max count", "max_count").Range(1, 10).Default(1)
                 .RepeatFor("max_count", (row, i) => row
@@ -86,7 +86,7 @@ namespace FluentConfig.Tests
         public void RepeatFor_MissingRangeAndNoExplicitMax_Throws()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "RepeatFor Missing", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "repeatfor_missing", "RepeatFor Missing", "1.0");
             ui.Section("G", "g", s => s
                 .RepeatFor("unknown_driver", (row, i) => row
                     .IntegerInput($"P{i}", $"points_{i}")

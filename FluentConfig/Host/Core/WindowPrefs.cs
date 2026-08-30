@@ -2,14 +2,14 @@ using Streamer.bot.Plugin.Interface;
 
 namespace FluentConfig.Core
 {
-    /// <summary>Per-title UI preferences nested under general settings <c>windows.{title}</c>.</summary>
+    /// <summary>Per-menu-id UI preferences nested under general settings <c>windows.{id}</c>.</summary>
     internal sealed class WindowPrefsData
     {
         public bool DontRemindDiscard { get; set; }
     }
 
     /// <summary>
-    /// Loads/saves per-title UI preferences via <see cref="GeneralSettingsStore"/>.
+        /// Loads/saves per-menu-id UI preferences via <see cref="GeneralSettingsStore"/>.
     /// </summary>
     internal static class WindowPrefsStore
     {

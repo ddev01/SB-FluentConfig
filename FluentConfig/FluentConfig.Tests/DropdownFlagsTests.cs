@@ -12,7 +12,7 @@ namespace FluentConfig.Tests
         public void Searchable_AllowCustom_Multiple_EmitFlags()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Dropdown Flags", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "dropdown_flags", "Dropdown Flags", "1.0");
             ui.Section("G", "g", s => s
                 .Combobox("Groups", "include_groups")
                     .Searchable()

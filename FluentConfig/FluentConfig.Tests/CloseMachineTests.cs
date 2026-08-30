@@ -31,7 +31,7 @@ namespace FluentConfig.Tests
 
                 Assert.Equal(expectClosed, harness.Closed);
                 Assert.False(harness.Session.ClosePromptInFlightForTests);
-                Assert.Equal(expectPref, DontRemindPref(harness.Store, harness.Title));
+                Assert.Equal(expectPref, DontRemindPref(harness.Store, harness.MenuId));
             });
         }
 
@@ -74,7 +74,7 @@ namespace FluentConfig.Tests
 
                 Assert.True(harness.Closed);
                 Assert.True(harness.Session.CloseAlreadyConfirmedForTests);
-                Assert.True(DontRemindPref(harness.Store, harness.Title));
+                Assert.True(DontRemindPref(harness.Store, harness.MenuId));
                 Assert.False(harness.Session.ClosePromptInFlightForTests);
             });
         }
@@ -123,7 +123,7 @@ namespace FluentConfig.Tests
         {
             RunSta(harness =>
             {
-                FluentConfigWindowManager.Unregister(harness.Title);
+                FluentConfigWindowManager.Unregister(harness.MenuId);
                 FluentConfigSession.SetHostExitInProgressForTests(true);
                 FluentConfigSession.CloseAllWindowsForHostExitForTests();
                 Assert.False(FluentConfigSession.HostExitInProgressForTests);
@@ -215,17 +215,19 @@ namespace FluentConfig.Tests
             public CloseHarness()
             {
                 Title = "CloseMachine-" + Guid.NewGuid().ToString("N");
+                MenuId = "cm" + Guid.NewGuid().ToString("N");
                 Store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
                 var cph = TestCph.CreateMockCph(Store);
-                Session = new FluentConfigSession(cph.Object, Title, "1.0");
+                Session = new FluentConfigSession(cph.Object, MenuId, Title, "1.0");
                 Window = new FluentConfigHostWindow(Title, "1.0");
                 Window.Closed += (_, __) => Closed = true;
                 Bridge = new HostBridge(Window, Session);
                 Session.BindHostForTests(Window, Bridge);
-                FluentConfigWindowManager.Register(Title, Window);
+                FluentConfigWindowManager.Register(MenuId, Window);
             }
 
             public string Title { get; }
+            public string MenuId { get; }
             public ConcurrentDictionary<string, string> Store { get; }
             public FluentConfigSession Session { get; }
             public FluentConfigHostWindow Window { get; }
@@ -243,7 +245,7 @@ namespace FluentConfig.Tests
                         Window.CloseAllowed();
                 }
                 catch { /* ignore */ }
-                FluentConfigWindowManager.Unregister(Title);
+                FluentConfigWindowManager.Unregister(MenuId);
             }
         }
     }

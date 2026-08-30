@@ -6,7 +6,7 @@ using Streamer.bot.Plugin.Interface;
 namespace FluentConfig.Core
 {
     /// <summary>
-    /// Persisted window bounds for a FluentConfig UI instance (keyed by title).
+    /// Persisted window bounds for a FluentConfig UI instance (keyed by menu id).
     /// </summary>
     public sealed class WindowGeometryData
     {
@@ -18,7 +18,7 @@ namespace FluentConfig.Core
     }
 
     /// <summary>
-    /// Loads/saves window geometry via <see cref="GeneralSettingsStore"/> (<c>windows.{title}</c>).
+        /// Loads/saves window geometry via <see cref="GeneralSettingsStore"/> (<c>windows.{id}</c>).
     /// </summary>
     internal static class WindowGeometryStore
     {

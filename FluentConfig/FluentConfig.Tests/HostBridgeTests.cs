@@ -34,7 +34,7 @@ namespace FluentConfig.Tests
                     }
 
                     var cph = TestCph.CreateMockCph();
-                    var session = new FluentConfigSession(cph.Object, "Bridge Thread Guard", "1.0");
+                    var session = new FluentConfigSession(cph.Object, "bridge_thread_guard", "Bridge Thread Guard", "1.0");
                     window = new FluentConfigHostWindow("Bridge Thread Guard", "1.0");
                     bridge = new HostBridge(window, session);
 
@@ -173,7 +173,7 @@ namespace FluentConfig.Tests
                     }
 
                     var cph = TestCph.CreateMockCph();
-                    var session = new FluentConfigSession(cph.Object, "Bridge Coverage", "1.0");
+                    var session = new FluentConfigSession(cph.Object, "bridge_coverage", "Bridge Coverage", "1.0");
                     window = new FluentConfigHostWindow("Bridge Coverage", "1.0");
                     bridge = new HostBridge(window, session);
                     body(bridge, Dispatcher.CurrentDispatcher);

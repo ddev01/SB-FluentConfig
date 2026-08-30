@@ -63,7 +63,7 @@ namespace FluentConfig.SmokeHost
                 if (Application.Current == null)
                     new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
 
-                var ui = FluentConfigUi.Create(mock.Object, "Phase2 SmokeHost", "0.2.0");
+                var ui = FluentConfigUi.Create(mock.Object, "phase2_smokehost", "Phase2 SmokeHost", "0.2.0");
                 ui.Section("General", "general", s => s
                     .Intro("SmokeHost automated window.")
                     .Toggle("Enabled", "smoke_enabled").Default(true)

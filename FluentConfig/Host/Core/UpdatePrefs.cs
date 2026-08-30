@@ -7,7 +7,7 @@ using Streamer.bot.Plugin.Interface;
 
 namespace FluentConfig.Core
 {
-    /// <summary>Per-title extension update preferences (CPH global FluentConfig_UpdatePrefs_{title}).</summary>
+    /// <summary>Per-menu-id extension update preferences (CPH global FluentConfig_UpdatePrefs_{id}).</summary>
     internal sealed class UpdatePrefsData
     {
         public DateTime? LastCheckUtc { get; set; }
@@ -16,7 +16,7 @@ namespace FluentConfig.Core
 
     /// <summary>
     /// Loads/saves extension update throttle + ignored-version prefs via
-    /// CPH global <c>FluentConfig_UpdatePrefs_{title}</c>.
+    /// CPH global <c>FluentConfig_UpdatePrefs_{id}</c>. Callers should pass the menu id (ScopeKey).
     /// </summary>
     internal static class UpdatePrefsStore
     {

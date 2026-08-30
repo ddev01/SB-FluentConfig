@@ -27,6 +27,7 @@ namespace FluentConfig
         private static bool _hostExitHookRegistered;
         private static volatile bool _hostExitInProgress;
         private readonly IInlineInvokeProxy _cph;
+        private readonly string _menuId;
         private readonly string _title;
         private readonly string _version;
         private readonly string _settingsKey;
@@ -74,21 +75,23 @@ namespace FluentConfig
             public Action<string, CallbackContext> OnRemoved;
         }
 
-        internal FluentConfigSession(IInlineInvokeProxy cph, string title, string version)
+        internal FluentConfigSession(IInlineInvokeProxy cph, string id, string title, string version)
         {
             _cph = cph;
+            _menuId = SettingsKeyHelper.ValidateMenuId(id);
             _title = title ?? "Settings";
             _version = version ?? "1.0";
-            global::FluentConfig.FluentConfig.MigrateLegacySettingsKey(cph, _title);
-            _settingsKey = SettingsKeyHelper.SettingsKeyFor(_title);
+            _settingsKey = SettingsKeyHelper.SettingsKeyFor(_menuId);
             _settingsManager = new SettingsManager(cph, _settingsKey, Log);
             _perfTracer = new PerformanceTracer(Log);
         }
 
         internal PerformanceTracer PerfTracer => _perfTracer;
 
-        /// <summary>Per-menu persistence identity. W3 replaces the body with the explicit menu id.</summary>
-        internal string ScopeKey => _title;
+        internal string Version => _version;
+
+        /// <summary>Per-menu persistence and window-registry identity (explicit id, not the display title).</summary>
+        internal string ScopeKey => _menuId;
 
         internal void SetIconPath(string iconPath) => _iconPath = iconPath;
         internal void RegisterDeferredSection(string tabId, string title, Action<SectionBuilder> build)

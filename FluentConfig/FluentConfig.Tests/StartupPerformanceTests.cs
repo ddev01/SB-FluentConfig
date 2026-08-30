@@ -40,7 +40,7 @@ namespace FluentConfig.Tests
 
             // Cold
             var sw = Stopwatch.StartNew();
-            var ui1 = FluentConfigUi.Create(cph.Object, "Perf Cold", "1.0");
+            var ui1 = FluentConfigUi.Create(cph.Object, "perf_cold", "Perf Cold", "1.0");
             build(ui1);
             var coldDoc = ui1.Session.BuildDocumentForTests();
             sw.Stop();
@@ -50,7 +50,7 @@ namespace FluentConfig.Tests
 
             // Warm (same process, second open)
             sw.Restart();
-            var ui2 = FluentConfigUi.Create(cph.Object, "Perf Warm", "1.0");
+            var ui2 = FluentConfigUi.Create(cph.Object, "perf_warm", "Perf Warm", "1.0");
             build(ui2);
             var warmDoc = ui2.Session.BuildDocumentForTests();
             sw.Stop();

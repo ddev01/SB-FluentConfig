@@ -108,7 +108,15 @@ namespace FluentConfig.Core
             var options = dropdown.Options;
             if (options == null || options.Count == 0)
             {
-                if (!string.IsNullOrEmpty(dropdown.DefaultValue))
+                if (!string.IsNullOrEmpty(dropdown.DefaultByValue))
+                {
+                    // Refresh-only: seed the id key, never a display string we do not have.
+                    var idKey = !string.IsNullOrEmpty(dropdown.ValueSaveKey)
+                        ? dropdown.ValueSaveKey
+                        : dropdown.SaveKey;
+                    Put(result, idKey, dropdown.DefaultByValue);
+                }
+                else if (!string.IsNullOrEmpty(dropdown.DefaultValue))
                     Put(result, dropdown.SaveKey, dropdown.DefaultValue);
                 return;
             }

@@ -6,8 +6,8 @@ using System.Windows;
 namespace FluentConfig.Core
 {
     /// <summary>
-    /// Per-title window registry and close callback. Thread-safe.
-    /// Different titles may be open simultaneously; re-triggering the same title focuses the existing window.
+    /// Per-menu-id window registry and close callback. Thread-safe.
+    /// Different ids may be open simultaneously; re-triggering the same id focuses the existing window.
     /// </summary>
     public static class FluentConfigWindowManager
     {
@@ -35,21 +35,28 @@ namespace FluentConfig.Core
         }
 
         /// <summary>
-        /// Returns true if a window with this title is already open (and focuses it).
-        /// Call before creating a new window.
+        /// Focus an existing window for <paramref name="id"/>, or reserve the id slot for a new one.
+        /// A placeholder (reserved, window still null) counts as reserved so a second opener
+        /// during <c>build()</c> cannot create a second session.
+        /// Returns false when an existing window was focused or the id is already reserved.
+        /// Returns true when the id was reserved (caller must Register the real window, or Unregister on failure).
         /// </summary>
-        /// <summary>
-        /// Focus an existing window for <paramref name="title"/>, or reserve the title slot for a new one.
-        /// Returns false when an existing window was focused (caller should not Create/Show).
-        /// Returns true when the title was reserved (caller must Register the real window, or Unregister on failure).
-        /// </summary>
-        internal static bool TryBeginOpen(string title, string version, Action<string> log)
+        internal static bool TryBeginOpen(string id, string version, Action<string> log)
         {
             lock (LockObj)
             {
-                if (!string.IsNullOrEmpty(title) && OpenWindows.TryGetValue(title, out var window) && window != null)
+                if (string.IsNullOrEmpty(id))
+                    return true;
+
+                if (OpenWindows.TryGetValue(id, out var window))
                 {
-                    log?.Invoke($"UI ({title} (v{version})) already open, focusing...");
+                    if (window == null)
+                    {
+                        log?.Invoke($"UI ({id} (v{version})) already opening");
+                        return false;
+                    }
+
+                    log?.Invoke($"UI ({id} (v{version})) already open, focusing...");
                     try
                     {
                         FocusWindow(window);
@@ -57,25 +64,24 @@ namespace FluentConfig.Core
                     }
                     catch
                     {
-                        OpenWindows.Remove(title);
-                        log?.Invoke($"UI ({title}) focus failed; clearing stale window entry.");
+                        OpenWindows.Remove(id);
+                        log?.Invoke($"UI ({id}) focus failed; clearing stale window entry.");
                     }
                 }
 
-                if (!string.IsNullOrEmpty(title))
-                    OpenWindows[title] = null; // placeholder reservation
+                OpenWindows[id] = null;
                 return true;
             }
         }
 
-        public static bool AlreadyOpened(string title, string version, Action<string> log)
+        public static bool AlreadyOpened(string id, string version, Action<string> log)
         {
             lock (LockObj)
             {
-                if (string.IsNullOrEmpty(title) || !OpenWindows.TryGetValue(title, out var window) || window == null)
+                if (string.IsNullOrEmpty(id) || !OpenWindows.TryGetValue(id, out var window) || window == null)
                     return false;
 
-                log?.Invoke($"UI ({title} (v{version})) already open, focusing...");
+                log?.Invoke($"UI ({id} (v{version})) already open, focusing...");
                 try
                 {
                     FocusWindow(window);
@@ -84,8 +90,8 @@ namespace FluentConfig.Core
                 catch
                 {
                     // Stale / disposed window — drop registry entry so caller can open a fresh one.
-                    OpenWindows.Remove(title);
-                    log?.Invoke($"UI ({title}) focus failed; clearing stale window entry.");
+                    OpenWindows.Remove(id);
+                    log?.Invoke($"UI ({id}) focus failed; clearing stale window entry.");
                     return false;
                 }
             }
@@ -96,21 +102,21 @@ namespace FluentConfig.Core
             get { lock (LockObj) { return OpenWindows.Count > 0; } }
         }
 
-        internal static void Register(string title, Window window)
+        internal static void Register(string id, Window window)
         {
-            if (string.IsNullOrEmpty(title) || window == null) return;
+            if (string.IsNullOrEmpty(id) || window == null) return;
             lock (LockObj)
             {
-                OpenWindows[title] = window;
+                OpenWindows[id] = window;
             }
         }
 
-        internal static void Unregister(string title)
+        internal static void Unregister(string id)
         {
-            if (string.IsNullOrEmpty(title)) return;
+            if (string.IsNullOrEmpty(id)) return;
             lock (LockObj)
             {
-                OpenWindows.Remove(title);
+                OpenWindows.Remove(id);
             }
         }
 

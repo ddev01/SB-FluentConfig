@@ -33,7 +33,7 @@ namespace FluentConfig.Tests
             var key = "defaults_seed_settings";
             store[key] = new JObject { ["volume"] = 90 }.ToString();
 
-            var ui = FluentConfigUi.Create(cph.Object, "Defaults Seed", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "defaults_seed", "Defaults Seed", "1.0");
             Configure(ui);
             var doc = ui.Session.BuildDocumentForTests();
 
@@ -43,7 +43,7 @@ namespace FluentConfig.Tests
             Assert.Equal("B", doc.Values.Value<string>("choice"));
 
             // Second open must not clobber the user value.
-            var ui2 = FluentConfigUi.Create(cph.Object, "Defaults Seed", "1.0");
+            var ui2 = FluentConfigUi.Create(cph.Object, "defaults_seed", "Defaults Seed", "1.0");
             Configure(ui2);
             var doc2 = ui2.Session.BuildDocumentForTests();
             Assert.Equal(90, doc2.Values.Value<int>("volume"));

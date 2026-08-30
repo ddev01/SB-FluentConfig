@@ -21,7 +21,7 @@ namespace FluentConfig.Tests
         public void SetSetting_PreservesOtherKeys()
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-            var key = SettingsKeyHelper.SettingsKeyFor("Runtime Demo");
+            var key = SettingsKeyHelper.SettingsKeyFor("runtime_demo");
             store[key] = new JObject
             {
                 ["mode"] = "Normal",
@@ -29,7 +29,7 @@ namespace FluentConfig.Tests
             }.ToString();
 
             var cph = TestCph.CreateMockCph(store).Object;
-            Fc.SetSetting(cph, "Runtime Demo", "access_token", "");
+            Fc.SetSetting(cph, "runtime_demo", "access_token", "");
 
             var persisted = JObject.Parse(store[key]);
             Assert.Equal("Normal", persisted["mode"]?.ToString());
@@ -40,7 +40,7 @@ namespace FluentConfig.Tests
         public void SaveSettings_MutatesMultipleKeys()
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
-            var key = SettingsKeyHelper.SettingsKeyFor("Runtime Demo");
+            var key = SettingsKeyHelper.SettingsKeyFor("runtime_demo");
             store[key] = new JObject
             {
                 ["client_id"] = "abc",
@@ -49,7 +49,7 @@ namespace FluentConfig.Tests
             }.ToString();
 
             var cph = TestCph.CreateMockCph(store).Object;
-            Fc.SaveSettings(cph, "Runtime Demo", o =>
+            Fc.SaveSettings(cph, "runtime_demo", o =>
             {
                 o["access_token"] = "";
                 o["refresh_token"] = "";
@@ -67,13 +67,13 @@ namespace FluentConfig.Tests
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
             var cph = TestCph.CreateMockCph(store).Object;
 
-            Assert.False(Fc.HasSavedSettings(cph, "Runtime Demo"));
+            Assert.False(Fc.HasSavedSettings(cph, "runtime_demo"));
 
-            store[Fc.SettingsKeyFor("Runtime Demo")] = "{}";
-            Assert.True(Fc.HasSavedSettings(cph, "Runtime Demo"));
+            store[Fc.SettingsKeyFor("runtime_demo")] = "{}";
+            Assert.True(Fc.HasSavedSettings(cph, "runtime_demo"));
 
-            store[Fc.SettingsKeyFor("Runtime Demo")] = "   ";
-            Assert.False(Fc.HasSavedSettings(cph, "Runtime Demo"));
+            store[Fc.SettingsKeyFor("runtime_demo")] = "   ";
+            Assert.False(Fc.HasSavedSettings(cph, "runtime_demo"));
         }
 
         [Fact]
@@ -169,21 +169,21 @@ namespace FluentConfig.Tests
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
             var cph = TestCph.CreateMockCph(store).Object;
 
-            Assert.Equal(Fc.KeyFor("Runtime Demo", "data"), Fc.DataKeyFor("Runtime Demo"));
+            Assert.Equal(Fc.KeyFor("runtime_demo", "data"), Fc.DataKeyFor("runtime_demo"));
 
-            var state = Fc.LoadData<SampleData>(cph, "Runtime Demo");
+            var state = Fc.LoadData<SampleData>(cph, "runtime_demo");
             Assert.Equal(0, state.Count);
 
             state.Count = 5;
             state.LastUser = "bob";
-            Fc.SaveData(cph, "Runtime Demo", state);
+            Fc.SaveData(cph, "runtime_demo", state);
 
-            var again = Fc.LoadData<SampleData>(cph, "Runtime Demo");
+            var again = Fc.LoadData<SampleData>(cph, "runtime_demo");
             Assert.Equal(5, again.Count);
             Assert.Equal("bob", again.LastUser);
 
-            Fc.SetData(cph, "Runtime Demo", "count", 9);
-            Assert.Equal(9, Fc.GetData(cph, "Runtime Demo", "count", 0));
+            Fc.SetData(cph, "runtime_demo", "count", 9);
+            Assert.Equal(9, Fc.GetData(cph, "runtime_demo", "count", 0));
         }
 
         [Fact]

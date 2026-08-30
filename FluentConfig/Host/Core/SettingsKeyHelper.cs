@@ -1,9 +1,11 @@
+using System;
 using System.Text;
 
 namespace FluentConfig.Core
 {
     /// <summary>
-    /// Derives snake_case Streamer.bot global-variable keys from a human-readable menu title.
+    /// Menu persistence keys. Identity is an explicit id <c>[a-z][a-z0-9_]*</c>;
+    /// <see cref="Slugify"/> remains a helper for authors picking an id from a title.
     /// </summary>
     public static class SettingsKeyHelper
     {
@@ -37,26 +39,51 @@ namespace FluentConfig.Core
         }
 
         /// <summary>
-        /// Builds <c>{slug}_{suffix}</c>. Empty slug or suffix returns the other side alone.
+        /// Throws unless <paramref name="id"/> matches <c>[a-z][a-z0-9_]*</c>.
         /// </summary>
-        public static string KeyFor(string title, string suffix)
+        public static string ValidateMenuId(string id)
         {
-            var slug = Slugify(title);
-            var suf = suffix ?? "";
-            if (string.IsNullOrEmpty(slug))
-                return suf;
-            if (string.IsNullOrEmpty(suf))
-                return slug;
-            return slug + "_" + suf;
+            if (id == null)
+                throw new ArgumentNullException(nameof(id));
+            if (!IsValidMenuId(id))
+            {
+                throw new ArgumentException(
+                    "Menu id must match [a-z][a-z0-9_]* (start with a lowercase letter; then letters, digits, or underscores).",
+                    nameof(id));
+            }
+
+            return id;
+        }
+
+        public static bool IsValidMenuId(string id)
+        {
+            if (string.IsNullOrEmpty(id) || id[0] < 'a' || id[0] > 'z')
+                return false;
+            for (int i = 1; i < id.Length; i++)
+            {
+                var c = id[i];
+                if (c >= 'a' && c <= 'z') continue;
+                if (c >= '0' && c <= '9') continue;
+                if (c == '_') continue;
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
-        /// Settings-blob key for a menu title (e.g. "First Chatters" → "first_chatters_settings").
+        /// Builds <c>{id}_{suffix}</c>. Empty suffix returns the id alone.
         /// </summary>
-        public static string SettingsKeyFor(string title) => KeyFor(title, "settings");
-        /// <summary>
-        /// Pre-slug global used by older FluentConfig builds: <c>FluentConfig_Settings_{title}</c>.
-        /// </summary>
-        public static string LegacySettingsKeyFor(string title) => "FluentConfig_Settings_" + (title ?? "");
+        public static string KeyFor(string id, string suffix)
+        {
+            id = ValidateMenuId(id);
+            var suf = suffix ?? "";
+            if (string.IsNullOrEmpty(suf))
+                return id;
+            return id + "_" + suf;
+        }
+
+        /// <summary>Settings-blob key for a menu id (e.g. <c>alerts</c> → <c>alerts_settings</c>).</summary>
+        public static string SettingsKeyFor(string id) => KeyFor(id, "settings");
     }
 }

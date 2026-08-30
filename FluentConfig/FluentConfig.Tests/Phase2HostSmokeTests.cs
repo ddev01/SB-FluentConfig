@@ -19,7 +19,7 @@ namespace FluentConfig.Tests
         public void Schema_Build_IncludesToggleTextboxDropdownPill()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Smoke", "0.2.0");
+            var ui = FluentConfigUi.Create(cph.Object, "phase2_smoke", "Phase2 Smoke", "0.2.0");
             ui.Section("General", "general", s => s
                 .Toggle("Enabled", "smoke_enabled").Default(true)
                 .Textbox("Display name", "smoke_name").Default("smoke-user")
@@ -55,7 +55,7 @@ namespace FluentConfig.Tests
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
             var cph = TestCph.CreateMockCph(store);
-            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Persist", "0.2.0");
+            var ui = FluentConfigUi.Create(cph.Object, "phase2_persist", "Phase2 Persist", "0.2.0");
             ui.Section("G", "g", s => s.Toggle("Enabled", "smoke_enabled").Textbox("Name", "smoke_name"));
 
             ui.Session.BuildDocumentForTests();
@@ -82,7 +82,7 @@ namespace FluentConfig.Tests
         public void DropdownRefresh_ReturnsFakeRewards()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Dropdown", "0.2.0");
+            var ui = FluentConfigUi.Create(cph.Object, "phase2_dropdown", "Phase2 Dropdown", "0.2.0");
             ui.Section("G", "g", s => s
                 .Dropdown("Reward", "smoke_reward_display")
                     .Options(new[] { ("rew_1", "A") })
@@ -105,7 +105,7 @@ namespace FluentConfig.Tests
         public void RefreshOnlyDropdown_SeedsInitialOptions()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Refresh Seed", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "refresh_seed", "Refresh Seed", "1.0");
             ui.Section("G", "g", s => s
                 .Dropdown("Groups", "include_groups")
                     .Refresh(() => new[] { "vip", "sub", "mod" })
@@ -122,7 +122,7 @@ namespace FluentConfig.Tests
         public void DropdownWithStaticOptions_DoesNotSeedFromRefresh()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Static Options", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "static_options", "Static Options", "1.0");
             ui.Section("G", "g", s => s
                 .Dropdown("Choice", "dropdown_choice")
                     .Options(new[] { "A", "B" })
@@ -139,7 +139,7 @@ namespace FluentConfig.Tests
         public void WithVisibilityWhenOff_EmitsInvertedCondition()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Phase2 Vis", "0.2.0");
+            var ui = FluentConfigUi.Create(cph.Object, "phase2_vis", "Phase2 Vis", "0.2.0");
             ui.Section("G", "g", s => s
                 .Toggle("Premium", "premium_mode")
                 .WithVisibilityWhenOff("premium_mode", inner => inner

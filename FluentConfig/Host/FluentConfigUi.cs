@@ -26,7 +26,7 @@ namespace FluentConfig
         public static void SetLogCallback(Action<string> callback) => _logCallback = callback;
         public static void SetWindowClosedCallback(Action<double, double> callback) => FluentConfigWindowManager.SetWindowClosedCallback(callback);
         public static void SetWindowClosedCallback(Action<double, double, double, double> callback) => FluentConfigWindowManager.SetWindowClosedCallback(callback);
-        public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0") => FluentConfigWindowManager.AlreadyOpened(title, version, LogInternal);
+        public static bool AlreadyOpened(string id = "fluentconfig", string version = "1.0") => FluentConfigWindowManager.AlreadyOpened(id, version, LogInternal);
         public static bool IsOpen => FluentConfigWindowManager.IsOpen;
 
         internal static void LogInternal(string message)
@@ -65,55 +65,23 @@ namespace FluentConfig
         public static void SetLogCallback(Action<string> callback) => FluentConfigApp.SetLogCallback(callback);
         public static void SetWindowClosedCallback(Action<double, double> callback) => FluentConfigApp.SetWindowClosedCallback(callback);
         public static void SetWindowClosedCallback(Action<double, double, double, double> callback) => FluentConfigApp.SetWindowClosedCallback(callback);
-        public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0") => FluentConfigApp.AlreadyOpened(title, version);
+        public static bool AlreadyOpened(string id = "fluentconfig", string version = "1.0") => FluentConfigApp.AlreadyOpened(id, version);
         public static bool IsOpen => FluentConfigApp.IsOpen;
 
-        /// <summary>Slugify a menu title (e.g. "First Chatters" → "first_chatters").</summary>
+        /// <summary>Slugify a display title (e.g. "First Chatters" → "first_chatters") when picking a menu id.</summary>
         public static string SlugFor(string title) => SettingsKeyHelper.Slugify(title);
-        /// <summary>Build <c>{slug}_{suffix}</c> for a menu title (e.g. counter/users state vars).</summary>
-        public static string KeyFor(string title, string suffix) => SettingsKeyHelper.KeyFor(title, suffix);
-        /// <summary>Settings-blob global key for a menu title (e.g. "First Chatters" → "first_chatters_settings").</summary>
-        public static string SettingsKeyFor(string title) => SettingsKeyHelper.SettingsKeyFor(title);
-        /// <summary>
-        /// Copy <c>FluentConfig_Settings_{title}</c> into <c>{slug}_settings</c> when the new key is empty.
-        /// Called automatically from load/open paths. Returns true when a copy was written.
-        /// </summary>
-        public static bool MigrateLegacySettingsKey(IInlineInvokeProxy cph, string title)
-        {
-            if (cph == null)
-                return false;
-            try
-            {
-                var dest = SettingsKeyHelper.SettingsKeyFor(title);
-                if (string.IsNullOrEmpty(dest))
-                    return false;
-                var destVal = cph.GetGlobalVar<string>(dest, true);
-                if (!string.IsNullOrWhiteSpace(destVal))
-                    return false;
-                var src = SettingsKeyHelper.LegacySettingsKeyFor(title);
-                if (string.IsNullOrEmpty(src) || string.Equals(src, dest, StringComparison.Ordinal))
-                    return false;
-                var srcVal = cph.GetGlobalVar<string>(src, true);
-                if (string.IsNullOrWhiteSpace(srcVal))
-                    return false;
-                cph.SetGlobalVar(dest, srcVal, true);
-                FluentConfigApp.LogInternal($"Migrated settings {src} → {dest}");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                FluentConfigApp.LogInternal($"MigrateLegacySettingsKey failed: {ex.Message}");
-                return false;
-            }
-        }
+        /// <summary>Build <c>{id}_{suffix}</c> for a menu id (e.g. counter/users state vars).</summary>
+        public static string KeyFor(string id, string suffix) => SettingsKeyHelper.KeyFor(id, suffix);
+        /// <summary>Settings-blob global key for a menu id (e.g. <c>alerts</c> → <c>alerts_settings</c>).</summary>
+        public static string SettingsKeyFor(string id) => SettingsKeyHelper.SettingsKeyFor(id);
 
         /// <summary>
-        /// Load a typed settings object from the CPH global for <paramref name = "title"/>.
+        /// Load a typed settings object from the CPH global for <paramref name = "id"/>.
         /// Missing/malformed fields keep the property defaults from <c>new T()</c>;
         /// optional <paramref name = "validate"/> runs afterward for domain clamping.
         /// JSON keys are expected in snake_case (matching FluentConfig save keys).
         /// </summary>
-        public static T LoadSettings<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
+        public static T LoadSettings<T>(IInlineInvokeProxy cph, string id, Action<T> validate = null)
             where T : new()
         {
             var result = new T();
@@ -126,8 +94,7 @@ namespace FluentConfig
             string json = null;
             try
             {
-                MigrateLegacySettingsKey(cph, title);
-                json = cph.GetGlobalVar<string>(SettingsKeyHelper.SettingsKeyFor(title), true);
+                json = cph.GetGlobalVar<string>(SettingsKeyHelper.SettingsKeyFor(id), true);
             }
             catch (Exception ex)
             {
@@ -151,14 +118,14 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// Read a single JSON field (or nested path) from the settings blob for <paramref name = "title"/>.
+        /// Read a single JSON field (or nested path) from the settings blob for <paramref name = "id"/>.
         /// Useful for flat numbered keys (e.g. <c>points_1</c>) that do not map cleanly onto a typed property.
         /// </summary>
-        public static TValue GetSetting<TValue>(IInlineInvokeProxy cph, string title, string jsonKey, TValue defaultValue = default)
+        public static TValue GetSetting<TValue>(IInlineInvokeProxy cph, string id, string jsonKey, TValue defaultValue = default)
         {
             if (cph == null || string.IsNullOrEmpty(jsonKey))
                 return defaultValue;
-            var mgr = OpenSettingsManager(cph, title);
+            var mgr = OpenSettingsManager(cph, id);
             mgr.Load();
             return mgr.GetValue(jsonKey, defaultValue);
         }
@@ -167,11 +134,11 @@ namespace FluentConfig
         /// Write a single JSON field (or nested path) on the settings blob and persist.
         /// Other keys are preserved (read-modify-write).
         /// </summary>
-        public static void SetSetting<TValue>(IInlineInvokeProxy cph, string title, string jsonKey, TValue value)
+        public static void SetSetting<TValue>(IInlineInvokeProxy cph, string id, string jsonKey, TValue value)
         {
             if (cph == null || string.IsNullOrEmpty(jsonKey))
                 return;
-            var mgr = OpenSettingsManager(cph, title);
+            var mgr = OpenSettingsManager(cph, id);
             mgr.Load();
             mgr.SetValue(jsonKey, value);
             mgr.Save(mgr.GetSettings());
@@ -181,11 +148,11 @@ namespace FluentConfig
         /// Load the settings blob, apply <paramref name = "mutate"/>, and persist in one write.
         /// Useful for resetting several keys without opening the UI.
         /// </summary>
-        public static void SaveSettings(IInlineInvokeProxy cph, string title, Action<JObject> mutate)
+        public static void SaveSettings(IInlineInvokeProxy cph, string id, Action<JObject> mutate)
         {
             if (cph == null || mutate == null)
                 return;
-            var mgr = OpenSettingsManager(cph, title);
+            var mgr = OpenSettingsManager(cph, id);
             mgr.Load();
             var current = mgr.GetSettings() ?? new JObject();
             mutate(current);
@@ -194,17 +161,16 @@ namespace FluentConfig
         }
 
         /// <summary>
-        /// True when the <c>{slug}_settings</c> global exists and is non-blank
+        /// True when the <c>{id}_settings</c> global exists and is non-blank
         /// (user has opened/saved the menu at least once).
         /// </summary>
-        public static bool HasSavedSettings(IInlineInvokeProxy cph, string title)
+        public static bool HasSavedSettings(IInlineInvokeProxy cph, string id)
         {
             if (cph == null)
                 return false;
             try
             {
-                MigrateLegacySettingsKey(cph, title);
-                var raw = cph.GetGlobalVar<string>(SettingsKeyHelper.SettingsKeyFor(title), true);
+                var raw = cph.GetGlobalVar<string>(SettingsKeyHelper.SettingsKeyFor(id), true);
                 return !string.IsNullOrWhiteSpace(raw);
             }
             catch (Exception ex)
@@ -214,13 +180,13 @@ namespace FluentConfig
             }
         }
 
-        /// <summary>Data-blob global key for a menu title (e.g. "First Chatters" → "first_chatters_data").</summary>
-        public static string DataKeyFor(string title) => SettingsKeyHelper.KeyFor(title, "data");
+        /// <summary>Data-blob global key for a menu id (e.g. <c>alerts</c> → <c>alerts_data</c>).</summary>
+        public static string DataKeyFor(string id) => SettingsKeyHelper.KeyFor(id, "data");
         /// <summary>
-        /// Load a typed runtime state object from the <c>{slug}_data</c> global.
+        /// Load a typed runtime state object from the <c>{id}_data</c> global.
         /// Missing/malformed fields keep property defaults from <c>new T()</c>.
         /// </summary>
-        public static T LoadData<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
+        public static T LoadData<T>(IInlineInvokeProxy cph, string id, Action<T> validate = null)
             where T : new()
         {
             var result = new T();
@@ -233,7 +199,7 @@ namespace FluentConfig
             string json = null;
             try
             {
-                json = cph.GetGlobalVar<string>(DataKeyFor(title), true);
+                json = cph.GetGlobalVar<string>(DataKeyFor(id), true);
             }
             catch (Exception ex)
             {
@@ -256,15 +222,15 @@ namespace FluentConfig
             return result;
         }
 
-        /// <summary>Serialize <paramref name = "data"/> to the <c>{slug}_data</c> persisted global.</summary>
-        public static void SaveData<T>(IInlineInvokeProxy cph, string title, T data)
+        /// <summary>Serialize <paramref name = "data"/> to the <c>{id}_data</c> persisted global.</summary>
+        public static void SaveData<T>(IInlineInvokeProxy cph, string id, T data)
         {
             if (cph == null)
                 return;
             try
             {
                 var json = data == null ? "{}" : JsonConvert.SerializeObject(data, CreateSnakeCaseSettings());
-                cph.SetGlobalVar(DataKeyFor(title), json, true);
+                cph.SetGlobalVar(DataKeyFor(id), json, true);
             }
             catch (Exception ex)
             {
@@ -272,22 +238,22 @@ namespace FluentConfig
             }
         }
 
-        /// <summary>Read a nested path from the <c>{slug}_data</c> blob.</summary>
-        public static TValue GetData<TValue>(IInlineInvokeProxy cph, string title, string jsonPath, TValue defaultValue = default)
+        /// <summary>Read a nested path from the <c>{id}_data</c> blob.</summary>
+        public static TValue GetData<TValue>(IInlineInvokeProxy cph, string id, string jsonPath, TValue defaultValue = default)
         {
             if (cph == null || string.IsNullOrEmpty(jsonPath))
                 return defaultValue;
-            var mgr = OpenDataManager(cph, title);
+            var mgr = OpenDataManager(cph, id);
             mgr.Load();
             return mgr.GetValue(jsonPath, defaultValue);
         }
 
-        /// <summary>Write a nested path on the <c>{slug}_data</c> blob and persist.</summary>
-        public static void SetData<TValue>(IInlineInvokeProxy cph, string title, string jsonPath, TValue value)
+        /// <summary>Write a nested path on the <c>{id}_data</c> blob and persist.</summary>
+        public static void SetData<TValue>(IInlineInvokeProxy cph, string id, string jsonPath, TValue value)
         {
             if (cph == null || string.IsNullOrEmpty(jsonPath))
                 return;
-            var mgr = OpenDataManager(cph, title);
+            var mgr = OpenDataManager(cph, id);
             mgr.Load();
             mgr.SetValue(jsonPath, value);
             mgr.Save(mgr.GetSettings());
@@ -329,13 +295,12 @@ namespace FluentConfig
             return arr;
         }
 
-        private static SettingsManager OpenSettingsManager(IInlineInvokeProxy cph, string title)
+        private static SettingsManager OpenSettingsManager(IInlineInvokeProxy cph, string id)
         {
-            MigrateLegacySettingsKey(cph, title);
-            return new SettingsManager(cph, SettingsKeyHelper.SettingsKeyFor(title), FluentConfigApp.LogInternal);
+            return new SettingsManager(cph, SettingsKeyHelper.SettingsKeyFor(id), FluentConfigApp.LogInternal);
         }
 
-        private static SettingsManager OpenDataManager(IInlineInvokeProxy cph, string title) => new SettingsManager(cph, DataKeyFor(title), FluentConfigApp.LogInternal);
+        private static SettingsManager OpenDataManager(IInlineInvokeProxy cph, string id) => new SettingsManager(cph, DataKeyFor(id), FluentConfigApp.LogInternal);
         private static JsonSerializerSettings CreateSnakeCaseSettings() => new JsonSerializerSettings
         {
             ContractResolver = new DefaultContractResolver
@@ -357,38 +322,37 @@ namespace FluentConfig
     public static class Fc
     {
         public static string SlugFor(string title) => FluentConfig.SlugFor(title);
-        public static string KeyFor(string title, string suffix) => FluentConfig.KeyFor(title, suffix);
-        public static string SettingsKeyFor(string title) => FluentConfig.SettingsKeyFor(title);
-        public static bool MigrateLegacySettingsKey(IInlineInvokeProxy cph, string title) => FluentConfig.MigrateLegacySettingsKey(cph, title);
-        public static T LoadSettings<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
-            where T : new() => FluentConfig.LoadSettings(cph, title, validate);
-        public static TValue GetSetting<TValue>(IInlineInvokeProxy cph, string title, string jsonKey, TValue defaultValue = default) => FluentConfig.GetSetting(cph, title, jsonKey, defaultValue);
-        public static void SetSetting<TValue>(IInlineInvokeProxy cph, string title, string jsonKey, TValue value) => FluentConfig.SetSetting(cph, title, jsonKey, value);
-        public static void SaveSettings(IInlineInvokeProxy cph, string title, Action<JObject> mutate) => FluentConfig.SaveSettings(cph, title, mutate);
-        public static bool HasSavedSettings(IInlineInvokeProxy cph, string title) => FluentConfig.HasSavedSettings(cph, title);
-        public static string DataKeyFor(string title) => FluentConfig.DataKeyFor(title);
-        public static T LoadData<T>(IInlineInvokeProxy cph, string title, Action<T> validate = null)
-            where T : new() => FluentConfig.LoadData(cph, title, validate);
-        public static void SaveData<T>(IInlineInvokeProxy cph, string title, T data) => FluentConfig.SaveData(cph, title, data);
-        public static TValue GetData<TValue>(IInlineInvokeProxy cph, string title, string jsonPath, TValue defaultValue = default) => FluentConfig.GetData(cph, title, jsonPath, defaultValue);
-        public static void SetData<TValue>(IInlineInvokeProxy cph, string title, string jsonPath, TValue value) => FluentConfig.SetData(cph, title, jsonPath, value);
+        public static string KeyFor(string id, string suffix) => FluentConfig.KeyFor(id, suffix);
+        public static string SettingsKeyFor(string id) => FluentConfig.SettingsKeyFor(id);
+        public static T LoadSettings<T>(IInlineInvokeProxy cph, string id, Action<T> validate = null)
+            where T : new() => FluentConfig.LoadSettings(cph, id, validate);
+        public static TValue GetSetting<TValue>(IInlineInvokeProxy cph, string id, string jsonKey, TValue defaultValue = default) => FluentConfig.GetSetting(cph, id, jsonKey, defaultValue);
+        public static void SetSetting<TValue>(IInlineInvokeProxy cph, string id, string jsonKey, TValue value) => FluentConfig.SetSetting(cph, id, jsonKey, value);
+        public static void SaveSettings(IInlineInvokeProxy cph, string id, Action<JObject> mutate) => FluentConfig.SaveSettings(cph, id, mutate);
+        public static bool HasSavedSettings(IInlineInvokeProxy cph, string id) => FluentConfig.HasSavedSettings(cph, id);
+        public static string DataKeyFor(string id) => FluentConfig.DataKeyFor(id);
+        public static T LoadData<T>(IInlineInvokeProxy cph, string id, Action<T> validate = null)
+            where T : new() => FluentConfig.LoadData(cph, id, validate);
+        public static void SaveData<T>(IInlineInvokeProxy cph, string id, T data) => FluentConfig.SaveData(cph, id, data);
+        public static TValue GetData<TValue>(IInlineInvokeProxy cph, string id, string jsonPath, TValue defaultValue = default) => FluentConfig.GetData(cph, id, jsonPath, defaultValue);
+        public static void SetData<TValue>(IInlineInvokeProxy cph, string id, string jsonPath, TValue value) => FluentConfig.SetData(cph, id, jsonPath, value);
         public static ExtensionLogger Logger(IInlineInvokeProxy cph, string title, string version, IEnumerable<string> extraSensitiveKeys = null) => FluentConfig.Logger(cph, title, version, extraSensitiveKeys);
         public static EventContext CaptureEvent(IInlineInvokeProxy cph) => FluentConfig.CaptureEvent(cph);
         public static string ApplyTemplate(string template, EventContext ev) => FluentConfig.ApplyTemplate(template, ev);
         public static string ApplyTemplate(string template, IReadOnlyDictionary<string, string> vars) => FluentConfig.ApplyTemplate(template, vars);
         public static string[] TwitchRewardGroups(IInlineInvokeProxy cph) => FluentConfig.TwitchRewardGroups(cph);
-        public static bool AlreadyOpened(string title = "FluentConfig", string version = "1.0") => FluentConfig.AlreadyOpened(title, version);
+        public static bool AlreadyOpened(string id = "fluentconfig", string version = "1.0") => FluentConfig.AlreadyOpened(id, version);
         public static bool IsOpen => FluentConfig.IsOpen;
 
         public static string GetVersion() => FluentConfig.GetVersion();
         public static void SetLogCallback(Action<string> callback) => FluentConfig.SetLogCallback(callback);
         /// <summary>
-        /// Open a settings window for this title (focus if already open, otherwise create/build/show).
+        /// Open a settings window for this menu id (focus if already open, otherwise create/build/show).
         /// Preferred entry for menu actions; see <see cref = "FluentConfigUi.Create"/> for the granular builder.
         /// </summary>
-        public static void Open(IInlineInvokeProxy cph, string title, string version, Action<FluentConfigUi> build, string iconPath = null) => FluentConfigUi.ShowOrFocus(cph, title, version, build, iconPath);
+        public static void Open(IInlineInvokeProxy cph, string id, string title, string version, Action<FluentConfigUi> build, string iconPath = null) => FluentConfigUi.ShowOrFocus(cph, id, title, version, build, iconPath);
         /// <summary>Same as <see cref = "Open"/>; kept for callers that already use this name.</summary>
-        public static void ShowOrFocus(IInlineInvokeProxy cph, string title, string version, Action<FluentConfigUi> build, string iconPath = null) => Open(cph, title, version, build, iconPath);
+        public static void ShowOrFocus(IInlineInvokeProxy cph, string id, string title, string version, Action<FluentConfigUi> build, string iconPath = null) => Open(cph, id, title, version, build, iconPath);
     }
 
     /// <summary>
@@ -402,6 +366,7 @@ namespace FluentConfig
     public class FluentConfigUi
     {
         private readonly FluentConfigSession _session;
+        private bool _openReserved;
         /// <summary>Test hook for InternalsVisibleTo consumers.</summary>
         internal FluentConfigSession Session => _session;
 
@@ -411,31 +376,33 @@ namespace FluentConfig
         }
 
         /// <param name = "cph">Streamer.bot IInlineInvokeProxy (CPH).</param>
-        /// <param name = "title">Window title; also slugified into the settings global key (<c>{slug}_settings</c>).</param>
+        /// <param name = "id">Stable menu id (<c>[a-z][a-z0-9_]*</c>); persistence and window-registry identity.</param>
+        /// <param name = "title">Window title (label only).</param>
         /// <param name = "version">Display version.</param>
         /// <param name = "plainWindow">Ignored in the WebView2 host (kept for API compatibility).</param>
-        public static FluentConfigUi Create(IInlineInvokeProxy cph, string title, string version, bool plainWindow = false)
+        public static FluentConfigUi Create(IInlineInvokeProxy cph, string id, string title, string version, bool plainWindow = false)
         {
             WebView2AssemblyResolve.EnsureInitialized();
-            var session = new FluentConfigSession(cph, title ?? "Settings", version);
+            var session = new FluentConfigSession(cph, id, title ?? "Settings", version);
             return new FluentConfigUi(session);
         }
 
         /// <summary>
-        /// Focus an existing window with this title, or create/build/show a new one.
+        /// Focus an existing window with this menu id, or create/build/show a new one.
         /// Collapses the usual AlreadyOpened → Create → build → Show boilerplate.
         /// </summary>
         /// <remarks>
-        /// Prefer a static <c>ExtensionInfo</c> class holding Title/Version/IconPath constants
+        /// Prefer a static <c>ExtensionInfo</c> class holding Id/Title/Version/IconPath constants
         /// and pass those here — that is a recommended convention, not a framework type.
         /// </remarks>
-        public static void ShowOrFocus(IInlineInvokeProxy cph, string title, string version, Action<FluentConfigUi> build, string iconPath = null)
+        public static void ShowOrFocus(IInlineInvokeProxy cph, string id, string title, string version, Action<FluentConfigUi> build, string iconPath = null)
         {
-            if (!FluentConfigWindowManager.TryBeginOpen(title, version, FluentConfigApp.LogInternal))
+            if (!FluentConfigWindowManager.TryBeginOpen(id, version, FluentConfigApp.LogInternal))
                 return;
             try
             {
-                var ui = Create(cph, title, version);
+                var ui = Create(cph, id, title, version);
+                ui._openReserved = true;
                 if (!string.IsNullOrEmpty(iconPath))
                     ui.Icon(iconPath);
                 build?.Invoke(ui);
@@ -443,7 +410,7 @@ namespace FluentConfig
             }
             catch
             {
-                FluentConfigWindowManager.Unregister(title);
+                FluentConfigWindowManager.Unregister(id);
                 throw;
             }
         }
@@ -499,6 +466,25 @@ namespace FluentConfig
             return this;
         }
 
-        public void Show() => _session.Show();
+        public void Show()
+        {
+            if (!_openReserved)
+            {
+                if (!FluentConfigWindowManager.TryBeginOpen(_session.ScopeKey, _session.Version, FluentConfigApp.LogInternal))
+                    return;
+                _openReserved = true;
+            }
+
+            try
+            {
+                _session.Show();
+            }
+            catch
+            {
+                FluentConfigWindowManager.Unregister(_session.ScopeKey);
+                _openReserved = false;
+                throw;
+            }
+        }
     }
 }

@@ -77,7 +77,7 @@ namespace FluentConfig.Tests
         public void WithVisibility_Comparator_EmitsGatedGroup()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Comparator Vis", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "comparator_vis", "Comparator Vis", "1.0");
             ui.Section("G", "g", s => s
                 .IntegerInput("Count", "count").Range(0, 10).Default(3)
                 .WithVisibility("count", Comparator.GreaterOrEqual, 2, inner => inner
@@ -134,7 +134,7 @@ namespace FluentConfig.Tests
         public void WithVisibility_StringEquals_EmitsFlatGroup()
         {
             var cph = TestCph.CreateMockCph();
-            var ui = FluentConfigUi.Create(cph.Object, "Equals Vis", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "equals_vis", "Equals Vis", "1.0");
             ui.Section("G", "g", s => s
                 .Dropdown("Mode", "mode").Options(new[] { "quiet", "loud" })
                 .WithVisibility("mode", "quiet", inner => inner

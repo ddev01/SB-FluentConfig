@@ -100,7 +100,7 @@ namespace FluentConfig.Tests
         {
             var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
             var cph = TestCph.CreateMockCph(store);
-            var ui = FluentConfigUi.Create(cph.Object, "Path Check", "1.0");
+            var ui = FluentConfigUi.Create(cph.Object, "path_check", "Path Check", "1.0");
             ui.Section("G", "g", s => s.Filepath("GIF / video", "gif_path"));
             ui.Session.BuildDocumentForTests();
 
