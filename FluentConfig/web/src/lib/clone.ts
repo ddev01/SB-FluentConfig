@@ -19,7 +19,7 @@ function shallowCloneContainer(
   if (value !== null && typeof value === 'object') {
     return { ...(value as Record<string, unknown>) };
   }
-  return typeof nextKey === 'number' ? [] : {};
+  return (typeof nextKey === 'number' ? [] : {}) as Record<string | number, unknown>;
 }
 
 /**

@@ -2,7 +2,7 @@
  * Motion helpers (Workstream C).
  *
  * Motion One (`motion` / `animate`) pushes the single-file embed over the
- * 150 KB raw gate (~+62 KB for `animate` alone). Same public API is provided
+ * 180 KB raw gate (~+62 KB for `animate` alone). Same public API is provided
  * via Svelte CSS transitions (compiled to @keyframes), so call sites stay stable.
  */
 import type { TransitionConfig } from 'svelte/transition';

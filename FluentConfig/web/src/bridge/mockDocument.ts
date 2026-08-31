@@ -49,7 +49,6 @@ export function createMockDocument(): UiDocument {
             downloadUrl: '',
             repo: 'example-org/example-extension',
             dismissible: true,
-            mode: 'notify',
             releasePageUrl:
               'https://example.test/example-org/example-extension/releases/tag/ext-v1.1.0',
             updateGuideUrl: 'https://example.test/docs/extension-update',

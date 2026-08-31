@@ -228,7 +228,7 @@
       <div class="pointer-events-auto mx-auto w-full max-w-3xl px-4 pt-3">
         <div class="flex flex-col gap-2">
           <header
-            class="fc-glass rounded-2xl border border-fc-border/60 px-4 py-3 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)]"
+            class="fc-glass rounded-2xl border border-fc-border/60 px-4 py-3"
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex min-w-0 flex-col gap-0.5">

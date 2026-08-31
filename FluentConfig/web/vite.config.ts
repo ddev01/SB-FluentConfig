@@ -7,7 +7,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 
-/** Informal Release gate: single-file HTML should stay near ~150–170 KB after mock exclusion. */
+/** Informal Release gate: single-file HTML must stay under 180 KB after mock exclusion. */
 const BUNDLE_SIZE_SOFT_MAX = 180_000
 
 /**

@@ -66,7 +66,7 @@ Either side may send `kind:"request"` (e.g. host → web `dialog.confirm`). Corr
 | `bootstrap` | `UiDocument` |
 | `progress` | `{ id, title?, message?, percent?, current?, total?, done? }` |
 | `values.patch` | `{ paths? }` and/or `{ values? }` |
-| `update.available` | `{ noticeId?, currentVersion, latestVersion, releaseNotes?, downloadUrl?, repo?, mode: "notify", releasePageUrl?, updateGuideUrl? }` |
+| `update.available` | `{ noticeId?, currentVersion, latestVersion, releaseNotes?, downloadUrl?, repo?, releasePageUrl?, updateGuideUrl? }` |
 | `schema.patch` | `{ sectionId?, nodeId?, node }` |
 
 ### Visibility
@@ -356,7 +356,6 @@ Update notices are **not** in bootstrap (`UiDocument` has no `update-notice` chi
     "latestVersion": "1.1.0",
     "releaseNotes": "Bug fixes.",
     "repo": "example-org/example-extension",
-    "mode": "notify",
     "releasePageUrl": "https://example.test/example-org/example-extension/releases/tag/v1.1.0",
     "updateGuideUrl": "https://example.test/docs/updating"
   }

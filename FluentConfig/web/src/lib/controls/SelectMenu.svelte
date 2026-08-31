@@ -123,6 +123,7 @@
       suggestionLength: suggestionOptions.length,
     }),
   );
+  const openRing = $derived(open ? 'border-fc-accent ring-2 ring-fc-ring/40' : '');
 
   function openMenu(): void {
     if (
@@ -302,11 +303,11 @@
           {labelForValue(options, v)}
           <button
             type="button"
-            class="flex h-4 w-4 shrink-0 items-center justify-center rounded text-fc-text-subtle transition-colors hover:text-fc-danger"
+            class="flex h-4 w-4 shrink-0 items-center justify-center rounded-fc text-fc-text-subtle hover:text-fc-danger"
             aria-label="Remove {labelForValue(options, v)}"
             onclick={() => removeChip(v)}
           >
-            <TrashIcon class="h-3 w-3" />
+            <TrashIcon class="h-4 w-4" />
           </button>
         </span>
       {/each}
@@ -329,7 +330,8 @@
           aria-label={ariaLabel}
           {disabled}
           placeholder={resolvedPlaceholder}
-          class="fc-input w-full pr-8 {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
+          class="fc-input {openRing}"
+          style="padding-right:2rem"
           value={inputShownValue()}
           onfocus={openMenu}
           onclick={() => {
@@ -343,7 +345,7 @@
           onblur={onInputBlur}
           onkeydown={onTriggerKeydown}
         />
-        {@render chevron('pointer-events-none absolute right-2 top-1/2 -translate-y-1/2')}
+        {@render chevron('pointer-events-none absolute inset-y-0 right-4 my-auto')}
       </div>
     {:else}
       <button
@@ -357,15 +359,14 @@
         aria-activedescendant={activeOptionId}
         aria-label={ariaLabel}
         {disabled}
-        class="fc-input flex min-w-0 flex-1 items-center justify-between gap-2 text-left
-          {open ? 'border-fc-accent ring-2 ring-fc-ring/40' : ''}"
+        class="fc-input flex min-w-0 flex-1 items-center justify-between gap-2 text-left {openRing}"
         onclick={toggleMenu}
         onkeydown={onTriggerKeydown}
       >
         <span class="truncate {selectedOption || (allowCustom && value) ? 'text-fc-text' : 'text-fc-text-subtle'}">
           {displayLabel || resolvedPlaceholder}
         </span>
-        {@render chevron('shrink-0 transition-transform duration-150')}
+        {@render chevron('shrink-0')}
       </button>
     {/if}
     {@render addon?.()}
@@ -378,7 +379,7 @@
       role="listbox"
       tabindex="-1"
       style={listStyle || undefined}
-      class="fc-card max-h-64 w-full origin-top overflow-auto p-1 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)]"
+      class="fc-card"
       in:scaleIn={{ duration: 0.12 }}
     >
       {#each suggestionOptions as opt, index (opt.value)}
@@ -388,8 +389,7 @@
           bind:this={optionEls[index]}
           role="option"
           aria-selected={opt.value === value || selectedValues.includes(opt.value)}
-          class="rounded-fc px-2.5 py-1.5 text-sm transition-colors duration-100
-            {index === activeIndex
+          class="truncate rounded-fc px-3 py-1.5 text-sm {index === activeIndex
             ? 'bg-fc-accent/15 text-fc-accent'
             : opt.value === value
               ? 'text-fc-accent'
@@ -398,11 +398,11 @@
           onmousedown={(e) => e.preventDefault()}
           onclick={() => chooseFiltered(index)}
         >
-          <span class="truncate">{opt.display}</span>
+          {opt.display}
         </li>
       {/each}
       {#if suggestionOptions.length === 0}
-        <li class="px-2.5 py-1.5 text-sm text-fc-text-subtle">
+        <li class="px-3 py-1.5 text-sm text-fc-text-subtle">
           {emptyListMessage}
         </li>
       {/if}

@@ -260,7 +260,9 @@
      page's grid/glow background read through instead of a flat slab. */
   .fc-glass {
     @apply bg-fc-surface/60 backdrop-blur-xl;
-    box-shadow: inset 0 1px 0 0 color-mix(in srgb, var(--color-fc-text) 6%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in srgb, var(--color-fc-text) 6%, transparent),
+      0 12px 32px -16px rgba(0, 0, 0, 0.55);
   }
 
   .fc-card {

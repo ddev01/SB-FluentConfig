@@ -95,7 +95,7 @@ export function computeListBoxStyle(trigger: {
   const edge = preferBelow
     ? `top:${trigger.bottom + gap}px`
     : `bottom:${trigger.viewportHeight - trigger.top + gap}px`;
-  return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;${edge};max-height:${maxH}px`;
+  return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;${edge};max-height:${maxH}px;transform-origin:top;box-shadow:0 12px 32px -16px rgba(0,0,0,.55);overflow:auto;padding:4px`;
 }
 
 /** True when the event target is the trigger/container or the portaled list. */

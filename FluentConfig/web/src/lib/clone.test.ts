@@ -26,12 +26,13 @@ describe('setPathImmutable', () => {
     const row1 = { name: 'b' };
     const prev = { rows: [row0, row1], other: { k: 1 } };
     const next = setPathImmutable(prev, 'rows[0].name', 'A');
+    const nextRows = next.rows as { name: string }[];
     expect(next).not.toBe(prev);
     expect(next.other).toBe(prev.other);
-    expect(next.rows).not.toBe(prev.rows);
-    expect(next.rows[0]).not.toBe(row0);
-    expect(next.rows[1]).toBe(row1);
-    expect(next.rows[0]).toEqual({ name: 'A' });
+    expect(nextRows).not.toBe(prev.rows);
+    expect(nextRows[0]).not.toBe(row0);
+    expect(nextRows[1]).toBe(row1);
+    expect(nextRows[0]).toEqual({ name: 'A' });
     expect(row0.name).toBe('a');
   });
 });
