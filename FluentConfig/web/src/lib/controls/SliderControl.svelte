@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SliderNode } from '../../protocol';
   import { appStore } from '../../store/app.svelte';
+  import { roundToStep } from '../number';
   import FieldShell from './FieldShell.svelte';
 
   interface Props {
@@ -23,7 +24,8 @@
 
   function onInput(e: Event): void {
     const t = e.currentTarget as HTMLInputElement;
-    appStore.setValue(node.saveKey, clamp(Number(t.value)));
+    const v = clamp(Number(t.value));
+    appStore.setValue(node.saveKey, node.step ? roundToStep(v, node.step) : v);
   }
 </script>
 
@@ -35,6 +37,7 @@
       class="h-2 w-full cursor-pointer appearance-none rounded-full bg-fc-elevated accent-fc-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fc-ring"
       min={node.min}
       max={node.max}
+      step={node.step}
       value={value}
       oninput={onInput}
     />

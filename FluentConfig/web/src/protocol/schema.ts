@@ -117,6 +117,7 @@ export interface SliderNode extends SchemaNodeBase {
   hint?: string;
   min: number;
   max: number;
+  step?: number;
   defaultValue?: number;
 }
 
