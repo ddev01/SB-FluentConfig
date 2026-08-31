@@ -370,9 +370,14 @@ namespace FluentConfig
         /// <summary>Test hook for InternalsVisibleTo consumers.</summary>
         internal FluentConfigSession Session => _session;
 
+        internal bool OpenReservedForTests => _openReserved;
+
+        internal void MarkOpenReservedForTests() => _openReserved = true;
+
         private FluentConfigUi(FluentConfigSession session)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
+            _session.OpenReservationReleased = () => _openReserved = false;
         }
 
         /// <param name = "cph">Streamer.bot IInlineInvokeProxy (CPH).</param>

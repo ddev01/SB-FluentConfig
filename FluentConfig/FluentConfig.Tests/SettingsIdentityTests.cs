@@ -136,22 +136,24 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
-        public void CreateShow_SecondCall_DoesNotOrphanFirstReservation()
+        public void NotifyClosedForTests_ClearsReservation_SecondTryBeginOpenSucceeds()
         {
             RunSta(() =>
             {
                 ClearWindows();
                 try
                 {
-                    Assert.True(FluentConfigWindowManager.TryBeginOpen("menu_a", "1.0", null));
-                    var first = new Window();
-                    FluentConfigWindowManager.Register("menu_a", first);
+                    var cph = TestCph.CreateMockCph();
+                    var ui = FluentConfigUi.Create(cph.Object, "menu_a", "Menu A", "1.0");
+                    var scope = ui.Session.ScopeKey;
+                    Assert.True(FluentConfigWindowManager.TryBeginOpen(scope, "1.0", null));
+                    ui.MarkOpenReservedForTests();
+                    Assert.True(ui.OpenReservedForTests);
 
-                    Assert.False(FluentConfigWindowManager.TryBeginOpen("menu_a", "1.0", null));
-                    Assert.True(FluentConfigWindowManager.AlreadyOpened("menu_a", "1.0", null));
+                    ui.Session.NotifyClosedForTests();
 
-                    FluentConfigWindowManager.Unregister("menu_a");
-                    Assert.False(FluentConfigWindowManager.AlreadyOpened("menu_a", "1.0", null));
+                    Assert.False(ui.OpenReservedForTests);
+                    Assert.True(FluentConfigWindowManager.TryBeginOpen(scope, "1.0", null));
                 }
                 finally
                 {

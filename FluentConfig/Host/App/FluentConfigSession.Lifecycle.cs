@@ -9,6 +9,9 @@ namespace FluentConfig
     /// <summary>Window close handling and host-exit WebView2 teardown.</summary>
     public sealed partial class FluentConfigSession
     {
+        /// <summary>Clears <c>FluentConfigUi</c> open-slot reservation when the window actually closes.</summary>
+        internal Action OpenReservationReleased;
+
         private void OnWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             // Native X/Alt+F4 never reach here until CloseAllowed() — see FluentConfigHostWindow
@@ -100,9 +103,15 @@ namespace FluentConfig
             _window.CloseAllowed();
         }
 
-        private void OnWindowClosed(object sender, EventArgs e)
+        private void ReleaseOpenReservation()
         {
             FluentConfigWindowManager.Unregister(ScopeKey);
+            OpenReservationReleased?.Invoke();
+        }
+
+        private void OnWindowClosed(object sender, EventArgs e)
+        {
+            ReleaseOpenReservation();
 
             if (_window != null)
             {
@@ -226,6 +235,9 @@ namespace FluentConfig
                     "[FluentConfig] Host-exit WebView2 teardown failed: " + ex.Message);
             }
         }
+
+        /// <summary>Test seam: Unregister + reservation callback without <c>Show()</c> / WebView2.</summary>
+        internal void NotifyClosedForTests() => ReleaseOpenReservation();
 
         /// <summary>Test seam: bind a window/bridge without <c>Show()</c> / WebView2.</summary>
         internal void BindHostForTests(FluentConfigHostWindow window, HostBridge bridge)
