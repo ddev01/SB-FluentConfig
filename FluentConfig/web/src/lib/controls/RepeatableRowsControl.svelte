@@ -2,6 +2,7 @@
   import type { RepeatableRowsNode, SchemaNode } from '../../protocol';
   import { cloneJson } from '../clone';
   import { slideY } from '../motion';
+  import { reconcileRowIds } from '../rowIdentity';
   import { appStore } from '../../store/app.svelte';
   import FieldShell from './FieldShell.svelte';
   import SchemaNodeView from './SchemaNodeView.svelte';
@@ -17,6 +18,16 @@
     const raw = appStore.getValue(node.saveKey);
     return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : [];
   });
+
+  let nextId = 0;
+  let ids = $state<number[]>([]);
+  const rowIds = $derived.by(() => reconcileRowIds(ids, rows.length, nextId).ids);
+
+  function persistIds(): void {
+    const r = reconcileRowIds(ids, rows.length, nextId);
+    ids = r.ids;
+    nextId = r.nextId;
+  }
 
   function defaultsFromSchema(): Record<string, unknown> {
     const row: Record<string, unknown> = {};
@@ -60,11 +71,15 @@
   }
 
   function addRow(): void {
+    persistIds();
+    ids = [...ids, nextId++];
     setRows([...rows, defaultsFromSchema()]);
   }
 
   function removeRow(index: number): void {
-    setRows(rows.filter((_, i) => i !== index));
+    persistIds();
+    ids = ids.filter((_, j) => j !== index);
+    setRows(rows.filter((_, j) => j !== index));
   }
 
   /** Rewrite relative saveKeys to `saveKey[i].relative`. */
@@ -97,7 +112,7 @@
 
 <FieldShell>
   <div class="space-y-3">
-    {#each rows as _row, index (index)}
+    {#each rows as _row, index (rowIds[index])}
       <div
         class="rounded-fc-lg border border-fc-border bg-fc-elevated/40 px-3 py-2 transition-colors duration-150 hover:border-fc-border-strong"
         transition:slideY={{ duration: 0.2, y: 6 }}
