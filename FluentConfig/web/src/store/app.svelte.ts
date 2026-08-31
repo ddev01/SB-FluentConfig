@@ -9,10 +9,10 @@ import type {
   WindowCloseRequestedResult,
 } from '../protocol';
 import { PushEventNames, RpcMethods } from '../protocol';
-import { cloneJson } from '../lib/clone';
+import { cloneJson, deletePathImmutable, setPathImmutable } from '../lib/clone';
 import { diffEntries as computeDiffEntries, type DiffEntry } from '../lib/diff';
 import { rebuildDirtyKeys, syncDirtyKey } from '../lib/dirtyKeys';
-import { applyPathMap, deepMerge, deletePath, getPath, setPath } from '../lib/paths';
+import { applyPathMap, deepMerge, getPath } from '../lib/paths';
 import { bindPerf, mark, unbindPerf } from '../lib/perf';
 import { patchDropdownOptionsInTree, patchPillItemsInTree } from '../lib/schemaWalk';
 import { applyColorScheme, watchSystemScheme } from '../lib/theme';
@@ -261,8 +261,7 @@ class AppStore {
   }
 
   setValue(saveKey: string, value: unknown): void {
-    const next = cloneJson(this.values) as SettingsValues;
-    setPath(next, saveKey, value);
+    const next = setPathImmutable(this.values, saveKey, value) as SettingsValues;
     this.values = next;
     syncDirtyKey(this.dirtyKeys, saveKey, this.savedValues, value);
     this.dirtyGen++;
@@ -270,8 +269,7 @@ class AppStore {
 
   /** Remove a top-level or nested key from the live values blob. */
   deleteValue(saveKey: string): void {
-    const next = cloneJson(this.values) as SettingsValues;
-    deletePath(next, saveKey);
+    const next = deletePathImmutable(this.values, saveKey) as SettingsValues;
     this.values = next;
     syncDirtyKey(this.dirtyKeys, saveKey, this.savedValues, getPath(next, saveKey));
     this.dirtyGen++;
@@ -422,7 +420,6 @@ class AppStore {
       downloadUrl: payload.downloadUrl ?? '',
       repo: payload.repo,
       dismissible: true,
-      mode: payload.mode ?? 'notify',
       releasePageUrl: payload.releasePageUrl,
       updateGuideUrl: payload.updateGuideUrl,
     };

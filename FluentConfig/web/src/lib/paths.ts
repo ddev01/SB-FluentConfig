@@ -5,7 +5,7 @@
 
 const SEGMENT = /([^[.\]]+)|\[(\d+)\]/g;
 
-function splitPath(path: string): Array<string | number> {
+export function splitPath(path: string): Array<string | number> {
   const parts: Array<string | number> = [];
   for (const match of path.matchAll(SEGMENT)) {
     if (match[1] !== undefined) parts.push(match[1]);

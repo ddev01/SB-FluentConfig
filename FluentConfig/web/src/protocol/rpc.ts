@@ -112,7 +112,7 @@ export interface WindowCloseRequestedResult {
 /** Web→Host: in-app Exit (or already-confirmed close). */
 export interface WindowCloseParams {
   alreadyConfirmed: boolean;
-  /** Persist per-title discard reminder skip when user checked the box on Exit. */
+  /** Persist per-menu-id discard reminder skip when user checked the box on Exit. */
   dontRemindAgain?: boolean;
 }
 
