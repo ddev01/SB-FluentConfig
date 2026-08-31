@@ -78,8 +78,6 @@ export interface UpdateAvailablePayload {
   releaseNotes?: string;
   downloadUrl?: string;
   repo?: string;
-  /** Always `notify` for extension update notices (menu no longer self-stages). */
-  mode?: 'notify';
   /** Release HTML page (fallback for How to update). */
   releasePageUrl?: string;
   /** Preferred “How to update” URL (guide or release page). */

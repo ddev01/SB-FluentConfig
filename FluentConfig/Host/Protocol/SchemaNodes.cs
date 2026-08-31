@@ -377,10 +377,6 @@ namespace FluentConfig.Protocol
         [JsonProperty("dismissible")]
         public bool Dismissible { get; set; } = true;
 
-        /// <summary>Always <c>notify</c> for in-menu extension notices.</summary>
-        [JsonProperty("mode")]
-        public string Mode { get; set; } = "notify";
-
         /// <summary>GitHub release page URL (fallback How to update).</summary>
         [JsonProperty("releasePageUrl")]
         public string ReleasePageUrl { get; set; }

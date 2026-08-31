@@ -138,7 +138,6 @@ namespace FluentConfig
                 ReleaseNotes = _pendingUpdate.ReleaseNotes,
                 DownloadUrl = null,
                 Repo = _updateRepo,
-                Mode = "notify",
                 ReleasePageUrl = _pendingUpdate.ReleasePageUrl,
                 UpdateGuideUrl = string.IsNullOrWhiteSpace(guideUrl)
                     ? _pendingUpdate.ReleasePageUrl

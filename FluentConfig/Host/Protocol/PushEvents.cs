@@ -82,10 +82,6 @@ namespace FluentConfig.Protocol
         [JsonProperty("repo")]
         public string Repo { get; set; }
 
-        /// <summary>Always <c>notify</c> for extension update notices (menu no longer self-stages).</summary>
-        [JsonProperty("mode")]
-        public string Mode { get; set; }
-
         /// <summary>Release HTML page (fallback for How to update).</summary>
         [JsonProperty("releasePageUrl")]
         public string ReleasePageUrl { get; set; }

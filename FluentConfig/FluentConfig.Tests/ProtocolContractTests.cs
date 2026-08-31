@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
 using FluentConfig.Protocol;
 using Newtonsoft.Json.Linq;
@@ -106,18 +109,18 @@ namespace FluentConfig.Tests
                 DownloadUrl = "",
                 Repo = "example-org/example-extension",
                 Dismissible = true,
-                Mode = "notify",
                 ReleasePageUrl = "https://example.test/example-org/example-extension/releases/tag/v1.1.0",
                 UpdateGuideUrl = "https://example.test/docs/updating",
             };
 
             var json = ProtocolJson.Serialize(original);
+            var jo = JObject.Parse(json);
+            Assert.Null(jo["mode"]);
             var back = ProtocolJson.Deserialize<SchemaNode>(json) as UpdateNoticeNode;
 
             Assert.NotNull(back);
             Assert.Equal("1.1.0", back.LatestVersion);
             Assert.Equal("example-org/example-extension", back.Repo);
-            Assert.Equal("notify", back.Mode);
             Assert.Equal("https://example.test/docs/updating", back.UpdateGuideUrl);
             Assert.StartsWith("https://example.test/", back.ReleasePageUrl);
         }
@@ -183,6 +186,22 @@ namespace FluentConfig.Tests
         public void RpcMethods_HasNoUpdateStage()
         {
             Assert.Null(typeof(RpcMethods).GetField("UpdateStage", BindingFlags.Public | BindingFlags.Static));
+            var rpcStrings = typeof(RpcMethods)
+                .GetFields(BindingFlags.Public | BindingFlags.Static)
+                .Where(f => f.FieldType == typeof(string))
+                .Select(f => (string)f.GetValue(null));
+            Assert.DoesNotContain("update.stage", rpcStrings);
+
+            var protocolDir = Path.GetFullPath(Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "web", "src", "protocol"));
+            Assert.True(Directory.Exists(protocolDir), "web protocol dir missing at " + protocolDir);
+            foreach (var file in Directory.GetFiles(protocolDir, "*.ts"))
+            {
+                var text = File.ReadAllText(file);
+                Assert.False(
+                    text.IndexOf("update.stage", StringComparison.Ordinal) >= 0,
+                    file + " must not contain update.stage");
+            }
         }
     }
 }

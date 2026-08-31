@@ -247,8 +247,6 @@ export interface UpdateNoticeNode extends SchemaNodeBase {
   /** owner/name form (informational). */
   repo?: string;
   dismissible?: boolean;
-  /** Default `'notify'` for in-menu extension notices. */
-  mode?: 'notify';
   /** Release HTML page (fallback for How to update). */
   releasePageUrl?: string;
   /** Preferred “How to update” URL (guide or release page). */

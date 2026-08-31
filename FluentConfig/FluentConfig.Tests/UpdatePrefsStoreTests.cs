@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using FluentConfig.Core;
+using FluentConfig.Protocol;
 using Moq;
 using Streamer.bot.Plugin.Interface;
 using Xunit;
@@ -12,6 +14,25 @@ namespace FluentConfig.Tests
         public void KeyForTitle_UsesUpdatePrefsPrefix()
         {
             Assert.Equal("FluentConfig_UpdatePrefs_My Ext", UpdatePrefsStore.KeyForTitle("My Ext"));
+        }
+
+        [Fact]
+        public void PrefsKey_UsesScopeKey_NotTitle()
+        {
+            var store = new ConcurrentDictionary<string, string>(StringComparer.Ordinal);
+            var cph = TestCph.CreateMockCph(store);
+            var ui = FluentConfigUi.Create(cph.Object, "my_ext", "My Ext", "1.0");
+            Assert.Equal("my_ext", ui.Session.ScopeKey);
+            Assert.Equal("FluentConfig_UpdatePrefs_my_ext", UpdatePrefsStore.KeyForTitle(ui.Session.ScopeKey));
+
+            ui.Session.HandleUpdateDismiss(new UpdateDismissParams
+            {
+                Reason = "ignoreVersion",
+                Version = "1.2.3",
+            });
+
+            Assert.True(store.ContainsKey("FluentConfig_UpdatePrefs_my_ext"));
+            Assert.False(store.ContainsKey("FluentConfig_UpdatePrefs_My Ext"));
         }
 
         [Fact]
