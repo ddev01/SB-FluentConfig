@@ -79,7 +79,7 @@ export function matchCustomInput(
   );
 }
 
-/** Fixed-position list box so `.fc-main-scroll` overflow cannot clip it. */
+/** Viewport-fixed list; SelectMenu portals the node off `.fc-main-scroll`. */
 export function computeListBoxStyle(trigger: {
   left: number;
   top: number;
@@ -96,4 +96,13 @@ export function computeListBoxStyle(trigger: {
     ? `top:${trigger.bottom + gap}px`
     : `bottom:${trigger.viewportHeight - trigger.top + gap}px`;
   return `position:fixed;z-index:50;left:${trigger.left}px;width:${trigger.width}px;${edge};max-height:${maxH}px`;
+}
+
+/** True when the event target is the trigger/container or the portaled list. */
+export function isInsideSelectMenu(
+  target: unknown,
+  container: { contains(node: unknown): boolean } | null | undefined,
+  list: { contains(node: unknown): boolean } | null | undefined,
+): boolean {
+  return !!(container?.contains(target) || list?.contains(target));
 }

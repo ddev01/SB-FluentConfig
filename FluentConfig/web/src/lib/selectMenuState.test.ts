@@ -6,6 +6,7 @@ import {
   computeListBoxStyle,
   computeOpenMenuStart,
   computeSuggestionOptions,
+  isInsideSelectMenu,
   matchCustomInput,
 } from './selectMenuState';
 
@@ -162,6 +163,7 @@ describe('computeListBoxStyle', () => {
       viewportHeight: 800,
     });
     expect(css).toContain('position:fixed');
+    expect(css).toContain('z-index:50');
     expect(css).toContain('top:146px');
     expect(css).not.toContain('bottom:');
   });
@@ -176,5 +178,17 @@ describe('computeListBoxStyle', () => {
     });
     expect(css).toContain('bottom:46px');
     expect(css).not.toContain('top:');
+  });
+});
+
+describe('isInsideSelectMenu', () => {
+  it('treats a click on the portaled list as inside', () => {
+    const target = {};
+    expect(
+      isInsideSelectMenu(target, { contains: () => false }, { contains: (n) => n === target }),
+    ).toBe(true);
+    expect(
+      isInsideSelectMenu(target, { contains: () => false }, { contains: () => false }),
+    ).toBe(false);
   });
 });

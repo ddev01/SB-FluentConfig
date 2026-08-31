@@ -9,6 +9,7 @@
     computeListBoxStyle,
     computeOpenMenuStart,
     computeSuggestionOptions,
+    isInsideSelectMenu,
     matchCustomInput,
     type SelectMenuOption,
   } from '../selectMenuState';
@@ -59,6 +60,7 @@
   let suppressOpenOnFocus = false;
   let containerEl = $state<HTMLDivElement | null>(null);
   let triggerEl = $state<HTMLButtonElement | HTMLInputElement | null>(null);
+  let listEl = $state<HTMLUListElement | null>(null);
   let optionEls: (HTMLLIElement | null)[] = [];
   let listStyle = $state('');
 
@@ -76,6 +78,8 @@
 
   $effect(() => {
     if (!open) return;
+    const el = listEl;
+    if (el) document.body.appendChild(el);
     positionList();
     const update = () => positionList();
     window.addEventListener('scroll', update, true);
@@ -83,6 +87,7 @@
     return () => {
       window.removeEventListener('scroll', update, true);
       window.removeEventListener('resize', update);
+      if (el?.parentElement === document.body) el.remove();
     };
   });
 
@@ -275,7 +280,8 @@
 
   function onWindowClick(e: MouseEvent): void {
     if (!open) return;
-    if (containerEl && !containerEl.contains(e.target as Node)) closeMenu();
+    if (isInsideSelectMenu(e.target, containerEl, listEl)) return;
+    closeMenu();
   }
 
   function inputShownValue(): string {
@@ -367,6 +373,7 @@
 
   {#if open}
     <ul
+      bind:this={listEl}
       id={listboxId}
       role="listbox"
       tabindex="-1"
