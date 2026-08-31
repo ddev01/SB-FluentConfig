@@ -203,6 +203,33 @@ namespace FluentConfig.Tests
         }
 
         [Fact]
+        public void GeneratedIds_SaveThenSave2ThenSave_AreAllDistinct()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "save_save2_save", "Save Save2 Save", "1.0");
+            ui.Section("G", "g", s => s
+                .Button("Save")
+                .Button("Save 2")
+                .Button("Save")
+            );
+            var doc = ui.Session.BuildDocumentForTests();
+            var btnIds = doc.Sections[0].Children.OfType<ButtonNode>().Select(b => b.Id).ToList();
+            Assert.Equal(new[] { "btn_save", "btn_save_2", "btn_save_3" }, btnIds);
+            Assert.Equal(1, btnIds.Count(id => id == "btn_save_2"));
+        }
+
+        [Fact]
+        public void AssertUniqueSaveKeys_DocumentWide_CatchesDuplicateAcrossSections()
+        {
+            var cph = TestCph.CreateMockCph();
+            var ui = FluentConfigUi.Create(cph.Object, "dup_sections", "Dup Sections", "1.0");
+            ui.Section("A", "a", s => s.Toggle("X", "shared"));
+            ui.Section("B", "b", s => s.Toggle("X", "shared"));
+            var ex = Assert.Throws<InvalidOperationException>(() => ui.Session.BuildDocumentForTests());
+            Assert.Contains("shared", ex.Message);
+        }
+
+        [Fact]
         public void OptionAfterStructural_Throws()
         {
             var cph = TestCph.CreateMockCph();

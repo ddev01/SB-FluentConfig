@@ -6,22 +6,21 @@ namespace FluentConfig
     /// <summary>Per-document generated schema ids (grid_*, vis_*, btn_*) so schema.patch can resolve uniquely.</summary>
     public sealed partial class FluentConfigSession
     {
-        private readonly Dictionary<string, int> _generatedIdCounts =
-            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly HashSet<string> _generatedIds =
+            new HashSet<string>(StringComparer.Ordinal);
 
         internal string UniqueGeneratedId(string baseId)
         {
             if (string.IsNullOrEmpty(baseId))
                 baseId = "id";
-            if (!_generatedIdCounts.TryGetValue(baseId, out var n))
-            {
-                _generatedIdCounts[baseId] = 1;
+            if (_generatedIds.Add(baseId))
                 return baseId;
+            for (var n = 2; ; n++)
+            {
+                var candidate = baseId + "_" + n;
+                if (_generatedIds.Add(candidate))
+                    return candidate;
             }
-
-            n++;
-            _generatedIdCounts[baseId] = n;
-            return baseId + "_" + n;
         }
     }
 }
