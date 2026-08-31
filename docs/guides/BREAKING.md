@@ -32,7 +32,7 @@ var settings = Fc.LoadSettings<MySettings>(CPH, "my_extension");
 - Author `.Refresh(() => …)` (string[] or pair enumerable) **no longer runs during schema build**. Side effects at open (logging, pre-warming CPH) move to the web’s first-mount `dropdown.refresh` (once per saveKey).
 - Bootstrap schema for refresh-only dropdowns has empty/omitted `options`. Do not treat `UiDocument` options as populated at build time.
 - First fetch is the web’s once-per-saveKey `dropdown.refresh` (`refreshCache`). Tab remounts do not re-fire.
-- Residual: `SelectMenu` may show the placeholder until options arrive. If Refresh returns empty (Twitch offline), mount refresh still **clears** an unmatched default.
+- Residual: `SelectMenu` may show the placeholder until options arrive. If Refresh returns empty (Twitch offline), mount refresh **keeps** the seeded/current value rather than writing explicit none.
 
 ```csharp
 .Dropdown("Reward", "reward_display")

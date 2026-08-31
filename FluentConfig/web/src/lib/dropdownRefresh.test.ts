@@ -62,7 +62,7 @@ describe('resolveDropdownRefresh', () => {
     ).toEqual({ action: 'keep' });
   });
 
-  it('non-custom clears when missing from new options', () => {
+  it('non-custom clears when missing from a non-empty list', () => {
     expect(
       resolveDropdownRefresh({
         allowCustom: false,
@@ -73,15 +73,23 @@ describe('resolveDropdownRefresh', () => {
     ).toEqual({ action: 'clear' });
   });
 
-  it('non-custom clears when options empty', () => {
+  it('empty options keep the current seed (single and multiple)', () => {
     expect(
       resolveDropdownRefresh({
         allowCustom: false,
         multiple: false,
-        current: 'gone',
+        current: 'rew_2',
         options: [],
       }),
-    ).toEqual({ action: 'clear' });
+    ).toEqual({ action: 'keep' });
+    expect(
+      resolveDropdownRefresh({
+        allowCustom: false,
+        multiple: true,
+        current: ['a'],
+        options: [],
+      }),
+    ).toEqual({ action: 'keep' });
   });
 
   it('multiple allowCustom keeps chips', () => {

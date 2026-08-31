@@ -22,6 +22,9 @@ export function resolveDropdownRefresh(args: {
   const options = args.options ?? [];
   const inList = (v: string) => options.some((o) => o.value === v || o.display === v);
 
+  // Empty list is load-failed / not-yet-loaded, not "user wants none".
+  if (options.length === 0) return { action: 'keep' };
+
   if (args.multiple) {
     const cur = Array.isArray(args.current) ? args.current : [];
     if (args.allowCustom) return { action: 'keep' };
