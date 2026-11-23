@@ -1,0 +1,1285 @@
+================================================================================
+FLUENTCONFIG REFACTOR - RESEARCH OUTPUT AND PARALLEL WORKSTREAM SPEC
+================================================================================
+
+PURPOSE OF THIS DOCUMENT
+------------------------
+This is the output of a completed research pass over the SB-FluentConfig repo
+(branch: develop, HEAD around 9e55963), plus a fully-specified breakdown into
+parallel workstreams.
+
+It is intended to be handed to an AI that will turn it into an executable plan
+and/or execute it with multiple parallel agents. Every claim below was verified
+against the source; file and line references are included so you do not need to
+redo the research. The executing models are expected to be less capable than the
+model that wrote this, so implementation guidance is deliberately prescriptive.
+
+Repo root: F:/Dev/SB-FluentConfig
+Do not commit anything. Do not push.
+
+
+================================================================================
+1. WHAT THE PRODUCT IS
+================================================================================
+
+FluentConfig is a Streamer.bot plugin DLL (.NET Framework 4.8.1, net481).
+
+- Extension authors write a fluent C# DSL describing a settings menu.
+- The Host serializes a camelCase JSON *schema* over a WebView2 postMessage bridge.
+- A Svelte 5 + TypeScript + Tailwind + Vite app renders that schema inside a thin
+  WPF window hosting WebView2.
+- Persistence is Streamer.bot CPH global variables (CPH.SetGlobalVar / GetGlobalVar).
+
+An older WPF widget-tree UI was deleted because it was slow, dated and clunky.
+The rewrite locked in: Svelte 5 + TS + Tailwind, schema on the wire, and no
+WPF/UI-framework objects crossing the host/web boundary.
+
+The author is currently the only consumer, so breaking the author-facing API is
+allowed, but this is intended to become a library other extension authors use.
+
+NON-NEGOTIABLE CONSTRAINTS (apply to every workstream):
+- No WPF or UI-framework objects on the wire.
+- camelCase JSON on the wire.
+- WebView2 is never bundled and never NuGet-referenced. Compile against
+  Streamer.bot's own copies with Private=False. A different version in dlls/
+  causes FileLoadException inside Streamer.bot.
+- Layout and visibility are evaluated client-side. Flipping a toggle must not
+  remount the tree or round-trip the host.
+- JSON never carries raw Tailwind class strings (Tailwind v4 has no usable
+  safelist for dynamic class names). The host resolves tokens to CSS.
+- LangVersion is "latest" but the runtime is net481: default interface methods
+  are FORBIDDEN (TypeLoadException in Streamer.bot). Author-facing signatures
+  stay C# 7-shaped because consumers paste code into Streamer.bot's in-app
+  compiler.
+- docs/internal/CODE_REVIEW_AND_REFACTOR_PLAN.md is a HISTORICAL audit dated
+  2026-08-05. Most of it already shipped. Treat as background only. Do NOT
+  re-execute it as a checklist.
+
+
+================================================================================
+2. VERDICT: INCREMENTAL, NOT A REWRITE
+================================================================================
+
+Five independent research slices (host lifecycle, DSL builders, settings/protocol,
+web controls, updater/packaging) all reached this conclusion separately.
+
+Evidence:
+- ~200 tracked source files. Largest file is 467 lines. No god object, no tangle.
+- The expensive, hard-won parts are the parts that work: schema-on-the-wire,
+  client-side visibility, the SC_CLOSE interception that avoids a white-page
+  regression, dispose-before-Streamer.bot-teardown, and the dropdown refresh
+  decision table.
+- Specific rewrite temptations were each independently identified as
+  reintroducing named, already-fixed regressions (see section 9).
+
+Baseline test state (verified by running them): 253 xunit passing / 0 failing
+(~2s, ~6.5s with build); 29 vitest passing / 0 failing (~0.3s). No CI exists.
+
+
+================================================================================
+3. LOCKED DECISIONS - DO NOT RELITIGATE
+================================================================================
+
+These were decided by the repo owner during research. They are constraints.
+
+3.1 Cold-start optimization is OUT OF SCOPE.
+    The historical "large alerts menu took ~10s cold" number belongs to the
+    DELETED WPF widget tree, not this architecture. Every archived baseline in
+    docs/performance/baselines/ is framework-sized: complete cold totalMs ~1282,
+    warm ~276. The cold-warm delta is first-HWND JIT plus WebView2 process spawn,
+    which is a tax, not a bug. Action: add a measurement fixture only (S5 step 8).
+
+3.2 The colour palette is correct and deliberate. DO NOT change
+    --color-fc-accent, --color-fc-glow, --fc-network-rgb, or any theme token in
+    web/src/app.css. (Note: the accent is #00a86b light / #00c47a dark. #00ffa3
+    exists only as a dead fallback literal at NetworkBackground.svelte line 65.)
+    The ONLY colour change permitted in this whole plan is the stock-Tailwind-blue
+    button fallback described in S4A step 8.
+
+3.3 "ddev01/SB-FluentConfig" STAYS in FluentConfigUi.cs line 52 and in
+    examples/deployment/01_DllCheck.cs line 25. Owner's explicit call. Do not
+    placeholder it. (The machine path in Redeploy.ps1 is a SEPARATE, in-scope bug.)
+
+3.4 There are no external users. Clean breaks are acceptable. Do NOT build
+    permanent migration machinery. A single-use throwaway script is correct.
+
+3.5 Empty-versus-none model is settled:
+      - key ABSENT   = "never touched"      -> schema default may be used
+      - key === ''   = "explicitly none"    -> schema default must NOT be used
+      - key = value  = that value
+    No protocol change. Merge-save stays delete-free. (This matters because
+    SettingsSync.MergeValues cannot delete keys, so any design that requires
+    "remove the key" is unimplementable through the current save path.)
+
+3.6 Compile-time option safety is STAGED: runtime guards now, phantom-typed
+    chain later as its own workstream. Do NOT attempt phantom types in this wave.
+
+3.7 All breaking author-facing API changes batch into a single 0.2 release.
+
+
+================================================================================
+4. THE BRIEF WAS STALE - THESE ARE ALREADY FIXED
+================================================================================
+
+Do not spend effort on these. All verified as already shipped:
+
+4.1 "PendingControl silently drops wrong-kind options" - FIXED.
+    PendingControl.Options.cs line 10 defines RequireKind, which throws on both
+    wrong kind AND Kind.None, and is called by nearly every option setter.
+    PendingControlTests locks it (e.g. Password on toggle throws).
+    WHAT REMAINS: exactly three ungated options - Hint (line 22), the ShowWhen /
+    ShowWhenNot family (lines 79-134), and Size (line 136). Plus MaxSelected /
+    DefaultIndex / DefaultIndices pass the toggle guard but are only read inside
+    the exclusive branch of BuildToggle, so they are silent no-ops on a plain
+    toggle.
+
+4.2 "Slider Range(double) possibly ignored" - FIXED, and deliberate.
+    PendingControl.Build.cs lines 73-78 round double ranges on purpose so
+    .Range(0.0, 100.0) works. Tested.
+
+4.3 "Pill optimistic UI before RPC" - FIXED. Mutation now happens after RPC
+    success. Only the `draft` input value is still cleared too early.
+
+4.4 "values.patch makes the form look dirty" - FIXED. app.svelte.ts lines 374-385
+    dual-write into both values and savedValues.
+
+4.5 "update.stage can download arbitrary URLs" - NOT TRUE, guarded three ways.
+    FluentConfigSession.Rpc.cs lines 289-303: the URL must exactly equal
+    _pendingUpdate.DownloadUrl, must pass GitHubUpdater.IsAllowedDownloadUrl
+    (https + GitHub download hosts), and DownloadToFile enforces a 64 MiB cap
+    plus an MZ/PE header check. Furthermore the notify-only check path always
+    sets DownloadUrl = null (GitHubUpdater.cs lines 185-194, 286-295), so the RPC
+    CANNOT SUCCEED in production at all. It is dead code wearing a security
+    guard - delete it from the wire (S5 step 2).
+
+
+================================================================================
+5. VERIFIED FINDINGS THAT DRIVE THIS PLAN
+================================================================================
+
+Each of these was read and confirmed in source. Severity ordered.
+
+5.1 [HIGH - SILENT DATA LOSS] Native close discards unsaved edits after 60s.
+    HostBridge.SendRequest (HostBridge.cs line 84) defaults timeoutMs = 60000 and
+    arms a DispatcherTimer that resolves the pending task with null.
+    FluentConfigSession.Lifecycle.cs lines 63-68:
+        // Null = timeout / error / detach. Prefer closing over a permanently stuck X.
+        if (parsed == null) { FinishNativeClose(allowClose: true, ...); return; }
+    So: unsaved edits -> click X -> discard dialog appears -> user reads the diff
+    for a minute -> window closes and throws the edits away.
+    CompletePendingResponse (line 169) also maps an error reply to null, so a
+    web-side exception in the dirty check has the same effect.
+
+5.2 [HIGH - SILENT] Framework version compares as 0.1.0.0.
+    Host.csproj does not disable SourceRevisionId, so
+    FluentConfigBuildInfo.FrameworkVersion is
+    "0.1.0-beta.2+9e559636beae039dea66e7689cac08abed5a3886".
+    GitHubUpdater.cs line 466: Normalize = Regex.Replace(v, @"[^0-9.]+", "").
+    Trace: "-beta." collapses to "." giving "0.1.0.2", then "+" is deleted and
+    the hash's digits concatenate directly onto that 4th component with no dot
+    separator. Result: a ~25-digit 4th part. IsNewer (lines 469-481) does
+    int.TryParse, which OVERFLOWS, and the loop substitutes 0.
+    Net effect: installed beta.2 reports as 0.1.0.0 to every comparison, so an
+    extension gating on minFluentConfig "0.1.0-beta.2" is blocked with a popup by
+    a DLL that satisfies it. No error, no log.
+
+5.3 [MEDIUM] window.close ignores alreadyConfirmed:false.
+    RpcMethods documents alreadyConfirmed as the flag that skips the round-trip,
+    but FluentConfigSession.Rpc.cs lines 338-353 always calls
+    _window.CloseAllowed(). Native X is guarded; this path is not.
+
+5.4 [MEDIUM] TryBeginOpen reserves nothing.
+    FluentConfigWindowManager.cs line 66 writes OpenWindows[title] = null as a
+    "placeholder reservation", but the already-open branch at line 50 requires
+    window != null. So a second opener during the first one's build() +
+    Schema.Build also gets true and creates a second session. The comment
+    describes concurrency control the code does not implement.
+
+5.5 [MEDIUM] Author refresh callbacks run synchronously during schema build.
+    PendingControl.Build.cs lines 192-194:
+        // Refresh-only dropdowns (no static .Options) start empty unless seeded here.
+        if (opts == null || opts.Count == 0)
+            opts = refreshFn();
+    So every .Refresh(() => Fc.TwitchRewardGroups(CPH)) dropdown without static
+    .Options makes a synchronous Streamer.bot / Twitch call on the schema-build
+    path before first paint, once per dropdown, serially.
+    SECOND-ORDER BUG: when that seed returns EMPTY (Twitch offline, no rewards),
+    DropdownControl.svelte lines 23-27 refresh on mount because options.length is
+    0 - and App.svelte's {#key activeSection.id} remounts the tab, so the RPC
+    re-fires on EVERY tab switch, forever. One fix addresses both.
+
+5.6 [MEDIUM - USER VISIBLE] Repeatable rows remount on every keystroke.
+    RepeatableRowsControl.svelte lines 62-69:
+        /** Stable-ish key for {#each} so remove/reorder doesn't remount the wrong row inputs. */
+        function rowKey(row, index) {
+          const fingerprint = Object.keys(row).sort().map(k => `${k}=${String(row[k])}`).join('|');
+          return fingerprint || `row-${index}`;
+        }
+    The key is a fingerprint of the row's EDITABLE values, so typing one character
+    changes the key and Svelte remounts the row - losing focus and cursor position.
+    The doc comment states the opposite intent.
+    DynamicTextboxesControl has the identical bug with `${index}:${item}`.
+    CONFIRMED: the control has only addRow / removeRow, no reorder UI.
+
+5.7 [MEDIUM] patchPillItems does not recurse.
+    store/app.svelte.ts lines 292-306 only inspects top-level section.children,
+    while patchDropdownOptions directly above it (lines 262-290) correctly walks
+    groups, pill items and repeatable-rows. So a PillInput nested inside a Grid or
+    a WithVisibility block never receives host-expanded items after pill.changed:
+    the host replies correctly and the web drops the result.
+
+5.8 [MEDIUM] Window title is doing three separate identity jobs.
+    - Storage:       {slug(title)}_settings and {slug}_data
+    - Window focus:  FluentConfigWindowManager keys on the RAW title
+    - Prefs:         FluentConfig_UpdatePrefs_{raw title}
+    - Geometry:      fluentconfig_settings -> windows.{raw title}
+    Renaming a window silently orphans settings, update prefs, geometry and the
+    discard preference, in three different ways. Slug collisions are also real:
+    "Foo", "Foo!" and "Foo " all map to foo_settings.
+
+5.9 [MEDIUM] Deploy script is broken for anyone but one machine, via a commit
+    whose message claims the opposite.
+    FluentConfig/scripts/Redeploy.ps1 lines 50-52 have exactly one candidate:
+        $candidates = @( "F:\Stream\Streamer.bot-x64-1.0.7" )
+    Commit 58d04e2, titled "chore(scripts): detect streamer.bot install without
+    hardcoded paths", is what DELETED the generic USERPROFILE\Desktop and WinGet
+    fallbacks that PACKAGING.md lines 27-35 still document. Host.csproj lines
+    41-45 also still resolve a different Streamer.bot version (1.0.4).
+
+5.10 [LOW-MEDIUM] Four overlapping public entry points.
+     FluentConfigApp, a class FluentConfig inside namespace FluentConfig, Fc, and
+     FluentConfigUi - mostly forwarding to each other (FluentConfigUi.cs lines
+     18-392). For a library, this is the first thing a new author trips on.
+
+5.11 [LOW-MEDIUM] PendingControl.Reset() is dead defensive code that looks
+     load-bearing. ControlHostBuilder.cs lines 77-83 already allocate
+     `new PendingControl(...)` for every control, then BeginX calls Reset on that
+     brand-new object. So 55 lines clear 68 fields that are already default. It
+     implies a "forgot to reset a new field" hazard that does not exist.
+
+5.12 [LOW-MEDIUM] Key and id collisions are silent.
+     SchemaNodeList.cs lines 22-26: TryReserveSaveKey is PER LIST, and every
+     nested Grid / visibility group / RepeatFor row / pill template allocates a
+     fresh SchemaNodeList. So two points_1 controls in one section can both
+     persist into one JSON key. valueSaveKey is never reserved at all.
+     RepeatFor splices children onto the parent list without reserving
+     (SchemaBuilderHelpers.cs ~line 191). RegisterButtonClick
+     (FluentConfigSession.cs lines 105-108) overwrites on duplicate id, and
+     btn_ ids are label-slugged, so two .Button("Save") calls collide silently and
+     break schema.patch routing. Two Grid("grid-cols-2") both emit id "grid_2".
+
+5.13 [LOW-MEDIUM] RepeatFor can silently generate 100 gated groups.
+     RegisterDeclaredRangeIfAny (PendingControl.cs lines 248-258) registers a range
+     for EVERY slider unconditionally, and BuildSlider defaults to min 0 / max 100.
+     So RepeatFor("volume") on a slider with no explicit .Range materializes 100
+     real controls plus 100 gate groups plus 100 seeded default keys. Also
+     resolvedMax < startIndex silently emits nothing.
+
+5.14 [LOW] Size() does not merge.
+     PendingControl.Options.cs line 151: _sizeHint = hint. So
+     .Size("w-fit").Size("col-span-2") keeps only the span, while
+     docs/guides/LAYOUT.md says tokens "combine freely".
+
+5.15 [LOW] Dead 'snap' variant across three places.
+     lib/dropdownRefresh.ts declares { action: 'snap' } in RefreshDecision but
+     resolveDropdownRefresh never returns it (lines 35-39), and DropdownControl
+     still has a branch handling it. The keepValues (multi prune) path has no test.
+
+5.16 [LOW] Store reactivity idioms.
+     store/app.svelte.ts lines 248-252: setValue deep-clones the ENTIRE values
+     blob on every keystroke. Line 63: isDirty is a plain getter running deepEqual
+     over the whole blob on every read, not a $derived. PillInputControl.svelte
+     lines 41-47 use $effect to synchronize state (documented Svelte 5
+     anti-pattern; can loop).
+
+5.17 [LOW] ButtonControl falls back to stock Tailwind blue.
+     ButtonControl.svelte line 40: style:background-color={node.color ?? '#3b82f6'}
+     That is Tailwind blue-500 inside a green-accented glass UI - the generic kit
+     that was explicitly rejected, leaking in through a default.
+
+5.18 [LOW] RepeatableRows deep-clones per render.
+     scopedNode(child, index) is called inline in the template, so it deep-clones
+     every child of every row on every reactive update.
+
+5.19 [LOW] Docs contradict code in nine places. See S5 step 9.
+
+5.20 [LOW] StartupPerformanceTests.cs is named like a perf gate but builds schema
+     only, never touches WebView2, and asserts a 5-second cap that cannot trip.
+
+
+================================================================================
+6. WORKSTREAM STRUCTURE AND WHY
+================================================================================
+
+THE CONTENTION PROBLEM
+FluentConfigSession is the contended type. Its main partial (388 lines) holds the
+builder registries, the Show() pipeline, schema build, AND the values/settings
+accessors - so the DSL work, the lifecycle work, and the settings work all need
+to edit one file. Same for FluentConfigSession.Rpc.cs (one switch plus handlers
+for save, pills, dropdowns, window, updates, perf) and two grab-bag test files
+(Phase2HostSmokeTests.cs at 441 lines, PendingControlAndUpdaterTests.cs).
+
+THE SOLUTION
+One short SEQUENTIAL stream (S0) carves those files into per-concern partials and
+handler files with zero behavior change, so every later stream owns disjoint
+files outright. S0 also introduces one indirection seam (SettingsScopeKey) so the
+lifecycle stream and the settings stream each change ONE SIDE of the identity
+rename without touching each other's files.
+
+DEPENDENCY ORDER (plain text)
+    S0  (sequential, first)
+     |-- S1  DSL and Builders
+     |-- S2  Window lifecycle and close
+     |-- S3  Identity, settings and values
+     |-- S5  Updater, packaging, protocol, docs
+    S4A  Web controls and combobox     (no dependency - start immediately)
+    S4B  Web store, shell and pills    (no dependency - start immediately)
+    ...all converge on MERGE AND VERIFY
+
+S4A and S4B are web-only and depend on nothing. They run in parallel with S0.
+S5 has a host portion that needs S0; its protocol/docs/csproj/script portion does not.
+
+GLOBAL RULES FOR EVERY EXECUTOR
+ 1. Touch ONLY files your stream owns. If you think you need a file another
+    stream owns, STOP and record it in your final report instead of editing it.
+    A wrong merge here is silent.
+ 2. Preserve the reason, not the code. Each step lists an invariant. If your
+    implementation satisfies the invariant more simply, do that and say why.
+ 3. Never violate the non-negotiables in section 1.
+ 4. Do not add controls, RPC methods, or wire fields the plan does not name.
+ 5. Update the tests your stream owns in the same change. Both suites must be
+    green before reporting done: `dotnet test` (baseline 253) and, in
+    FluentConfig/web, `bun test` (baseline 29).
+ 6. Do not reformat or "tidy" code outside your change. Keep diffs reviewable.
+
+
+================================================================================
+7. THE WORKSTREAMS
+================================================================================
+
+--------------------------------------------------------------------------------
+S0 - CARVE SEAMS   (SEQUENTIAL - must merge before S1 / S2 / S3 / S5-host)
+--------------------------------------------------------------------------------
+GOAL
+Make the contended host files disjoint so four streams can work in parallel.
+This is a PURE REORGANIZATION: no behavior change, no public API renames, no
+logic edits.
+
+OWNS
+  FluentConfig/Host/App/FluentConfigSession.cs            (split source)
+  FluentConfig/Host/App/FluentConfigSession.Rpc.cs        (split source)
+  NEW FluentConfig/Host/App/FluentConfigSession.Registry.cs, .Schema.cs,
+      .Show.cs, .Values.cs
+  NEW FluentConfig/Host/App/Rpc/  (directory)
+  FluentConfig/FluentConfig.Tests/Phase2HostSmokeTests.cs (split source)
+  FluentConfig/FluentConfig.Tests/PendingControlAndUpdaterTests.cs (split source)
+
+MUST NOT TOUCH
+  Everything else. No Host/Builders, no Host/Core, no Host/Host, no Host/Protocol,
+  no web, no docs, no csproj.
+
+DEPENDS ON: nothing.
+
+STEPS (all sequential within this stream)
+
+ 1. Split FluentConfigSession.cs by moving members VERBATIM into partials. Field
+    declarations move WITH their concern - a partial class may declare fields in
+    any of its files, and that is exactly what makes later streams independent.
+
+    FluentConfigSession.cs KEEPS: FrameworkVersion, DefaultRepoUrl, _cph, _title,
+      _version, _settingsKey, _settingsManager, _perfTracer, _iconPath, _repoUrl,
+      the constructor, PerfTracer, SetIconPath, SetRepoUrl, Log.
+    .Registry.cs GETS: _deferredSections, RegisterDeferredSection, _buttonClicks,
+      RegisterButtonClick, _dropdownRefresh, RegisterDropdownRefresh, _pills, the
+      PillRegistration nested class, RegisterPillCallbacks, _declaredRanges,
+      RegisterDeclaredRange, TryGetDeclaredRange, _filepathRules,
+      ClearFilepathRules, RegisterFilepathRule, ItemTemplatePillKey,
+      _itemTemplateDepth, InItemTemplate, PushItemTemplateScope,
+      PopItemTemplateScope.
+    .Schema.cs GETS: BuildDocument, ExpandPillItems, ExpandPillNodes,
+      ExpandTemplate, ExpandTemplateJson, ReplaceNamePlaceholders.
+    .Show.cs GETS: Show, BuildDocumentForTests, _window, _bridge.
+    .Values.cs GETS: _latestValues, GetValue<T>, RemoveSettingsKeys,
+      GetPendingValue<T>, PushSchemaPatch, PatchLiveValue<T>, GetSettingsForTests,
+      LogExistingSettings.
+    Leave .Lifecycle.cs / .UiAffordances.cs / .Updates.cs in place, but MOVE the
+    close and host-exit fields into .Lifecycle.cs: _dontRemindDiscard,
+    _closeAlreadyConfirmed, _closePromptInFlight, HostExitHookLock,
+    _hostExitHookRegistered, _hostExitInProgress. Move _nextRequestId into
+    .UiAffordances.cs. Move the update fields plus ConfigureExtensionUpdateNotice
+    into .Updates.cs.
+
+ 2. Add the indirection seam to FluentConfigSession.cs:
+
+        /// <summary>
+        /// Identity used for CPH storage keys. Returns the title today; S3
+        /// redefines this to the explicit menu id. Window-registry identity
+        /// stays the raw title.
+        /// </summary>
+        internal string SettingsScopeKey => _title;
+
+    Then rewrite every STORAGE call site to use it, so S3 changes one property
+    body instead of four files. Convert EXACTLY these and nothing else:
+      - WindowPrefsStore.Load(_cph, _title)      in .Show.cs (Show and BuildDocumentForTests)
+      - WindowGeometryStore.Load(_cph, _title)   in .Show.cs
+      - WindowGeometryStore.Save(_cph, _title, geometry)  in .Lifecycle.cs
+      - WindowPrefsStore.SetDontRemindDiscard(_cph, _title, true) in .Lifecycle.cs
+        and in the window close handler
+      - any UpdatePrefs call keyed on _title in .Updates.cs
+
+    CRITICAL: do NOT convert FluentConfigWindowManager.Register / Unregister /
+    AlreadyOpened / TryBeginOpen. Those are WINDOW FOCUS identity and deliberately
+    stay keyed on the raw title, because the public Fc.AlreadyOpened(title) API
+    depends on it. Also do not convert the LogExistingSettings log message or the
+    MessageBox caption (both display text).
+
+ 3. Split FluentConfigSession.Rpc.cs into Host/App/Rpc/, one file per handler,
+    methods moved verbatim:
+      RpcDispatch.cs            HandleWebMessage, HandleRequest
+      SaveHandler.cs            HandleSave
+      DropdownRefreshHandler.cs HandleDropdownRefresh
+      ButtonClickHandler.cs     HandleButtonClick
+      FilepathHandler.cs        HandleFilepathBrowse, HandleFilepathValidate
+      PillChangedHandler.cs     HandlePillChanged
+      UpdateHandler.cs          HandleUpdateStage, HandleUpdateDismissRpc
+      WindowHandler.cs          HandleWindowClose, HandleShellOpenUrl
+      PerfHandler.cs            HandlePerfMark, ExportPerfLastToCph
+    All remain `partial class FluentConfigSession` in namespace FluentConfig.
+    PRESERVE THE DEFERRED-CALLBACK COMMENTS VERBATIM - they document the WebView2
+    deadlock that caused a shipped white-page regression.
+
+ 4. In RpcDispatch.cs, format the switch with exactly one case plus one break per
+    method, keeping current order. S5 will delete the UpdateStage case; one-per-line
+    prevents that from conflicting.
+
+ 5. Split Phase2HostSmokeTests.cs by the area each fact exercises, moving tests
+    verbatim: SchemaBuildTests.cs (schema build, visibility emission, pill
+    expansion), SaveRpcTests.cs, DropdownRefreshRpcTests.cs, UpdaterFlowTests.cs
+    (stage/swap flow including the runtime dotnet-build helper).
+
+ 6. Split PendingControlAndUpdaterTests.cs into PendingControlTests.cs (guards,
+    saveKey, slider range, exclusive) and UpdaterAssetTests.cs (asset picking,
+    no-zipball).
+
+ 7. Fix the mojibake while you are in these files: FluentConfigSession.cs around
+    lines 249 and 262 contain "â€"" where an em dash belongs. Save as UTF-8.
+
+DONE WHEN
+  - git diff --stat shows only moves plus SettingsScopeKey and its call sites.
+  - dotnet test still reports 253 passing / 0 failing.
+  - No public or internal signature changed except the new SettingsScopeKey.
+
+
+--------------------------------------------------------------------------------
+S1 - DSL AND BUILDERS        (parallel, after S0)
+--------------------------------------------------------------------------------
+GOAL
+Close the remaining silent-no-op paths, make key/id collisions loud, replace the
+bool-inverted smell with condition objects, cap RepeatFor, and get the author's
+Refresh() callback off the schema-build path.
+
+OWNS
+  FluentConfig/Host/Builders/**  (all files)
+  FluentConfig/Host/App/FluentConfigSession.Registry.cs, .Schema.cs
+  FluentConfig/Host/App/ButtonClickRouting.cs
+  examples/tutorial/01_* .. 09_*, examples/reference/**, examples/dev/**
+  docs/guides/LAYOUT.md, VISIBILITY.md, CONTROLS.md, PILLS.md
+  Tests: PendingControlTests.cs, LayoutTests.cs, RepeatForTests.cs,
+         ComparatorVisibilityTests.cs, DropdownFlagsTests.cs,
+         NamePlaceholderTests.cs, SchemaBuildTests.cs, ButtonClickRoutingTests.cs
+
+MUST NOT TOUCH
+  FluentConfigSession.cs, .Show.cs, .Lifecycle.cs, .Values.cs, .Updates.cs,
+  Host/App/Rpc/**, Host/Core/**, Host/Protocol/**, Host/Host/**, web/**,
+  examples/tutorial/10_*, 11_*, examples/deployment/**
+
+DEPENDS ON: S0.
+
+STEPS (all parallelizable within this stream unless noted)
+
+ 1. Delete PendingControl.Reset() entirely (see finding 5.11). Move non-default
+    values to field initializers (_maxSelected = 1, _allowDuplicates = true,
+    _mustExist = true, _permanentOption = true) and pass Kind + label + saveKey
+    through the constructor. Keep each BeginX as a thin constructor-arg wrapper so
+    ControlHostBuilder is unchanged.
+
+ 2. Add active-control guards to the three ungated options (finding 4.1). Add:
+
+        private void RequireActive(string option)
+        {
+            if (_kind == Kind.None)
+                throw new InvalidOperationException($".{option}() requires an active control.");
+        }
+
+    Call it first in Hint, every ShowWhen / ShowWhenNot overload,
+    SetEqualsShowWhen, and Size.
+
+ 3. Move the exclusive-toggle checks to Flush(), NOT into the setters. A
+    setter-time check would be WRONG because an author may legally write
+    .MaxSelected(2).WithExclusive(...) in that order. In Flush(), before
+    BuildNode(), throw when _kind == Kind.Toggle and _exclusiveOptions is null or
+    empty and any of: _maxSelected != 1, _defaultIndices != null,
+    _defaultIndex != null. The message must name the fix: "requires .WithExclusive(...)".
+
+ 4. Make Size() merge PER AXIS instead of replacing the whole hint (finding 5.14):
+
+        _sizeHint = _sizeHint ?? new LayoutHint();
+        if (hint.Span.HasValue)     _sizeHint.Span     = hint.Span;
+        if (hint.Width != null)     _sizeHint.Width    = hint.Width;
+        if (hint.MinWidth != null)  _sizeHint.MinWidth = hint.MinWidth;
+        if (hint.MaxWidth != null)  _sizeHint.MaxWidth = hint.MaxWidth;
+        if (hint.Grow.HasValue)     _sizeHint.Grow     = hint.Grow;
+        if (hint.Shrink.HasValue)   _sizeHint.Shrink   = hint.Shrink;
+
+    Keep the existing grow/shrink and col-span container-mode throws EXACTLY as
+    they are. Do NOT add h-* tokens - the parser never had height and settings rows
+    do not need it. Improve the w-20 error message to point at w-[80px], but keep
+    it a throw.
+
+ 5. Make key and id collisions loud (finding 5.12):
+    - Move reservation to a session-wide HashSet<string> declared in
+      FluentConfigSession.Registry.cs, exposed as
+      internal bool TryReserveSaveKey(string key).
+    - Also reserve valueSaveKey for pair-value dropdowns.
+    - CRITICAL EXCEPTION: skip reservation entirely while InItemTemplate is true.
+      A pill item template legitimately contains the literal "{name}_enabled" once
+      per pill, and two pills with similar templates would otherwise collide on an
+      UNEXPANDED placeholder. Get this wrong and valid menus start throwing.
+    - Route RepeatFor's parent-list splice through the session reservation too.
+    - Make RegisterButtonClick THROW on duplicate button id instead of overwriting.
+    - Disambiguate generated group ids with a per-session counter suffix. Update
+      your own tests that assert the old literal ids (vis_premium, grid_2).
+
+ 6. Replace bool inverted with condition objects. SCOPE THIS DELIBERATELY - the
+    smell is the trailing bool, not the string overloads. Do the minimum that
+    kills it.
+    - Add Host/Builders/When.cs: immutable class with internal fields (SaveKey,
+      EqualsValue, Inverted, Op, Value, CompareKey) and static factories:
+      On(key), Off(key), Eq(key,string), Eq(key,int), Neq(key,string),
+      Neq(key,int), Cmp(key,Comparator,int), Cmp(key,Comparator,string compareKey),
+      All(params When[]).
+    - Add WithVisibility(When condition, Action<PanelBuilder> build,
+      VisibilityChrome? chrome = null) to SectionBuilder, PanelBuilder,
+      SectionFluentWrapper, PanelFluentWrapper.
+    - REMOVE the bool inverted = false parameter from WithVisibility on all four
+      types. This is the intended breaking change.
+    - When.All(...) emits NESTED GROUPS, which the wire already treats as AND.
+      Do NOT add an "any" / OR field to the wire; there is no protocol support and
+      it is out of scope.
+    - Add leaf-level ShowWhen(When) and a convenience ShowWhenOff(string key).
+      This closes a REAL GAP: ShowWhen(key) is equals-true only, and
+      ShowWhenNot(key, "true") does NOT invert a boolean because the web compares
+      booleans strictly with no string coercion. Authors currently have no way to
+      gate a single control on a toggle being OFF.
+    - KEEP the existing ShowWhen(key,string), ShowWhen(key,int), ShowWhenNot(...)
+      and comparator overloads. They contain no bools, the guides use them
+      heavily, and churning them buys nothing.
+    - Keep WithVisibilityWhenOff / WithVisibilityWhenNot as one-line aliases.
+    - THE WIRE SHAPE DOES NOT CHANGE. VisibilityCondition is untouched.
+    - Do NOT add Comparator.Equal; the guides explicitly forbid faking equality
+      with comparators.
+
+ 7. Cap RepeatFor in SchemaBuilderHelpers (finding 5.13). Add const int
+    MaxCap = 32 and throw when the resolved max exceeds it. The message must tell
+    the author to pass an explicit max: or give the driver a .Range. Also make
+    resolvedMax < startIndex throw instead of silently emitting nothing.
+
+ 8. Remove the eager refresh from BuildDropdown in PendingControl.Build.cs
+    (finding 5.5). Delete the `if (opts == null || opts.Count == 0) opts = refreshFn();`
+    block. STILL call RegisterDropdownRefresh so the RPC works. Emit options: []
+    with refreshable: true. See CONTRACT C1 - S4A implements the web half. Do NOT
+    try to make the callback async on the host; Streamer.bot authors write
+    synchronous code.
+
+ 9. Update the guides you own plus examples/tutorial/01-09, reference, dev for the
+    When API and the RepeatFor cap. docs/guides/LAYOUT.md currently claims Size
+    tokens "combine freely" - that becomes true in step 4; keep the wording and add
+    that repeated Size() calls merge.
+
+10. Add tests: options after a structural call throw; stacked Size() merges;
+    MaxSelected without WithExclusive throws at flush; duplicate saveKey across a
+    RepeatFor boundary throws; duplicate btn_ id throws; two Grid blocks get
+    distinct ids; RepeatFor on an unranged slider throws; RepeatFor with max below
+    start throws; ShowWhenOff emits equals:true + inverted:true; When.All emits
+    nested groups. ALSO add a golden-schema test: build a small menu with the
+    fluent API, serialize with ProtocolJson, compare against a committed camelCase
+    fixture. Cheapest guard against accidental wire drift from builder edits.
+
+INVARIANTS TO PRESERVE
+  - One PendingControl per host; options apply to the control just added; flush on
+    next control or structural call. Do NOT split into per-kind builder classes -
+    that is the WPF-era explosion this design exists to avoid.
+  - Authors write 1:1 Tailwind class names; host parses and resolves; wire carries
+    structured CSS, never class strings.
+  - RepeatFor hides rows by visibility and never deletes values, so shrinking a
+    driver count preserves filled rows.
+  - Pill templates are SchemaNode trees via ItemTemplate(Action<PanelBuilder>);
+    no Panel ever reaches author callbacks.
+  - InputValidation, DurationParsing and KnownBots stay untouched and unwired.
+    They are DELIBERATE future primitives, not dead code.
+
+
+--------------------------------------------------------------------------------
+S2 - WINDOW LIFECYCLE AND CLOSE        (parallel, after S0)
+--------------------------------------------------------------------------------
+GOAL
+Stop the close path from silently discarding unsaved edits, close the unguarded
+programmatic close, and make the open reservation actually reserve.
+
+OWNS
+  FluentConfig/Host/App/FluentConfigSession.Show.cs, .Lifecycle.cs, .UiAffordances.cs
+  FluentConfig/Host/App/Rpc/WindowHandler.cs, ButtonClickHandler.cs, PerfHandler.cs
+  FluentConfig/Host/App/UiContext.cs, IProgressReporter.cs
+  FluentConfig/Host/Host/**  (HostBridge.cs, FluentConfigHostWindow.cs,
+                              EmbeddedHtml.cs, WebView2AssemblyResolve.cs)
+  FluentConfig/Host/Native/**
+  FluentConfig/Host/Core/FluentConfigWindowManager.cs, PerformanceTracer.cs
+  Tests: FluentConfigWindowManagerTests.cs, HostBridgeTests.cs, NEW CloseFlowTests.cs
+
+MUST NOT TOUCH
+  Host/Builders/**, FluentConfigSession.cs, .Registry.cs, .Schema.cs, .Values.cs,
+  .Updates.cs, other Rpc/** handlers, Host/Core/Settings*, WindowPrefs.cs,
+  WindowGeometry.cs, UpdatePrefs.cs, Host/Protocol/**, FluentConfigUi.cs, web/**
+
+DEPENDS ON: S0.
+
+STEPS
+
+ 1. Fix the timeout that discards unsaved edits (finding 5.1). HIGHEST SEVERITY
+    ITEM IN THE PLAN. Implement in this EXACT shape:
+      - Declare `private bool _webAlive;` in .Lifecycle.cs.
+      - Set _webAlive = true in HandleWebMessage as soon as a message
+        deserializes successfully. Use INBOUND TRAFFIC as the liveness proof, NOT
+        the perf mark - perf.mark is gated behind FC_PERF_TRACE and would leave
+        Release unprotected.
+      - Change HostBridge.SendRequest so timeoutMs <= 0 means "no timer at all"
+        (skip creating the DispatcherTimer).
+      - In OnNativeCloseRequested, pass timeoutMs: _webAlive ? 0 : 10000.
+
+    THE REASONING YOU MUST NOT LOSE: the only purpose of a timeout is a DEAD web
+    layer. Once the web has proven it is alive, a pending close request means a
+    user is staring at a dialog, and Detach() already completes all pending
+    requests with null on teardown, so teardown still unblocks.
+    Do NOT implement this as "fail closed after 60s" - that leaves the web dialog
+    open with no matching pending request, and the next X press stacks a second
+    dialog.
+
+ 2. Honor alreadyConfirmed:false in WindowHandler.HandleWindowClose (finding 5.3).
+    Reply FIRST (never block WebMessageReceived), then: if AlreadyConfirmed is
+    true, CloseAllowed() as today; otherwise route into the same ask-the-web flow
+    as native close and return.
+
+ 3. Make the open reservation real (finding 5.4). Treat a present key with a null
+    value as RESERVED: return false (or a distinct "reserving" result) rather than
+    handing out a second reservation. Add
+    internal bool TryClaim(string title, Window window) that fails if a DIFFERENT
+    live window already claimed the title, and call it from Show() in place of the
+    bare Register. Do NOT edit FluentConfigUi.ShowOrFocus - S3 owns that file.
+    Keep window-registry identity on the raw title.
+
+ 4. Clear _hostExitInProgress when a host-exit teardown finds no windows, or
+    otherwise make it non-sticky. It is set once and never reset, so if
+    Streamer.bot's MainWindow.Closing is cancelled after our hook ran, native X
+    becomes a permanent no-op for every later menu in that process.
+
+ 5. Make the DisposeWebViewCore seam `internal` so HostBridgeTests stops reaching
+    for it by reflection.
+
+ 6. Add CloseFlowTests.cs with a fake bridge, table-driven over: clean close;
+    dirty + discard; dirty + keep-editing; dirty + save-then-exit; timeout before
+    the web ever spoke (MUST close); pending request while the web is alive (MUST
+    NOT close); host exit during a pending prompt; window.close with
+    alreadyConfirmed:false on a dirty form (MUST NOT close); in-app Exit. Also add
+    the STA assertion for Show().
+
+INVARIANTS TO PRESERVE
+  - Native close is intercept-then-async-RPC. NEVER raise-then-cancel
+    Window.Closing on a window that has hosted a WebView2 - that is the documented
+    white-page regression.
+  - NEVER intercept WM_CLOSE; only WM_SYSCOMMAND / SC_CLOSE. Swallowing WM_CLOSE
+    blanks or orphans the HWND.
+  - NEVER call SendRequestAndWait or push a DispatcherFrame from inside
+    WebMessageReceived. Author callbacks are BeginInvoke'd for exactly this
+    reason; keep those comments.
+  - On host exit, dispose the WebView2 control on the UI thread BEFORE
+    Streamer.bot tears down COM, and GC.SuppressFinalize even if Dispose throws.
+    A leak beats a fatal HwndHost finalizer.
+  - CloseAllowed() stays the only way a live window dies, except host exit which
+    disposes first.
+  - Dirty state stays in the WEB store. The host asks and obeys; it must not
+    snapshot values to decide, and must not use a native MessageBox for the
+    discard prompt.
+  - Fail open only when the web is dead; never while the user is in a dialog.
+
+
+--------------------------------------------------------------------------------
+S3 - IDENTITY, SETTINGS AND VALUES        (parallel, after S0)
+--------------------------------------------------------------------------------
+GOAL
+Give each menu a stable explicit id so renaming the window title stops orphaning
+saved data, and delete the legacy migration path now that there are no external
+users.
+
+OWNS
+  FluentConfig/Host/FluentConfigUi.cs
+  FluentConfig/Host/App/FluentConfigSession.cs, .Values.cs, CallbackContext.cs
+  FluentConfig/Host/Core/SettingsKeyHelper.cs, SettingsManager.cs,
+      SettingsPathHelper.cs, SettingsSync.cs, SettingsDefaultsCollector.cs,
+      WindowPrefs.cs, WindowGeometry.cs, UpdatePrefs.cs, GeneralSettings.cs,
+      FilepathValidation.cs
+  FluentConfig/Host/App/Rpc/SaveHandler.cs, DropdownRefreshHandler.cs,
+      PillChangedHandler.cs, FilepathHandler.cs
+  FluentConfig/Host/Runtime/**, FluentConfig/Host/Helpers/**,
+      FluentConfig/Host/KnownBots.cs
+  examples/tutorial/10_*, 11_*, examples/deployment/**
+  docs/guides/DIALOGS_AND_RUNTIME_VALUES.md, EXTRAS.md
+  Tests: SettingsKeyHelperTests, SettingsLoadHelpersTests, SettingsMergeTests,
+         SettingsPathHelperTests, SettingsDefaultsTests, RuntimeHelpersTests,
+         WindowGeometryStoreTests, UpdatePrefsStoreTests, SaveRpcTests,
+         DropdownRefreshRpcTests, FilepathValidationTests, InputValidationTests,
+         DurationParsingTests, KnownBotsTests
+
+MUST NOT TOUCH
+  Host/Builders/**, .Show.cs, .Lifecycle.cs, .Registry.cs, .Schema.cs, .Updates.cs,
+  Rpc/WindowHandler.cs, Rpc/UpdateHandler.cs, Rpc/PerfHandler.cs,
+  Rpc/ButtonClickHandler.cs, Host/Host/**, Host/Native/**, Host/Protocol/**,
+  Host/Core/FluentConfigWindowManager.cs, Host/Core/PerformanceTracer.cs, web/**
+
+DEPENDS ON: S0.
+
+STEPS
+
+ 1. Add the explicit id. KEEP Fc.Open(cph, title, version, build, iconPath = null)
+    compiling unchanged with the id defaulting to Slugify(title) - this is what
+    lets S1 own the other examples without a conflict.
+      - Add FluentConfigUi.Id(string id) returning this, validating ^[a-z][a-z0-9_]*$
+      - Add an optional id parameter to Fc.Open after iconPath.
+      - Redefine the seam in FluentConfigSession.cs:
+        internal string SettingsScopeKey => _menuId ?? SettingsKeyHelper.Slugify(_title);
+
+ 2. CRITICAL ORDERING TRAP: SettingsManager is constructed in the session
+    constructor from _settingsKey, which is computed from the title. Once Id() can
+    be called after Create(...), the key is NOT KNOWN at construction time. You
+    MUST make settings access lazy - construct SettingsManager on first use behind
+    a property, or rebuild it when Id() is set. If you leave the eager constructor
+    in place, every menu that calls .Id() will silently read and write the
+    slug-derived key instead of the id, and the bug will look like "my settings
+    vanished". Add a test that sets Id() AFTER Create and asserts the global key.
+
+ 3. Point storage at the id. Because S0 already routed the call sites through
+    SettingsScopeKey, this should be the property change plus _settingsKey. Verify
+    by grep that no _title remains in a storage-key position, and that
+    window-registry calls still use _title.
+
+ 4. Delete the legacy migration: MigrateLegacySettingsKey, LegacySettingsKeyFor,
+    the Fc forwarder, the calls in LoadSettings / HasSavedSettings /
+    OpenSettingsManager / the session constructor, plus their tests. There are no
+    external users and it runs on every settings read.
+
+ 5. Reconcile the dropdown default story with the locked model (3.5). Verify what
+    SettingsDefaultsCollector ACTUALLY seeds: it writes display + valueSaveKey when
+    defaultByValue is set, and does not seed a dropdown with no explicit default.
+    DETERMINE whether it also seeds defaultIndex. If it does NOT, then
+    DropdownControl renders options[defaultIndex] as selected while nothing is
+    persisted, so Save produces no value and LoadSettings later returns the class
+    default - the UI shows a selection the save does not produce. FIX by making the
+    collector seed defaultIndex too, so display and storage agree. Record the
+    finding for S4A (CONTRACT C2). Do NOT change the "no explicit default means do
+    not seed" behavior; it is tested and load-bearing.
+
+ 6. Consolidate the public entry points (finding 5.10). Keep Fc and FluentConfigUi
+    as the public surface, fold FluentConfigApp into Fc, and reduce or remove the
+    FluentConfig.FluentConfig compatibility facade. Keep Fc.ShowOrFocus as an
+    alias of Fc.Open. Intended 0.2 break.
+
+ 7. Resolve DurationParsing. The host helper has diverged from the live
+    web/src/lib/duration.ts (different accepted formats) and has tests that make it
+    look like the product path when it is not wired to save. Either align it with
+    the web grammar or move it plus its tests to a clearly experimental namespace
+    with a comment saying the web is the source of truth. DO NOT DELETE IT.
+
+ 8. Write the throwaway rename script under docs/internal/ - a short Streamer.bot
+    C# snippet copying {oldslug}_settings to {newid}_settings for the author's own
+    menus, with a header comment saying it is single-use and should be deleted
+    after running. Do NOT ship migration code in the library.
+
+ 9. Add tests: rename the title with a stable id and settings survive; slug
+    collision (Foo vs Foo!) is no longer a shared blob when ids differ; Id() after
+    Create uses the id; empty string is not the class default in LoadSettings; save
+    merge still does not delete omitted keys; values.patch does not set dirty.
+
+INVARIANTS TO PRESERVE
+  - CPH globals stay human-readable: {id}_settings and {id}_data, plus the shared
+    fluentconfig_settings. Never go back to FluentConfig_Settings_{title}.
+  - Save MERGES and never deletes sibling keys. Other actions write into the same
+    blob via Fc.SetSetting.
+  - Seeding never overwrites a present key, including a user's ''.
+  - A host-pushed values.patch must not make the form look dirty (dual write stays).
+  - LoadSettings is TOTAL: a missing or malformed global yields new T() defaults,
+    never a throw.
+  - Pair-value stays TWO KEYS: display in saveKey, stable id in valueSaveKey, and
+    .Multiple() remains illegal with it. (Reason: reward pickers need a stable id
+    plus a human label that still reads correctly in a chat action when Twitch is
+    down.)
+
+
+--------------------------------------------------------------------------------
+S4A - WEB CONTROLS AND COMBOBOX        (parallel, NO dependency)
+--------------------------------------------------------------------------------
+GOAL
+Split the 389-line SelectMenu without changing its look, fix the layout and
+clipping pains, fix the each-keys that remount on every keystroke, and extract the
+number rounding.
+
+OWNS
+  FluentConfig/web/src/lib/controls/**  EXCEPT PillInputControl.svelte,
+      SchemaNodeView.svelte, GroupControl.svelte
+  NEW FluentConfig/web/src/lib/select/**
+  FluentConfig/web/src/lib/dropdownRefresh.ts (+ test), duration.ts, richText.ts,
+      motion.ts, theme.ts, layout.ts, Checkbox.svelte, ProgressOverlay.svelte,
+      icons/**
+  NEW FluentConfig/web/src/lib/number.ts (+ test), NEW lib/refreshOnce.ts
+  FluentConfig/web/src/app.css
+
+MUST NOT TOUCH
+  store/app.svelte.ts, App.svelte, main.ts, PillInputControl.svelte,
+  SchemaNodeView.svelte, GroupControl.svelte, visibility.ts, schemaNodeKey.ts,
+  diff.ts, paths.ts, clone.ts, perf.ts, rpc/**, protocol/**, bridge/**,
+  any host file.
+
+DEPENDS ON: nothing. Start immediately.
+
+STEPS
+
+ 1. Fix the each-keys (finding 5.6) - most user-visible bug in the plan. USE THE
+    INDEX. Rationale you must not override: the control has only addRow and
+    removeRow, no reorder UI, so index is stable for the common case (editing) and
+    only shifts on removal, where re-reading values by scoped saveKey is correct.
+    Do NOT invent a synthetic row id - rows persist as an array of objects in the
+    settings blob, so an id field would LEAK INTO AUTHOR-VISIBLE SAVED JSON. Apply
+    the same fix to DynamicTextboxesControl. Verify there is genuinely no reorder
+    before committing; if you find one, REPORT it rather than adding a persisted id.
+
+ 2. Memoize scopedNode in RepeatableRowsControl (finding 5.18). Wrap in a $derived
+    keyed by row count and schema instead of calling it inline in the template.
+
+ 3. Split SelectMenu.svelte into a pure state module plus presentational shells,
+    keeping ONE visual combobox:
+      lib/select/selectMenuState.ts  - pure, DOM-free: open, activeIndex, filter
+        text, filtered options, and a reducer over events. Unit-testable.
+      SelectMenu.svelte              - thin wiring + ARIA + outside-click,
+        exposing a trailing `addon` snippet.
+      lib/select/SelectListbox.svelte - options + empty state. Give the empty-state
+        element role="presentation" so it is not announced as an option, and add
+        aria-multiselectable on the multi listbox.
+      lib/select/SelectChips.svelte  - chips + trash icon.
+
+    Fix the layout pains while you are here: put chips on a FULL-WIDTH ROW ABOVE a
+    `flex items-center gap-2` row holding trigger + addon, and add
+    `min-w-0 flex-1` to the menu so wrapping chips stop shoving the Refresh button.
+    Replace the `absolute z-20` list with the Popover API or position:fixed +
+    getBoundingClientRect so the list stops clipping inside .fc-main-scroll and
+    stops painting under the glass chrome.
+    DO NOT add floating-ui or a headless component library - the single-file bundle
+    has a 180000-byte gate in vite.config.ts and is currently at ~177,743 bytes.
+
+    KEEP: trash icon rather than a multiplication sign; multi staying open after a
+    pick; the suppressOpenOnFocus + queueMicrotask guard that stops focus from
+    reopening on close; onmousedown preventDefault on options to beat blur.
+
+ 4. Delete the dead 'snap' variant (finding 5.15) from the type, the function and
+    the DropdownControl branch. Add the missing keepValues (multi prune) test.
+    Do NOT reintroduce snapping under any name - never snapping an empty selection
+    to the first option is the whole point of this module.
+
+    The CURRENT decision table (preserve this behavior):
+      multiple && allowCustom                          -> keep
+      multiple && !allowCustom, all still in list      -> keep
+      multiple && !allowCustom, some remain            -> keepValues (pruned)
+      multiple && !allowCustom, none remain            -> clear
+      single, current === ''                           -> keep  (NEVER snap)
+      single, inList(current)                          -> keep
+      single, allowCustom                              -> keep
+      single, not in list && !allowCustom              -> clear
+    Note inList matches display OR value - load-bearing for pair-value.
+
+ 5. Implement the web half of deferred refresh (CONTRACT C1). Add lib/refreshOnce.ts
+    exporting a module-scoped Set<string> guard, e.g.
+    shouldRefreshOnce(saveKey): boolean. In DropdownControl.onMount, when
+    refreshable and options are empty and this saveKey has not been refreshed this
+    session, call refresh once. The module-scoped set means the {#key} tab remount
+    does NOT re-fire the RPC, which is the current repeat-RPC bug. Apply the same
+    treatment to FilepathControl's validate-on-mount.
+    CRITICAL DETAIL: when options are empty at first paint, an already-saved value
+    must still display AS-IS; do not clear it and do not treat empty options as
+    "value invalid".
+
+ 6. Implement the DISPLAY half of the empty-vs-absent model (CONTRACT C2). Missing
+    key -> show the author default if any; '' -> show the placeholder and never
+    fall back to a schema default. NEVER write a value during render - only user
+    action or an explicit refresh decision writes.
+
+ 7. Extract roundToStep and stepDecimals into lib/number.ts with tests, and use
+    them from NumberInputControl. The existing inline logic is correct
+    (Math.round(raw / step) * step then toFixed) but untested;
+    roundToStep(0.1 + 0.2, 0.1) === 0.3 is the regression to lock. Float
+    normalization belongs HERE at the control boundary, not on the host - the host
+    cannot fix what the stepper displays mid-edit. Also fix the dead isFit branch,
+    which compares layout?.width === 'fit' while the host emits 'fit-content'.
+    Keep the custom stepper buttons and the CSS-hidden native spinners.
+
+ 8. Change ButtonControl's fallback (finding 5.17) from '#3b82f6' to the accent
+    token. THIS IS THE ONLY COLOUR CHANGE PERMITTED - do not touch
+    --color-fc-accent, --color-fc-glow, --fc-network-rgb, or any other token.
+
+ 9. While touching chips and tabs, promote the duplicated utility soup into
+    @layer components classes (fc-chip, fc-tab, fc-switch, fc-stepper) so you do
+    not end up with two chip styles. STRUCTURE ONLY; the rendered look must not
+    change.
+
+INVARIANTS TO PRESERVE
+  - '' is unchosen. Refresh, first paint and Save never write option zero or a
+    placeholder string. (Origin: refreshable Twitch reward dropdowns used to
+    auto-select the first reward and save junk.)
+  - Custom text survives refresh when allowCustom; multi prunes missing chips
+    without inserting new ones.
+  - No native <select>, no native number spinners, custom checkbox, accent
+    scrollbar, trash icon not a multiplication sign.
+  - Each-keys are IDENTITY, never editable content.
+  - JSON never carries Tailwind class names; layout arrives as resolved inline CSS.
+
+
+--------------------------------------------------------------------------------
+S4B - WEB STORE, SHELL AND PILLS        (parallel, NO dependency)
+--------------------------------------------------------------------------------
+GOAL
+Fix the pill patch that silently drops nested items, remove the reactivity
+anti-patterns, and lock the empty-vs-absent rule on the visibility side.
+
+OWNS
+  FluentConfig/web/src/store/app.svelte.ts
+  FluentConfig/web/src/App.svelte, main.ts
+  FluentConfig/web/src/lib/controls/PillInputControl.svelte,
+      SchemaNodeView.svelte, GroupControl.svelte
+  FluentConfig/web/src/lib/FormSection.svelte, NetworkBackground.svelte,
+      FooterBrand.svelte, dialogs/**
+  FluentConfig/web/src/lib/visibility.ts, schemaNodeKey.ts, diff.ts, paths.ts,
+      clone.ts, perf.ts
+  FluentConfig/web/src/rpc/**
+  Tests: visibility.test.ts, schemaNodeKey.test.ts, paths.test.ts
+
+MUST NOT TOUCH
+  lib/controls/** other than the three named files, lib/select/**,
+  dropdownRefresh.ts, number.ts, refreshOnce.ts, app.css, protocol/**, bridge/**,
+  any host file.
+
+DEPENDS ON: nothing. Start immediately.
+
+STEPS
+
+ 1. Make patchPillItems RECURSE (finding 5.7). Reuse the same traversal shape as
+    patchDropdownOptions directly above it. Also add the missing repeatable-rows
+    recursion to applySchemaPatch for consistency.
+
+ 2. Replace the pill selection $effect with $derived (finding 5.16). The current
+    effect writes `selected` from within an effect that reads names and selected,
+    which is the documented Svelte 5 anti-pattern (do not use $effect to
+    synchronize state) and can loop. Derive the active pill name instead, falling
+    back to the first name.
+
+ 3. Restore the draft on a failed pill add. `draft` is cleared BEFORE the RPC, so
+    if the add fails the typed name is gone from the input. KEEP the
+    RPC-then-mutate order (do NOT make it optimistic - that was already a shipped
+    regression), but restore draft on failure.
+
+ 4. Make isDirty a $derived rather than a plain getter. Cheap, safe,
+    correctness-of-idiom fix.
+
+ 5. LEAVE the setValue full-blob cloneJson ALONE for now. It is a real cost on
+    large menus, but cold start is out of scope, no large menu has been measured,
+    and changing the store's mutation model while S4A edits fifteen control files
+    is the riskiest pairing in this plan. Note it in your report as GATED on the S5
+    perf fixture. Keep cloneJson at the postMessage boundary regardless - $state
+    proxies cannot be structured-cloned.
+
+ 6. KEEP the {#key activeSection.id} tab remount and do NOT reintroduce an
+    out-transition. Svelte keeps outroing blocks in the DOM until the transition
+    completes, which is exactly the two-pages-plus-scrollbar flash that was
+    already removed. Do NOT mount all sections either: every hidden tab would
+    instantiate its controls and run its mount-time work at bootstrap.
+
+ 7. Implement the VISIBILITY half of the empty-vs-absent model (CONTRACT C2) in
+    visibility.ts: '' is a live value and must NOT fall through to the schema
+    default; a missing or null value may. This is already close to current
+    behavior - the job is to LOCK IT WITH TESTS, not to rewrite it.
+
+ 8. Add tests: effectiveValue treats empty string as live not default; pair-value
+    with an empty id hides a gated node; pair-value with an absent id uses
+    defaultByValue; schemaNodeEachKey stays stable when field values change;
+    values.patch does not set dirty; setValue marks only the touched key.
+
+INVARIANTS TO PRESERVE
+  - Pills are nested SchemaNode trees; pill.changed is ADD AND REMOVE ONLY. Do NOT
+    implement rename - nested saveKeys are {name}_*, so rename is a key migration,
+    not a caption change, and a stub on both sides was already correctly deleted.
+  - Visibility is client-side and never remounts the window or round-trips the host.
+  - Host-pushed values.patch writes BOTH live and saved values so it does not look
+    like a user edit.
+  - The Save button stays visible at all times, in the overlay chrome and not in
+    the scrolling document.
+
+
+--------------------------------------------------------------------------------
+S5 - UPDATER, PACKAGING, PROTOCOL CLEANUP, DOCS   (parallel; host part after S0)
+--------------------------------------------------------------------------------
+GOAL
+Fix the version string that silently compares as zero, remove the dead
+update.stage from the wire, un-break the deploy script, and make the docs match
+the code.
+
+OWNS
+  FluentConfig/Host/Protocol/**
+  FluentConfig/Host/Updater/**, FluentConfig/UpdaterHelper/**
+  FluentConfig/Host/App/FluentConfigSession.Updates.cs,
+      FluentConfig/Host/App/Rpc/UpdateHandler.cs,
+      Rpc/RpcDispatch.cs  (ONLY to delete the UpdateStage case)
+  FluentConfig/Host/Host.csproj, FluentConfig/Host/scripts/**,
+      FluentConfig/scripts/**
+  FluentConfig/web/src/protocol/**, FluentConfig/web/src/bridge/**,
+      FluentConfig/web/vite.config.ts, vitest.config.ts, package.json
+  ALL markdown EXCEPT docs/guides/{LAYOUT,VISIBILITY,CONTROLS,PILLS,
+      DIALOGS_AND_RUNTIME_VALUES,EXTRAS}.md
+  Tests: GitHubUpdaterLatestReleaseTests, GitHubUpdaterTaggedReleaseTests,
+         UpdaterAssetTests, UpdaterFlowTests, StartupPerformanceTests,
+         ProtocolContractTests, NEW ProtocolSnapshotTests, NEW VersionCompareTests
+
+MUST NOT TOUCH
+  Host/Builders/**, Host/Core/**, Host/Host/**, Host/Native/**, Host/App/** other
+  than .Updates.cs / Rpc/UpdateHandler.cs / the one dispatch line;
+  FluentConfigUi.cs; web/src/lib/**, web/src/store/**, web/src/App.svelte,
+  web/src/app.css
+
+DEPENDS ON: S0 for the host portion only.
+
+STEPS
+
+ 1. Fix the version corruption (finding 5.2). Do BOTH halves:
+      - Add <IncludeSourceRevisionInInformationalVersion>false</...> to Host.csproj.
+      - Harden Normalize anyway: strip build metadata from the first '+' BEFORE
+        filtering digits, and treat an unparseable component as a FAILURE rather
+        than silently reading zero.
+      - Add VersionCompareTests.cs: FrameworkVersion contains no '+';
+        IsNewer("0.1.0-beta.3","0.1.0-beta.2") is true; a git-hash-suffixed string
+        compares equal to its clean form; and assert the known stable-vs-beta
+        ordering quirk (stable "0.1.0" vs FileVersion "0.1.0.2") explicitly so it
+        cannot regress unnoticed.
+
+ 2. Delete update.stage from the wire (finding 4.5). Remove the handler, the
+    UpdateStage case in RpcDispatch.cs, RpcMethods.UpdateStage on BOTH sides,
+    UpdateStageParams, the mockBridge.ts case, and mode:'self' from
+    UpdateAvailablePayload. KEEP GitHubUpdater.StageUpdate and UpdateHelperLauncher
+    as host APIs and have the tests call them DIRECTLY. This satisfies the "web
+    must never choose a download URL" reason BETTER than guarding it does, because
+    the web-facing surface goes to zero.
+
+ 3. Restore the deploy script (finding 5.9). Restore generic candidates plus the
+    STREAMER_BOT_PATH env override, remove the machine-specific path, and align the
+    version with Host.csproj.
+
+ 4. Add an updater contract test file covering what has ZERO tests today:
+    IsAllowedDownloadUrl accepts GitHub download hosts over https and rejects
+    everything else; the PE/MZ header check; the size cap; no-zipball asset
+    picking; notify-only checks produce a null DownloadUrl.
+    ALSO cover DllCheck parity. examples/deployment/01_DllCheck.cs is ~650 lines
+    that reimplement HTTP, JSON-by-regex, the host allowlist, the PE check, stage
+    and helper launch - and it is the ONLY path that actually installs
+    FluentConfig.dll, is not in the solution, and has no tests at all. It can rot
+    while all 253 tests stay green. Its duplication is REQUIRED (it must compile
+    with the DLL absent), but write the contract tests as a shared spec both sides
+    are checked against - asset-name preference, allowlist hosts, PE check,
+    FileVersion-vs-tag comparison, the daily throttle key. Known divergences to
+    encode: DllCheck does not PE-check the helper .exe (01_DllCheck.cs 547-552),
+    swaps by delete+move rather than File.Replace (591-597), and passes an empty
+    relaunch path (612). Trust today is GitHub account + https + "looks like a PE"
+    + filename, with no signature or hash - say so in the security page from
+    step 9 rather than leaving it implicit.
+
+ 5. Add ProtocolSnapshotTests.cs - the cheap alternative to a codegen project.
+    Emit a sorted {type, properties[]} snapshot of FluentConfig.Protocol by
+    reflection and compare against a committed golden file; add a matching web-side
+    check or golden payloads parsed by both sides. Roughly 17 node types plus 15
+    methods plus 5 events are duplicated by hand today with NOTHING detecting
+    drift. Do NOT build a full codegen project in this wave.
+
+ 6. Resolve StartupPerformanceTests.cs (finding 5.20). Either rename it to what it
+    actually tests or delete it. Do not leave a misleading perf test in place.
+
+ 7. Pre-build UpdaterHelper as a test dependency instead of shelling out to
+    `dotnet build` at test runtime.
+
+ 8. Add the LARGE-MENU PERF FIXTURE. This replaces the cold-start workstream:
+    build a synthetic worst-case action (many refreshable dropdowns, many pills, a
+    wide RepeatFor) alongside the existing minimal and complete templates, and
+    archive a third baseline under docs/performance/baselines/. Every archived
+    baseline today is framework-sized, so "is a big menu slow on this
+    architecture" is currently UNANSWERABLE. Also fix FindHelperExe probing Debug
+    before Release (UpdateHelperLauncher.cs lines 69-73) - a Release user with a
+    leftover Debug helper can swap the wrong binary.
+
+ 9. Docs accuracy pass. Each of these contradicts the code:
+      - ARCHITECTURE.md:44 says the menu stages DLL updates (it does not; the
+        copy-paste DllCheck action does).
+      - ARCHITECTURE.md:63-67 lists DSL smells that are largely fixed.
+      - PROTOCOL.md:343 vs PushEvents.cs:18-19 disagree on whether update notices
+        appear in bootstrap.
+      - PROTOCOL.md:367 documents update.stage as tooling-only while it was wired.
+      - web/src/protocol/schema.ts:236 references a CheckForUpdate the session
+        never calls.
+      - web/README.md:21 says a 161 KB gate; vite.config.ts:11 says 180000; dist is
+        ~177,743 bytes.
+      - web/src/protocol/README.md:8-9 still says "not in scope for Phase 0".
+    ALSO add the two docs a library consumer needs and that do not exist: how to
+    cut a release (FileVersion vs git tag vs InformationalVersion, asset names,
+    never ship WebView2) and a one-page security model (we auto-update only our own
+    DLL, never extension bundles, the web cannot choose a download URL).
+
+INVARIANTS TO PRESERVE
+  - TWO UPDATER TRACKS: our DLL updates via atomic swap; extensions are
+    notify-only and NEVER auto-installed.
+  - The web can never initiate a download.
+  - WebView2 is never shipped or NuGet-referenced.
+  - DllCheck keeps ZERO FluentConfig references - it must compile when the DLL is
+    missing. Its duplication of GitHubUpdater is the price of that and stays.
+  - Update HTTP stays OFF the Show() path.
+  - PROTOCOL.md remains the camelCase source of truth.
+
+
+================================================================================
+8. CROSS-STREAM CONTRACTS
+================================================================================
+Three behaviors are implemented by two or three streams each. Both sides are
+specified here so nobody has to coordinate at runtime. All must be verified
+jointly at merge.
+
+C1 - DEFERRED DROPDOWN REFRESH   (S1 host, S4A web, S5 mock)
+  S1:  BuildDropdown no longer calls the refresh callback during schema build.
+       Emits options: [] with refreshable: true, still registers the callback.
+  S4A: DropdownControl.onMount fetches ONCE per saveKey per session via
+       refreshOnce.ts, so a tab remount does not re-fire. An already-saved value
+       renders as-is while options are empty.
+  S5:  mockDocument.ts ships one refresh-only dropdown with empty options so the
+       dev mock exercises the path.
+  JOINT CHECK: open a menu with a refresh-only dropdown; confirm ONE RPC on first
+  view, ZERO on tab-switch return, no auto-selection, and a saved value still
+  displayed before options arrive.
+
+C2 - EMPTY VERSUS ABSENT   (S3 host, S4A display, S4B visibility)
+  Model: key ABSENT = never touched, so the author's schema default MAY be used
+  for display and visibility. Key '' = explicitly none, so NO schema default in
+  either place. Rendering never writes.
+  S3:  make SettingsDefaultsCollector seed whatever defaults the control will
+       display, including defaultIndex, so display and storage agree.
+  S4A: DropdownControl.selectedValue follows the model exactly.
+  S4B: visibility.ts effectiveValue follows the model exactly.
+  JOINT CHECK: a pair-value dropdown with defaultByValue shows and gates
+  consistently on first paint; after choosing and clearing, the gated block hides
+  and stays hidden across a reopen.
+
+C3 - SETTINGSSCOPEKEY   (S0 introduces, S2 consumes, S3 redefines)
+  S0: adds the property returning _title and converts storage call sites.
+  S2: leaves it alone; keeps window-registry calls on the raw title.
+  S3: redefines it to the menu id.
+  JOINT CHECK: after all three merge, grep confirms no storage call site uses
+  _title, and window focus still dedupes by title.
+
+
+================================================================================
+9. MERGE AND VERIFY ORDER
+================================================================================
+All steps sequential.
+
+ 1. Merge S0.  Gate: 253 xunit passing; diff is moves only.
+ 2. Merge S3.  Largest surface on the shared session and public API; landing early
+               means the others rebase onto a stable FluentConfigUi.cs.
+ 3. Merge S2.  Gate: CloseFlowTests green; manually confirm X with unsaved changes
+               waits INDEFINITELY for the dialog.
+ 4. Merge S1.  Gate: golden-schema fixture matches; examples compile.
+ 5. Merge S5.  Gate: VersionCompareTests green; FrameworkVersion has no build
+               metadata.
+ 6. Merge S4B, then S4A. S4B first because S4A's controls read the store, not the
+               reverse.
+ 7. Run the three cross-stream contract checks in section 8.
+ 8. Full verification:
+      dotnet test
+      bun test  (in FluentConfig/web)
+      Release build  (confirms the Vite single-file embed and the 180 KB gate)
+      SmokeHost      (real WebView2 window plus save, without Streamer.bot)
+      perf harness against the new large-menu fixture; archive the baseline
+ 9. Bump to 0.2 and write the breaking-change changelog: WithVisibility loses
+    bool inverted; When conditions added; Fc.Open gains an optional id; the
+    FluentConfig.FluentConfig facade is reduced; update.stage is gone from the
+    wire; RepeatFor is capped.
+
+
+================================================================================
+10. DEFERRED TO A LATER WAVE
+================================================================================
+- Phantom-typed option chain giving IntelliSense that only offers valid options
+  per control kind. The design is sound (make the wrapper generic over a kind tag
+  and move option methods to capability-constrained extension methods, which
+  avoids the per-control builder explosion) and it matters because Streamer.bot's
+  in-app compiler will NOT run a Roslyn analyzer, so a compile error is the only
+  pre-runtime signal an author gets. Deferred because the runtime guards in S1
+  capture most of the value at a fraction of the churn.
+- CloseCoordinator as an explicit state machine replacing the boolean quartet.
+  S2 fixes the data loss in two small changes; the coordinator is the follow-up.
+- Collapsing the four-way SectionBuilder / PanelBuilder / SectionFluentWrapper /
+  PanelFluentWrapper method duplication into CRTP hosts. Real debt, but it touches
+  every builder file and would collide with everything else in S1.
+- A type:"repeat" wire node replacing RepeatFor materialization. A genuine
+  primitive that would shrink bootstrap payloads, but it spans host, protocol and
+  web, and must still seed defaults for hidden indices.
+- Removing the full-blob clone in setValue, gated on the large-menu fixture
+  showing a real cost.
+- CI. There is none today; green-on-this-machine is the whole story.
+
+
+================================================================================
+11. OUT OF SCOPE
+================================================================================
+- Discord beta packaging.
+- Consumer my-scripts code, except as anonymized DSL regression fixtures.
+- Re-theming. The palette is correct as shipped; only the #3b82f6 button fallback
+  changes.
+- Cold-start optimization. Measure first via the S5 fixture.
+- Pill rename, OR conditions on the wire, native <select>, bundling WebView2,
+  virtual-host navigation, a pre-warmed hidden WebView2, and full C#-to-TypeScript
+  codegen.
+
+
+================================================================================
+12. WHY THE OBVIOUS SHORTCUTS WERE REJECTED
+================================================================================
+- Cancelling Window.Closing for the unsaved guard is the classic WPF approach and
+  is precisely what blanked the WebView. The SC_CLOSE intercept exists so Closing
+  is never raised-then-cancelled.
+- Moving the dropdown refresh decision table to the host would require shipping
+  the uncommitted web store to the host on every refresh. Empty-until-chosen is a
+  UI invariant; it stays next to its test.
+- Mounting all tabs would preserve scroll but instantiate every control and run
+  every mount-time fetch at bootstrap.
+- Sending Tailwind class strings on the wire fails Tailwind v4, which has no
+  usable safelist for dynamic names; host-resolved CSS is the correct boundary.
+- Per-kind builder classes would restore the WPF-era explosion, where every
+  structural method had to be copied onto a dozen types.
+- A synthetic row id for each-keys would leak a non-author field into the
+  persisted settings blob.
+- Full protocol codegen would slow iteration, duplicate the SchemaNodeConverter
+  rules, and still miss semantic drift; a snapshot test catches the class of bug
+  that actually bites.
+- A pre-warmed hidden WebView2 would attack the ~1s cold tax but costs a browser
+  process for the whole Streamer.bot session and violates the teardown invariant.
+
+================================================================================
+END
+================================================================================
